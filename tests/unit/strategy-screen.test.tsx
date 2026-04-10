@@ -34,7 +34,8 @@ describe("StrategyScreen", () => {
       appName: "LinkedIn Poster",
       strategy: {
         getActiveBundle,
-        saveBundle
+        saveBundle,
+        generateFoundation: vi.fn()
       }
     };
 
@@ -55,7 +56,8 @@ describe("StrategyScreen", () => {
       appName: "LinkedIn Poster",
       strategy: {
         getActiveBundle,
-        saveBundle
+        saveBundle,
+        generateFoundation: vi.fn()
       }
     };
 

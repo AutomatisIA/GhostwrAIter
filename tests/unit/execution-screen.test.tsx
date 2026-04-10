@@ -15,7 +15,12 @@ describe("ExecutionScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: { getActiveBundle: vi.fn(), saveBundle: vi.fn() },
-      ideas: { listIdeas: vi.fn(), createIdea: vi.fn() },
+      ideas: {
+        listIdeas: vi.fn(),
+        createIdea: vi.fn(),
+        createFromNewsSource: vi.fn(),
+        generateFromStrategy: vi.fn()
+      },
       workshop: {
         generateFromIdea: vi.fn(),
         correctDraft: vi.fn(),
