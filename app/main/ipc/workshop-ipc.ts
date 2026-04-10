@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import { IdeasRepository } from "../domains/ideas/ideas.repository";
 import type { StrategyBundle } from "../../shared/types/strategy";
 import {
@@ -20,14 +21,16 @@ export class WorkshopRuntimeService {
     db: Database.Database,
     ideasRepository: IdeasRepository,
     getActiveStrategy?: () => StrategyBundle | null,
-    executionLogsDirectory?: string
+    executionLogsDirectory?: string,
+    skillRunnerService?: SkillRunnerService
   ) {
     createWorkshopTables(db);
     this.service = new WorkshopService(
       db,
       ideasRepository,
       getActiveStrategy,
-      executionLogsDirectory
+      executionLogsDirectory,
+      skillRunnerService
     );
   }
 

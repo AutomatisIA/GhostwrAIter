@@ -22,13 +22,17 @@ describe("strategy IPC", () => {
 
     registerStrategyIpcHandlers({ handle }, service);
 
-    expect(handle).toHaveBeenCalledTimes(2);
+    expect(handle).toHaveBeenCalledTimes(3);
     expect(handle).toHaveBeenCalledWith(
       "strategy:get-active-bundle",
       expect.any(Function)
     );
     expect(handle).toHaveBeenCalledWith(
       "strategy:save-bundle",
+      expect.any(Function)
+    );
+    expect(handle).toHaveBeenCalledWith(
+      "strategy:generate-foundation",
       expect.any(Function)
     );
   });
@@ -77,6 +81,39 @@ describe("strategy IPC", () => {
       profile: { name: "Philippe" },
       offers: [{ name: "Offre coeur" }],
       pillars: [{ label: "Adoption" }]
+    });
+  });
+
+  it("generates an editorial foundation summary from the active strategy", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const service = new StrategyService(db);
+
+    registerStrategyIpcHandlers(
+      {
+        handle(channel, handler) {
+          handlers.set(channel, handler);
+        }
+      },
+      service
+    );
+
+    await handlers.get("strategy:save-bundle")?.(undefined, {
+      profile: {
+        name: "Philippe",
+        positioning: "Consultant IA PME",
+        bio: "Approche terrain",
+        expertiseSummary: "ROI et adoption"
+      },
+      offers: [{ name: "Offre coeur", promise: "Faire atterrir l'IA", problems: "Pas de cadre" }],
+      icps: [{ segment: "Dirigeants PME", pains: "Temps, priorisation" }],
+      pillars: [{ label: "Adoption", position: 1 }],
+      voiceRules: [{ category: "anti-style", ruleText: "Pas de hype", ruleType: "anti_style" }]
+    });
+
+    const result = await handlers.get("strategy:generate-foundation")?.(undefined);
+
+    expect(result).toMatchObject({
+      summaryMarkdown: expect.stringContaining("Consultant IA PME")
     });
   });
 });

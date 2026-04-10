@@ -3,6 +3,8 @@ import { join } from "node:path";
 import log from "electron-log/main";
 import { CalendarRuntimeService, registerCalendarIpcHandlers } from "./ipc/calendar-ipc";
 import { createAppDatabase } from "./db/database";
+import { CodexCliRunner } from "./domains/execution/codex-cli-runner";
+import { SkillRunnerService } from "./domains/execution/skill-runner.service";
 import { ExecutionRuntimeService, registerExecutionIpcHandlers } from "./ipc/execution-ipc";
 import { SkillRegistryService } from "./domains/execution/skill-registry.service";
 import { IdeasService, registerIdeasIpcHandlers } from "./ipc/ideas-ipc";
@@ -44,8 +46,11 @@ app.whenReady().then(() => {
   const workspaceService = createWorkspaceService(workspaceRoot);
   const workspacePaths = workspaceService.ensureWorkspace();
   const db = createAppDatabase(workspacePaths.databasePath);
-  const ideasService = new IdeasService(db);
-  const strategyService = new StrategyService(db);
+  const skillRunnerService = new SkillRunnerService({
+    codexCliRunner: new CodexCliRunner()
+  });
+  const strategyService = new StrategyService(db, skillRunnerService);
+  const ideasService = new IdeasService(db, skillRunnerService);
   const workshopService = new WorkshopRuntimeService(
     db,
     ideasService.getRepository(),
@@ -56,17 +61,19 @@ app.whenReady().then(() => {
         return null;
       }
     },
-    join(workspacePaths.logsDirectory, "executions")
+    join(workspacePaths.logsDirectory, "executions"),
+    skillRunnerService
   );
-  const libraryService = new LibraryRuntimeService(db);
+  const libraryService = new LibraryRuntimeService(db, skillRunnerService);
   const calendarService = new CalendarRuntimeService(db);
   const executionService = new ExecutionRuntimeService(
     db,
-    () => true,
+    () => new CodexCliRunner().isAvailable(),
     new SkillRegistryService([
       join(process.cwd(), "skills"),
       join(workspacePaths.rootDirectory, "skills")
-    ])
+    ]),
+    skillRunnerService
   );
   const settingsService = new SettingsRuntimeService(
     new ExportService(

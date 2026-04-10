@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import { LibraryService } from "../domains/library/library.service";
 
 type IpcRegistrar = {
@@ -11,8 +12,8 @@ type IpcRegistrar = {
 export class LibraryRuntimeService {
   private readonly service: LibraryService;
 
-  constructor(db: Database.Database) {
-    this.service = new LibraryService(db);
+  constructor(db: Database.Database, skillRunnerService?: SkillRunnerService) {
+    this.service = new LibraryService(db, skillRunnerService);
   }
 
   listEntries() {

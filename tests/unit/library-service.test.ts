@@ -63,4 +63,35 @@ describe("library service", () => {
     expect(variant.tags).toContain("variante");
     expect(entries).toHaveLength(2);
   });
+
+  it("persists canonical repurpose execution output for a created variant", () => {
+    const idea = ideasRepository.createIdea({
+      title: "Pourquoi cadrer avant de prompter",
+      angle: "Le process prime sur l'outil",
+      pillarLabel: "Methodes"
+    });
+
+    const generated = workshopService.generateDraftFromIdea(idea.id);
+    const variant = libraryService.createVariantFromDraft(generated.draft.id);
+    const runRow = db
+      .prepare(`
+        SELECT
+          skill_name AS skillName,
+          input_json AS inputJson,
+          output_json AS outputJson
+        FROM execution_runs
+        WHERE draft_id = ?
+      `)
+      .get(variant.draftId) as
+        | {
+            skillName: string;
+            inputJson: string;
+            outputJson: string;
+          }
+        | undefined;
+
+    expect(runRow?.skillName).toBe("linkedin-repurpose");
+    expect(JSON.parse(runRow?.inputJson ?? "{}").skillName).toBe("linkedin-repurpose");
+    expect(JSON.parse(runRow?.outputJson ?? "{}").status).toBe("succeeded");
+  });
 });

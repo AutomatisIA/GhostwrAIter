@@ -9,12 +9,15 @@ import type { WorkshopApi } from "@shared/types/workshop";
 
 const strategy: StrategyApi = {
   getActiveBundle: () => ipcRenderer.invoke("strategy:get-active-bundle"),
-  saveBundle: (bundle) => ipcRenderer.invoke("strategy:save-bundle", bundle)
+  saveBundle: (bundle) => ipcRenderer.invoke("strategy:save-bundle", bundle),
+  generateFoundation: () => ipcRenderer.invoke("strategy:generate-foundation")
 };
 
 const ideas: IdeasApi = {
   listIdeas: () => ipcRenderer.invoke("ideas:list"),
-  createIdea: (idea) => ipcRenderer.invoke("ideas:create", idea)
+  createIdea: (idea) => ipcRenderer.invoke("ideas:create", idea),
+  createFromNewsSource: (input) => ipcRenderer.invoke("ideas:create-from-news-source", input),
+  generateFromStrategy: () => ipcRenderer.invoke("ideas:generate-from-strategy")
 };
 
 const workshop: WorkshopApi = {

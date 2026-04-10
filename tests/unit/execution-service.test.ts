@@ -54,9 +54,11 @@ describe("execution service", () => {
 
     const runs = executionService.listRuns();
 
-    expect(runs).toHaveLength(2);
+    expect(runs).toHaveLength(4);
     expect(runs[0]?.skillName).toBe("linkedin-post-editor");
     expect(runs[1]?.skillName).toBe("linkedin-post-writer");
+    expect(runs.some((run) => run.skillName === "linkedin-hook-engine")).toBe(true);
+    expect(runs.some((run) => run.skillName === "linkedin-structure-selector")).toBe(true);
   });
 
   it("returns runner diagnostics", () => {
@@ -80,13 +82,16 @@ describe("execution service", () => {
 
     const files = readdirSync(executionLogsDirectory);
 
-    expect(files.length).toBe(2);
+    expect(files.length).toBe(4);
 
     const firstLog = JSON.parse(
       readFileSync(join(executionLogsDirectory, files[0] ?? ""), "utf8")
-    ) as { skillName: string; status: string };
+    ) as {
+      invocation: { skillName: string };
+      result: { status: string };
+    };
 
-    expect(firstLog.skillName).toBeTruthy();
-    expect(firstLog.status).toBe("succeeded");
+    expect(firstLog.invocation.skillName).toBeTruthy();
+    expect(firstLog.result.status).toBe("succeeded");
   });
 });

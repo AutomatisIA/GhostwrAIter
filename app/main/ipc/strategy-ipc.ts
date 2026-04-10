@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import {
   StrategyRepository,
   createStrategyTables
@@ -15,7 +16,10 @@ type IpcRegistrar = {
 export class StrategyService {
   private readonly repository: StrategyRepository;
 
-  constructor(db: Database.Database) {
+  constructor(
+    db: Database.Database,
+    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService()
+  ) {
     createStrategyTables(db);
     this.repository = new StrategyRepository(db);
   }
@@ -26,6 +30,22 @@ export class StrategyService {
 
   getActiveStrategyBundle() {
     return this.repository.getActiveStrategyBundle();
+  }
+
+  generateFoundation() {
+    const bundle = this.repository.getActiveStrategyBundle();
+    const result = this.skillRunnerService.execute({
+      runId: `run_${Date.now()}`,
+      skillName: "linkedin-strategy-foundation",
+      skillVersion: "1.0.0",
+      context: {},
+      payload: bundle,
+      attachments: []
+    });
+
+    return {
+      summaryMarkdown: result.artifacts?.[0]?.content ?? ""
+    };
   }
 }
 
@@ -42,4 +62,7 @@ export function registerStrategyIpcHandlers(
 
     return strategyService.getActiveStrategyBundle();
   });
+  ipcRegistrar.handle("strategy:generate-foundation", async () =>
+    strategyService.generateFoundation()
+  );
 }

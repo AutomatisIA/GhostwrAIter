@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { ExecutionService } from "../domains/execution/execution.service";
 import { SkillRegistryService } from "../domains/execution/skill-registry.service";
+import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 
 type IpcRegistrar = {
   handle: (
@@ -15,9 +16,15 @@ export class ExecutionRuntimeService {
   constructor(
     db: Database.Database,
     codexAvailabilityCheck: () => boolean,
-    skillRegistryService: SkillRegistryService
+    skillRegistryService: SkillRegistryService,
+    skillRunnerService?: SkillRunnerService
   ) {
-    this.service = new ExecutionService(db, codexAvailabilityCheck, skillRegistryService);
+    this.service = new ExecutionService(
+      db,
+      codexAvailabilityCheck,
+      skillRegistryService,
+      skillRunnerService
+    );
   }
 
   listRuns() {

@@ -29,4 +29,7 @@ export type StrategyBundle = StrategyBundleInput & {
 export type StrategyApi = {
   getActiveBundle: () => Promise<StrategyBundle>;
   saveBundle: (bundle: StrategyBundleInput) => Promise<StrategyBundle>;
+  generateFoundation: () => Promise<{
+    summaryMarkdown: string;
+  }>;
 };

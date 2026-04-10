@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import type { IdeaInput, IdeaRecord } from "@shared/types/ideas";
+import type { IdeaInput, IdeaRecord, NewsSourceInput } from "@shared/types/ideas";
 
 const emptyIdea: IdeaInput = {
   title: "",
@@ -8,9 +8,15 @@ const emptyIdea: IdeaInput = {
   pillarLabel: ""
 };
 
+const emptyNewsSource: NewsSourceInput = {
+  sourceTitle: "",
+  sourceSummary: ""
+};
+
 export function IdeasScreen() {
   const [ideas, setIdeas] = useState<IdeaRecord[]>([]);
   const [form, setForm] = useState<IdeaInput>(emptyIdea);
+  const [newsSource, setNewsSource] = useState<NewsSourceInput>(emptyNewsSource);
   const [status, setStatus] = useState("Chargement des idees...");
 
   async function loadIdeas() {
@@ -31,6 +37,14 @@ export function IdeasScreen() {
     setForm(emptyIdea);
     await loadIdeas();
     setStatus("Idee ajoutee au backlog.");
+  }
+
+  async function handleNewsSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await window.linkedinPoster.ideas.createFromNewsSource(newsSource);
+    setNewsSource(emptyNewsSource);
+    await loadIdeas();
+    setStatus("Draft veille cree depuis la source collee.");
   }
 
   return (
@@ -72,6 +86,46 @@ export function IdeasScreen() {
             Ajouter l'idee
           </button>
           <span className="form-status">{status}</span>
+        </div>
+      </form>
+
+      <form className="strategy-form" onSubmit={handleNewsSubmit}>
+        <label className="field">
+          <span>Titre source</span>
+          <input
+            aria-label="Titre source"
+            value={newsSource.sourceTitle}
+            onChange={(event) =>
+              setNewsSource((current) => ({ ...current, sourceTitle: event.target.value }))
+            }
+          />
+        </label>
+        <label className="field">
+          <span>Resume source</span>
+          <textarea
+            aria-label="Resume source"
+            rows={3}
+            value={newsSource.sourceSummary}
+            onChange={(event) =>
+              setNewsSource((current) => ({ ...current, sourceSummary: event.target.value }))
+            }
+          />
+        </label>
+        <div className="form-actions">
+          <button type="submit" className="secondary-button">
+            Transformer la veille en draft
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={async () => {
+              await window.linkedinPoster.ideas.generateFromStrategy();
+              await loadIdeas();
+              setStatus("Sujets generes depuis la strategie.");
+            }}
+          >
+            Generer des sujets depuis la strategie
+          </button>
         </div>
       </form>
 

@@ -4,12 +4,14 @@ import type {
   ExecutionRunEntry
 } from "../../../shared/types/execution";
 import { SkillRegistryService } from "./skill-registry.service";
+import { SkillRunnerService } from "./skill-runner.service";
 
 export class ExecutionService {
   constructor(
     private readonly db: Database.Database,
     private readonly codexAvailabilityCheck: () => boolean,
-    private readonly skillRegistryService: SkillRegistryService
+    private readonly skillRegistryService: SkillRegistryService,
+    private readonly skillRunnerService?: SkillRunnerService
   ) {}
 
   listRuns(): ExecutionRunEntry[] {
@@ -29,11 +31,12 @@ export class ExecutionService {
 
   getDiagnostics(): ExecutionDiagnostics {
     const codexAvailable = this.codexAvailabilityCheck();
+    const runnerMode = this.skillRunnerService?.getRunnerMode() ?? "local-simulated";
 
     return {
-      runnerMode: "local-simulated",
+      runnerMode,
       codexAvailable,
-      message: `Runner operationnel en mode local-simulated. Codex disponible: ${codexAvailable ? "oui" : "non"}.`,
+      message: `Runner operationnel en mode ${runnerMode}. Codex disponible: ${codexAvailable ? "oui" : "non"}.`,
       availableSkills: this.skillRegistryService.listInstalledSkills()
     };
   }

@@ -2,6 +2,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { IdeasRepository } from "../ideas/ideas.repository";
+import {
+  SkillRunnerService,
+  type SkillRunnerInvocation,
+  type SkillRunnerResult
+} from "../execution/skill-runner.service";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type { WorkshopSession } from "../../../shared/types/workshop";
 
@@ -80,6 +85,14 @@ export function createWorkshopTables(db: Database.Database) {
 
   ensureColumn(db, "drafts", "status", "status TEXT NOT NULL DEFAULT 'draft'");
   ensureColumn(db, "drafts", "source_draft_id", "source_draft_id TEXT");
+  ensureColumn(db, "execution_runs", "skill_version", "skill_version TEXT");
+  ensureColumn(db, "execution_runs", "input_json", "input_json TEXT");
+  ensureColumn(db, "execution_runs", "output_json", "output_json TEXT");
+  ensureColumn(db, "execution_runs", "output_markdown", "output_markdown TEXT");
+  ensureColumn(db, "execution_runs", "error_message", "error_message TEXT");
+  ensureColumn(db, "execution_runs", "log_path", "log_path TEXT");
+  ensureColumn(db, "execution_runs", "started_at", "started_at TEXT");
+  ensureColumn(db, "execution_runs", "finished_at", "finished_at TEXT");
 }
 
 export class WorkshopService {
@@ -87,23 +100,74 @@ export class WorkshopService {
     private readonly db: Database.Database,
     private readonly ideasRepository: IdeasRepository,
     private readonly getActiveStrategy?: () => StrategyBundle | null,
-    private readonly executionLogsDirectory?: string
+    private readonly executionLogsDirectory?: string,
+    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService()
   ) {}
 
   generateDraftFromIdea(ideaId: string): WorkshopSession {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const draftId = createId("draft");
     const createdAt = new Date().toISOString();
-    const headline = idea.title;
-    const bodyMarkdown = [
-      `${idea.title}.`,
-      "",
-      `${idea.angle}.`,
-      "",
-      "Ce post part d'un constat terrain en PME : le blocage vient souvent du process avant de venir de l'outil.",
-      "",
-      "On gagne plus vite avec un cadre simple, un cas d'usage priorise et un pilote concret."
-    ].join("\n");
+    const structureInvocation: SkillRunnerInvocation = {
+      runId: createId("run"),
+      skillName: "linkedin-structure-selector",
+      skillVersion: "1.0.0",
+      context: this.buildRunnerContext(idea.pillarLabel),
+      payload: {
+        ideaId: idea.id,
+        title: idea.title,
+        angle: idea.angle
+      },
+      attachments: []
+    };
+    const structureResult = this.executeSkill(structureInvocation);
+
+    if (structureResult.status !== "succeeded" || !structureResult.data?.structure) {
+      throw new Error(structureResult.error?.message ?? structureResult.summary);
+    }
+
+    const hookInvocation: SkillRunnerInvocation = {
+      runId: createId("run"),
+      skillName: "linkedin-hook-engine",
+      skillVersion: "1.0.0",
+      context: this.buildRunnerContext(idea.pillarLabel),
+      payload: {
+        ideaId: idea.id,
+        title: idea.title,
+        angle: idea.angle,
+        structureKey: structureResult.data.structure.key
+      },
+      attachments: []
+    };
+    const hookResult = this.executeSkill(hookInvocation);
+
+    if (hookResult.status !== "succeeded") {
+      throw new Error(hookResult.error?.message ?? hookResult.summary);
+    }
+
+    const writerInvocation: SkillRunnerInvocation = {
+      runId: createId("run"),
+      skillName: "linkedin-post-writer",
+      skillVersion: "1.0.0",
+      context: this.buildRunnerContext(idea.pillarLabel),
+      payload: {
+        ideaId: idea.id,
+        title: idea.title,
+        angle: idea.angle,
+        structureKey: structureResult.data.structure.key,
+        structureLabel: structureResult.data.structure.label,
+        hooks: hookResult.data?.hooks ?? []
+      },
+      attachments: []
+    };
+    const writerResult = this.executeSkill(writerInvocation);
+
+    if (writerResult.status !== "succeeded" || !writerResult.data?.draft) {
+      throw new Error(writerResult.error?.message ?? writerResult.summary);
+    }
+
+    const headline = writerResult.data.draft.headline;
+    const bodyMarkdown = writerResult.data.draft.bodyMarkdown;
 
     this.db
       .prepare(`
@@ -112,11 +176,7 @@ export class WorkshopService {
       `)
       .run(draftId, idea.id, headline, bodyMarkdown, 0.61, createdAt);
 
-    const hookTexts = [
-      `Le vrai probleme avec ${idea.title.toLowerCase()}, ce n'est presque jamais l'outil.`,
-      "Si votre projet IA n'avance pas, regardez d'abord votre process.",
-      "Une PME n'a pas besoin de plus d'IA. Elle a besoin d'un meilleur cadrage."
-    ];
+    const hookTexts = (hookResult.data?.hooks ?? writerResult.data.hooks).map((hook) => hook.text);
 
     for (const text of hookTexts) {
       this.db
@@ -124,15 +184,9 @@ export class WorkshopService {
         .run(createId("hook"), draftId, text);
     }
 
-    this.recordExecutionRun(
-      createId("run"),
-      idea.id,
-      draftId,
-      "linkedin-post-writer",
-      "succeeded",
-      "Draft generated",
-      createdAt
-    );
+    this.recordExecutionRun(structureInvocation, structureResult, idea.id, draftId, createdAt);
+    this.recordExecutionRun(hookInvocation, hookResult, idea.id, draftId, createdAt);
+    this.recordExecutionRun(writerInvocation, writerResult, idea.id, draftId, createdAt);
     this.recordDraftVersion(draftId, bodyMarkdown, 0.61, "generation", createdAt);
     this.syncDraftTags(draftId, idea.title, idea.angle, idea.pillarLabel, false);
 
@@ -149,21 +203,34 @@ export class WorkshopService {
     }
 
     const correctedAt = new Date().toISOString();
-    const correctedBody = `${draft.bodyMarkdown}\n\nVersion revue : plus concret, plus net, plus utile pour un decideur PME.`;
+    const idea = this.ideasRepository.getIdeaById(draft.ideaId);
+    const editorInvocation: SkillRunnerInvocation = {
+      runId: createId("run"),
+      skillName: "linkedin-post-editor",
+      skillVersion: "1.0.0",
+      context: this.buildRunnerContext(idea.pillarLabel),
+      payload: {
+        draftId,
+        headline: this.db
+          .prepare("SELECT headline FROM drafts WHERE id = ?")
+          .get(draftId)?.headline ?? idea.title,
+        bodyMarkdown: draft.bodyMarkdown
+      },
+      attachments: []
+    };
+    const editorResult = this.executeSkill(editorInvocation);
+
+    if (editorResult.status !== "succeeded" || !editorResult.data?.draft) {
+      throw new Error(editorResult.error?.message ?? editorResult.summary);
+    }
+
+    const correctedBody = editorResult.data.draft.bodyMarkdown;
 
     this.db
       .prepare("UPDATE drafts SET body_markdown = ?, quality_score = ? WHERE id = ?")
       .run(correctedBody, 0.89, draftId);
 
-    this.recordExecutionRun(
-      createId("run"),
-      draft.ideaId,
-      draftId,
-      "linkedin-post-editor",
-      "succeeded",
-      "Draft corrected",
-      correctedAt
-    );
+    this.recordExecutionRun(editorInvocation, editorResult, draft.ideaId, draftId, correctedAt);
     this.recordDraftVersion(draftId, correctedBody, 0.89, "correction", correctedAt);
 
     return this.getSessionByDraftId(draftId);
@@ -256,38 +323,84 @@ export class WorkshopService {
       strategyProfileName: strategy?.profile.name,
       strategyPositioning: strategy?.profile.positioning,
       voiceGuardrail: antiStyleRule,
-      activeSkills: ["linkedin-hook-engine", "linkedin-post-writer", "linkedin-post-editor"]
+      activeSkills: [
+        "linkedin-structure-selector",
+        "linkedin-hook-engine",
+        "linkedin-post-writer",
+        "linkedin-post-editor"
+      ]
+    };
+  }
+
+  private executeSkill(invocation: SkillRunnerInvocation): SkillRunnerResult {
+    return this.skillRunnerService.execute(invocation) as unknown as SkillRunnerResult;
+  }
+
+  private buildRunnerContext(pillarLabel: string) {
+    const strategy = this.getActiveStrategy?.() ?? null;
+
+    return {
+      profileId: strategy?.profile.id ?? "profile_active",
+      strategyProfileName: strategy?.profile.name,
+      strategyPositioning: strategy?.profile.positioning,
+      pillarLabel,
+      voiceGuardrail:
+        strategy?.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText ??
+        "Pas de hype, du terrain."
     };
   }
 
   private recordExecutionRun(
-    runId: string,
+    invocation: SkillRunnerInvocation,
+    result: SkillRunnerResult,
     ideaId: string,
     draftId: string,
-    skillName: string,
-    status: "succeeded" | "failed" | "partial",
-    summary: string,
     createdAt: string
   ) {
+    const logPath = this.executionLogsDirectory
+      ? join(
+          this.executionLogsDirectory,
+          `${createdAt.replace(/[:.]/g, "-")}__${invocation.runId}.json`
+        )
+      : null;
+
     this.db
       .prepare(`
-        INSERT INTO execution_runs (id, idea_id, draft_id, skill_name, status, summary, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO execution_runs (
+          id, idea_id, draft_id, skill_name, skill_version, status, summary, input_json, output_json,
+          output_markdown, error_message, log_path, started_at, finished_at, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
-      .run(runId, ideaId, draftId, skillName, status, summary, createdAt);
+      .run(
+        invocation.runId,
+        ideaId,
+        draftId,
+        invocation.skillName,
+        invocation.skillVersion,
+        result.status,
+        result.summary,
+        JSON.stringify(invocation),
+        JSON.stringify(result),
+        result.artifacts?.find((artifact) => artifact.kind === "markdown")?.content ?? null,
+        result.error?.message ?? null,
+        logPath,
+        createdAt,
+        createdAt,
+        createdAt
+      );
 
     if (this.executionLogsDirectory) {
       mkdirSync(this.executionLogsDirectory, { recursive: true });
       writeFileSync(
-        join(this.executionLogsDirectory, `${createdAt.replace(/[:.]/g, "-")}__${runId}.json`),
+        logPath!,
         JSON.stringify(
           {
-            id: runId,
+            id: invocation.runId,
             ideaId,
             draftId,
-            skillName,
-            status,
-            summary,
+            invocation,
+            result,
             createdAt
           },
           null,

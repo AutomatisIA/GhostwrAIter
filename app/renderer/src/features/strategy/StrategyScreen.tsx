@@ -17,6 +17,7 @@ const emptyBundle: StrategyBundleInput = {
 export function StrategyScreen() {
   const [bundle, setBundle] = useState<StrategyBundleInput>(emptyBundle);
   const [status, setStatus] = useState("Chargement du socle strategique...");
+  const [foundationSummary, setFoundationSummary] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -74,6 +75,12 @@ export function StrategyScreen() {
     setStatus("Strategie enregistree localement.");
   }
 
+  async function handleGenerateFoundation() {
+    const result = await window.linkedinPoster.strategy.generateFoundation();
+    setFoundationSummary(result.summaryMarkdown);
+    setStatus("Socle editorial genere.");
+  }
+
   return (
     <section className="panel page-panel">
       <div className="eyebrow">Socle</div>
@@ -127,9 +134,14 @@ export function StrategyScreen() {
           <button type="submit" className="primary-button">
             Enregistrer la strategie
           </button>
+          <button type="button" className="secondary-button" onClick={handleGenerateFoundation}>
+            Generer le socle editorial
+          </button>
           <span className="form-status">{status}</span>
         </div>
       </form>
+
+      {foundationSummary ? <pre className="list-card">{foundationSummary}</pre> : null}
     </section>
   );
 }

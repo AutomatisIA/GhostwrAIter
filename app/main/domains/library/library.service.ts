@@ -1,4 +1,8 @@
 import Database from "better-sqlite3";
+import {
+  SkillRunnerService,
+  type SkillRunnerInvocation
+} from "../execution/skill-runner.service";
 import type {
   LibraryEntry,
   LibrarySearchInput
@@ -17,7 +21,10 @@ type RawLibraryRow = {
 };
 
 export class LibraryService {
-  constructor(private readonly db: Database.Database) {}
+  constructor(
+    private readonly db: Database.Database,
+    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService()
+  ) {}
 
   listEntries(): LibraryEntry[] {
     return this.readEntries({});
@@ -57,9 +64,30 @@ export class LibraryService {
     }
 
     const variantId = `draft_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+    const runId = `run_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
     const createdAt = new Date().toISOString();
-    const headline = `Variante - ${source.headline}`;
-    const bodyMarkdown = `${source.bodyMarkdown}\n\nVariante orientee angle complementaire pour reutilisation editoriale.`;
+    const invocation: SkillRunnerInvocation = {
+      runId,
+      skillName: "linkedin-repurpose",
+      skillVersion: "1.0.0",
+      context: {
+        pillarLabel: source.pillarLabel,
+        voiceGuardrail: "Pas de hype, du terrain."
+      },
+      payload: {
+        headline: source.headline,
+        bodyMarkdown: source.bodyMarkdown
+      },
+      attachments: []
+    };
+    const result = this.skillRunnerService.execute(invocation);
+
+    if (result.status !== "succeeded" || !result.data?.draft) {
+      throw new Error(result.error?.message ?? result.summary);
+    }
+
+    const headline = result.data.draft.headline;
+    const bodyMarkdown = result.data.draft.bodyMarkdown;
 
     this.db
       .prepare(`
@@ -78,10 +106,29 @@ export class LibraryService {
 
     this.db
       .prepare(`
-        INSERT INTO execution_runs (id, idea_id, draft_id, skill_name, status, summary, created_at)
-        VALUES (?, ?, ?, 'linkedin-repurpose', 'succeeded', 'Variant created', ?)
+        INSERT INTO execution_runs (
+          id, idea_id, draft_id, skill_name, skill_version, status, summary, input_json, output_json,
+          output_markdown, error_message, log_path, started_at, finished_at, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
-      .run(`run_${Date.now()}`, source.ideaId, variantId, createdAt);
+      .run(
+        runId,
+        source.ideaId,
+        variantId,
+        invocation.skillName,
+        invocation.skillVersion,
+        result.status,
+        result.summary,
+        JSON.stringify(invocation),
+        JSON.stringify(result),
+        result.artifacts?.[0]?.content ?? null,
+        null,
+        null,
+        createdAt,
+        createdAt,
+        createdAt
+      );
 
     const sourceTags = this.db
       .prepare(`

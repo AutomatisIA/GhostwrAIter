@@ -81,4 +81,34 @@ describe("StrategyScreen", () => {
 
     expect(await screen.findByText("Strategie enregistree localement.")).toBeTruthy();
   });
+
+  it("generates an editorial foundation summary from the active strategy", async () => {
+    const user = userEvent.setup();
+    const getActiveBundle = vi.fn().mockResolvedValue(baseBundle);
+    const saveBundle = vi.fn();
+    const generateFoundation = vi.fn().mockResolvedValue({
+      summaryMarkdown:
+        "Positionnement: Consultant IA PME\nPilier central: Adoption IA\nVoix: pas de hype."
+    });
+
+    window.linkedinPoster = {
+      platform: "darwin",
+      appName: "LinkedIn Poster",
+      strategy: {
+        getActiveBundle,
+        saveBundle,
+        generateFoundation
+      }
+    };
+
+    render(<StrategyScreen />);
+
+    await user.click(screen.getByRole("button", { name: "Generer le socle editorial" }));
+
+    await waitFor(() => {
+      expect(generateFoundation).toHaveBeenCalledTimes(1);
+    });
+
+    expect(await screen.findByText(/Consultant IA PME/)).toBeTruthy();
+  });
 });

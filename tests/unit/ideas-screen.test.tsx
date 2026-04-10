@@ -26,7 +26,8 @@ describe("IdeasScreen", () => {
       appName: "LinkedIn Poster",
       strategy: {
         getActiveBundle: vi.fn(),
-        saveBundle: vi.fn()
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
       },
       ideas: {
         listIdeas: vi.fn().mockResolvedValue([
@@ -38,7 +39,9 @@ describe("IdeasScreen", () => {
             createdAt: new Date().toISOString()
           }
         ]),
-        createIdea: vi.fn()
+        createIdea: vi.fn(),
+        createFromNewsSource: vi.fn(),
+        generateFromStrategy: vi.fn()
       },
       workshop: {
         generateFromIdea: vi.fn(),
@@ -75,11 +78,14 @@ describe("IdeasScreen", () => {
       appName: "LinkedIn Poster",
       strategy: {
         getActiveBundle: vi.fn(),
-        saveBundle: vi.fn()
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
       },
       ideas: {
         listIdeas,
-        createIdea
+        createIdea,
+        createFromNewsSource: vi.fn(),
+        generateFromStrategy: vi.fn()
       },
       workshop: {
         generateFromIdea: vi.fn(),
@@ -100,5 +106,145 @@ describe("IdeasScreen", () => {
     });
 
     expect(await screen.findByText("Les 3 cas d'usage a prioriser")).toBeTruthy();
+  });
+
+  it("creates a draft from a pasted news source", async () => {
+    const user = userEvent.setup();
+    const listIdeas = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "idea_news",
+          title: "Une PME industrialise ses copilotes IA",
+          angle: "Le sujet central est l'adoption terrain",
+          pillarLabel: "Veille",
+          createdAt: new Date().toISOString()
+        }
+      ]);
+    const createFromNewsSource = vi.fn().mockResolvedValue({
+      idea: {
+        id: "idea_news",
+        title: "Une PME industrialise ses copilotes IA",
+        angle: "Le sujet central est l'adoption terrain",
+        pillarLabel: "Veille",
+        createdAt: new Date().toISOString()
+      },
+      draft: {
+        id: "draft_news",
+        headline: "Une PME industrialise ses copilotes IA",
+        bodyMarkdown: "Brouillon veille",
+        qualityScore: 0.85
+      },
+      hooks: [],
+      run: {
+        id: "run_news",
+        skillName: "linkedin-news-to-post",
+        status: "succeeded",
+        summary: "News transformed into editorial draft"
+      },
+      versions: [],
+      contextUsed: {
+        pillarLabel: "Veille",
+        voiceGuardrail: "Pas de hype, du terrain.",
+        activeSkills: ["linkedin-news-to-post"]
+      }
+    });
+
+    window.linkedinPoster = {
+      platform: "darwin",
+      appName: "LinkedIn Poster",
+      strategy: {
+        getActiveBundle: vi.fn(),
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
+      },
+      ideas: {
+        listIdeas,
+        createIdea: vi.fn(),
+        createFromNewsSource,
+        generateFromStrategy: vi.fn()
+      },
+      workshop: {
+        generateFromIdea: vi.fn(),
+        correctDraft: vi.fn(),
+        getSessionByIdeaId: vi.fn()
+      }
+    };
+
+    renderIdeasScreen();
+
+    await user.type(screen.getByLabelText("Titre source"), "Une PME industrialise ses copilotes IA");
+    await user.type(
+      screen.getByLabelText("Resume source"),
+      "Le sujet central est l'adoption terrain"
+    );
+    await user.click(screen.getByRole("button", { name: "Transformer la veille en draft" }));
+
+    await waitFor(() => {
+      expect(createFromNewsSource).toHaveBeenCalledWith({
+        sourceTitle: "Une PME industrialise ses copilotes IA",
+        sourceSummary: "Le sujet central est l'adoption terrain"
+      });
+    });
+
+    expect(await screen.findByText("Une PME industrialise ses copilotes IA")).toBeTruthy();
+    expect(await screen.findByText("Draft veille cree depuis la source collee.")).toBeTruthy();
+  });
+
+  it("generates scored ideas from the active strategy", async () => {
+    const user = userEvent.setup();
+    const listIdeas = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "idea_strategy_1",
+          title: "Pourquoi l'adoption IA bloque en PME",
+          angle: "Le frein principal est le cadrage",
+          pillarLabel: "Adoption IA",
+          createdAt: new Date().toISOString()
+        }
+      ]);
+    const generateFromStrategy = vi.fn().mockResolvedValue([
+      {
+        id: "idea_strategy_1",
+        title: "Pourquoi l'adoption IA bloque en PME",
+        angle: "Le frein principal est le cadrage",
+        pillarLabel: "Adoption IA",
+        createdAt: new Date().toISOString()
+      }
+    ]);
+
+    window.linkedinPoster = {
+      platform: "darwin",
+      appName: "LinkedIn Poster",
+      strategy: {
+        getActiveBundle: vi.fn(),
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
+      },
+      ideas: {
+        listIdeas,
+        createIdea: vi.fn(),
+        createFromNewsSource: vi.fn(),
+        generateFromStrategy
+      },
+      workshop: {
+        generateFromIdea: vi.fn(),
+        correctDraft: vi.fn(),
+        getSessionByIdeaId: vi.fn()
+      }
+    };
+
+    renderIdeasScreen();
+
+    await user.click(screen.getByRole("button", { name: "Generer des sujets depuis la strategie" }));
+
+    await waitFor(() => {
+      expect(generateFromStrategy).toHaveBeenCalledTimes(1);
+    });
+
+    expect(await screen.findByText("Pourquoi l'adoption IA bloque en PME")).toBeTruthy();
   });
 });
