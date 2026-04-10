@@ -6,6 +6,7 @@ import {
   createWorkshopTables,
   WorkshopService
 } from "../domains/workshop/workshop.service";
+import type { PostObjective, PostTypology } from "../../shared/types/workshop";
 
 type IpcRegistrar = {
   handle: (
@@ -42,6 +43,30 @@ export class WorkshopRuntimeService {
     return this.service.generateDraftFromIdea(ideaId);
   }
 
+  getSuggestedStructures(ideaId: string, typology: PostTypology, objective: PostObjective) {
+    return this.service.getSuggestedStructures(ideaId, typology, objective);
+  }
+
+  generateHooks(ideaId: string, typology: PostTypology, structureKey: string) {
+    return this.service.generateHooks(ideaId, typology, structureKey);
+  }
+
+  generateFinalDraft(
+    ideaId: string,
+    typology: PostTypology,
+    objective: PostObjective,
+    structureKey: string,
+    selectedHookId: string
+  ) {
+    return this.service.generateFinalDraft(
+      ideaId,
+      typology,
+      objective,
+      structureKey,
+      selectedHookId
+    );
+  }
+
   correctDraft(draftId: string) {
     return this.service.correctDraft(draftId);
   }
@@ -56,6 +81,29 @@ export function registerWorkshopIpcHandlers(
   );
   ipcRegistrar.handle("workshop:generate-from-idea", async (_event, ideaId) =>
     workshopService.generateFromIdea(String(ideaId))
+  );
+  ipcRegistrar.handle(
+    "workshop:get-suggested-structures",
+    async (_event, ideaId, typology, objective) =>
+      workshopService.getSuggestedStructures(
+        String(ideaId),
+        typology as PostTypology,
+        objective as PostObjective
+      )
+  );
+  ipcRegistrar.handle("workshop:generate-hooks", async (_event, ideaId, typology, structureKey) =>
+    workshopService.generateHooks(String(ideaId), typology as PostTypology, String(structureKey))
+  );
+  ipcRegistrar.handle(
+    "workshop:generate-final-draft",
+    async (_event, ideaId, typology, objective, structureKey, selectedHookId) =>
+      workshopService.generateFinalDraft(
+        String(ideaId),
+        typology as PostTypology,
+        objective as PostObjective,
+        String(structureKey),
+        String(selectedHookId)
+      )
   );
   ipcRegistrar.handle("workshop:correct-draft", async (_event, draftId) =>
     workshopService.correctDraft(String(draftId))

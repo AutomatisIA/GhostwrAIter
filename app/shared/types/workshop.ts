@@ -1,5 +1,26 @@
 import type { IdeaRecord } from "./ideas";
 
+export type PostTypology =
+  | "expertise"
+  | "contrarian"
+  | "case_study"
+  | "tutorial"
+  | "thought_leadership";
+export type PostObjective = "awareness" | "authority" | "conversion" | "engagement";
+
+export type StructureOption = {
+  key: string;
+  label: string;
+  rationale: string;
+};
+
+export type HookOption = {
+  id: string;
+  family: string;
+  text: string;
+  score: number;
+};
+
 export type WorkshopHook = {
   id: string;
   text: string;
@@ -48,4 +69,21 @@ export type WorkshopApi = {
   getSessionByIdeaId: (ideaId: string) => Promise<WorkshopSession | null>;
   generateFromIdea: (ideaId: string) => Promise<WorkshopSession>;
   correctDraft: (draftId: string) => Promise<WorkshopSession>;
+  getSuggestedStructures: (
+    ideaId: string,
+    typology: PostTypology,
+    objective: PostObjective
+  ) => Promise<StructureOption[]>;
+  generateHooks: (
+    ideaId: string,
+    typology: PostTypology,
+    structureKey: string
+  ) => Promise<HookOption[]>;
+  generateFinalDraft: (
+    ideaId: string,
+    typology: PostTypology,
+    objective: PostObjective,
+    structureKey: string,
+    selectedHookId: string
+  ) => Promise<WorkshopSession>;
 };

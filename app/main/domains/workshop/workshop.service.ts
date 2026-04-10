@@ -8,7 +8,13 @@ import {
   type SkillRunnerResult
 } from "../execution/skill-runner.service";
 import type { StrategyBundle } from "../../../shared/types/strategy";
-import type { WorkshopSession } from "../../../shared/types/workshop";
+import type {
+  HookOption,
+  PostObjective,
+  PostTypology,
+  StructureOption,
+  WorkshopSession
+} from "../../../shared/types/workshop";
 
 function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
@@ -85,6 +91,8 @@ export function createWorkshopTables(db: Database.Database) {
 
   ensureColumn(db, "drafts", "status", "status TEXT NOT NULL DEFAULT 'draft'");
   ensureColumn(db, "drafts", "source_draft_id", "source_draft_id TEXT");
+  ensureColumn(db, "drafts", "typology", "typology TEXT");
+  ensureColumn(db, "drafts", "structure_key", "structure_key TEXT");
   ensureColumn(db, "execution_runs", "skill_version", "skill_version TEXT");
   ensureColumn(db, "execution_runs", "input_json", "input_json TEXT");
   ensureColumn(db, "execution_runs", "output_json", "output_json TEXT");
@@ -105,10 +113,18 @@ export class WorkshopService {
   ) {}
 
   generateDraftFromIdea(ideaId: string): WorkshopSession {
+    const structures = this.getSuggestedStructures(ideaId, "expertise", "awareness");
+    const hooks = this.generateHooks(ideaId, "expertise", structures[0].key);
+    return this.generateFinalDraft(ideaId, "expertise", "awareness", structures[0].key, hooks[0].id);
+  }
+
+  getSuggestedStructures(
+    ideaId: string,
+    typology: PostTypology,
+    objective: PostObjective
+  ): StructureOption[] {
     const idea = this.ideasRepository.getIdeaById(ideaId);
-    const draftId = createId("draft");
-    const createdAt = new Date().toISOString();
-    const structureInvocation: SkillRunnerInvocation = {
+    const invocation: SkillRunnerInvocation = {
       runId: createId("run"),
       skillName: "linkedin-structure-selector",
       skillVersion: "1.0.0",
@@ -116,17 +132,32 @@ export class WorkshopService {
       payload: {
         ideaId: idea.id,
         title: idea.title,
-        angle: idea.angle
+        angle: idea.angle,
+        typology,
+        objective
       },
       attachments: []
     };
-    const structureResult = this.executeSkill(structureInvocation);
+    const result = this.executeSkill(invocation);
 
-    if (structureResult.status !== "succeeded" || !structureResult.data?.structure) {
-      throw new Error(structureResult.error?.message ?? structureResult.summary);
+    if (result.status !== "succeeded" || !result.data?.structure) {
+      throw new Error(result.error?.message ?? result.summary);
     }
 
-    const hookInvocation: SkillRunnerInvocation = {
+    this.recordExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
+
+    return [
+      {
+        key: result.data.structure.key,
+        label: result.data.structure.label,
+        rationale: result.data.structure.rationale
+      }
+    ];
+  }
+
+  generateHooks(ideaId: string, typology: PostTypology, structureKey: string): HookOption[] {
+    const idea = this.ideasRepository.getIdeaById(ideaId);
+    const invocation: SkillRunnerInvocation = {
       runId: createId("run"),
       skillName: "linkedin-hook-engine",
       skillVersion: "1.0.0",
@@ -135,15 +166,46 @@ export class WorkshopService {
         ideaId: idea.id,
         title: idea.title,
         angle: idea.angle,
-        structureKey: structureResult.data.structure.key
+        typology,
+        structureKey
       },
       attachments: []
     };
-    const hookResult = this.executeSkill(hookInvocation);
+    const result = this.executeSkill(invocation);
 
-    if (hookResult.status !== "succeeded") {
-      throw new Error(hookResult.error?.message ?? hookResult.summary);
+    if (result.status !== "succeeded" || !result.data?.hooks) {
+      throw new Error(result.error?.message ?? result.summary);
     }
+
+    this.recordExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
+
+    return result.data.hooks.map((hook, index) => ({
+      id: `hook_option_${index}`,
+      family: hook.family,
+      text: hook.text,
+      score: hook.score
+    }));
+  }
+
+  generateFinalDraft(
+    ideaId: string,
+    typology: PostTypology,
+    objective: PostObjective,
+    structureKey: string,
+    selectedHookId: string
+  ): WorkshopSession {
+    const idea = this.ideasRepository.getIdeaById(ideaId);
+    const draftId = createId("draft");
+    const createdAt = new Date().toISOString();
+
+    const hooks = this.generateHooks(ideaId, typology, structureKey);
+    const selectedHook =
+      hooks.find((h) => h.id === selectedHookId) ||
+      hooks[0] ||
+      ({ text: "Accroche par defaut", family: "default" } as HookOption);
+
+    const structures = this.getSuggestedStructures(ideaId, typology, objective);
+    const selectedStructure = structures.find((s) => s.key === structureKey) || structures[0];
 
     const writerInvocation: SkillRunnerInvocation = {
       runId: createId("run"),
@@ -154,9 +216,12 @@ export class WorkshopService {
         ideaId: idea.id,
         title: idea.title,
         angle: idea.angle,
-        structureKey: structureResult.data.structure.key,
-        structureLabel: structureResult.data.structure.label,
-        hooks: hookResult.data?.hooks ?? []
+        typology,
+        objective,
+        structureKey,
+        structureLabel: selectedStructure.label,
+        selectedHook: selectedHook.text,
+        hooks: hooks.map((h) => ({ text: h.text, family: h.family, score: h.score }))
       },
       attachments: []
     };
@@ -170,13 +235,15 @@ export class WorkshopService {
     const bodyMarkdown = writerResult.data.draft.bodyMarkdown;
 
     this.db
-      .prepare(`
-        INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status, source_draft_id)
-        VALUES (?, ?, ?, ?, ?, ?, 'draft', NULL)
-      `)
-      .run(draftId, idea.id, headline, bodyMarkdown, 0.61, createdAt);
+      .prepare(
+        `
+        INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status, typology, structure_key)
+        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+      `
+      )
+      .run(draftId, idea.id, headline, bodyMarkdown, 0.61, createdAt, typology, structureKey);
 
-    const hookTexts = (hookResult.data?.hooks ?? writerResult.data.hooks).map((hook) => hook.text);
+    const hookTexts = (writerResult.data.hooks || hooks).map((hook) => hook.text);
 
     for (const text of hookTexts) {
       this.db
@@ -184,8 +251,6 @@ export class WorkshopService {
         .run(createId("hook"), draftId, text);
     }
 
-    this.recordExecutionRun(structureInvocation, structureResult, idea.id, draftId, createdAt);
-    this.recordExecutionRun(hookInvocation, hookResult, idea.id, draftId, createdAt);
     this.recordExecutionRun(writerInvocation, writerResult, idea.id, draftId, createdAt);
     this.recordDraftVersion(draftId, bodyMarkdown, 0.61, "generation", createdAt);
     this.syncDraftTags(draftId, idea.title, idea.angle, idea.pillarLabel, false);

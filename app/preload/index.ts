@@ -25,7 +25,20 @@ const workshop: WorkshopApi = {
     ipcRenderer.invoke("workshop:get-session-by-idea-id", ideaId),
   generateFromIdea: (ideaId) =>
     ipcRenderer.invoke("workshop:generate-from-idea", ideaId),
-  correctDraft: (draftId) => ipcRenderer.invoke("workshop:correct-draft", draftId)
+  correctDraft: (draftId) => ipcRenderer.invoke("workshop:correct-draft", draftId),
+  getSuggestedStructures: (ideaId, typology, objective) =>
+    ipcRenderer.invoke("workshop:get-suggested-structures", ideaId, typology, objective),
+  generateHooks: (ideaId, typology, structureKey) =>
+    ipcRenderer.invoke("workshop:generate-hooks", ideaId, typology, structureKey),
+  generateFinalDraft: (ideaId, typology, objective, structureKey, selectedHookId) =>
+    ipcRenderer.invoke(
+      "workshop:generate-final-draft",
+      ideaId,
+      typology,
+      objective,
+      structureKey,
+      selectedHookId
+    )
 };
 
 const library: LibraryApi = {
