@@ -32,12 +32,19 @@ export function CalendarScreen() {
   const [statusFilter, setStatusFilter] = useState<CalendarItem["status"] | "all">("all");
   const [loading, setLoading] = useState(true);
   const [isScheduling, setIsScheduling] = useState(false);
+  const [previousDraftIdFromUrl, setPreviousDraftIdFromUrl] = useState(draftIdFromUrl);
 
-  useEffect(() => {
+  // Sync the draftId form field with the URL query parameter via the
+  // "deriving state from props" pattern documented in React docs:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  // This avoids the deprecated useEffect+setState pattern flagged by
+  // eslint-plugin-react-hooks 7.x set-state-in-effect rule.
+  if (draftIdFromUrl !== previousDraftIdFromUrl) {
+    setPreviousDraftIdFromUrl(draftIdFromUrl);
     if (draftIdFromUrl) {
       setForm((f) => ({ ...f, draftId: draftIdFromUrl }));
     }
-  }, [draftIdFromUrl]);
+  }
   const [status, setStatus] = useState("Chargement du calendrier...");
 
   async function loadAll() {
@@ -52,11 +59,32 @@ export function CalendarScreen() {
   }
 
   useEffect(() => {
-    loadAll().catch(() => {
-      setStatus("Impossible de charger le calendrier.");
-    }).finally(() => {
-      setLoading(false);
-    });
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const [loadedItems, loadedEntries] = await Promise.all([
+          window.linkedinPoster.calendar.listItems(),
+          window.linkedinPoster.library.listEntries()
+        ]);
+        if (cancelled) return;
+        setItems(loadedItems);
+        setEntries(loadedEntries);
+        setStatus(
+          loadedItems.length > 0 ? "Calendrier charge." : "Aucune publication planifiee."
+        );
+      } catch {
+        if (cancelled) return;
+        setStatus("Impossible de charger le calendrier.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
