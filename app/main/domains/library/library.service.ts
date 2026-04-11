@@ -3,6 +3,7 @@ import {
   SkillRunnerService,
   type SkillRunnerInvocation
 } from "../execution/skill-runner.service";
+import { insertExecutionRun } from "../execution/execution-runs.repository";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   LibraryEntry,
@@ -119,31 +120,23 @@ export class LibraryService {
       `)
       .run(`version_${Date.now()}`, variantId, bodyMarkdown, 0.84, createdAt);
 
-    this.db
-      .prepare(`
-        INSERT INTO execution_runs (
-          id, idea_id, draft_id, skill_name, skill_version, status, summary, input_json, output_json,
-          output_markdown, error_message, log_path, started_at, finished_at, created_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-      .run(
-        runId,
-        source.ideaId,
-        variantId,
-        invocation.skillName,
-        invocation.skillVersion,
-        result.status,
-        result.summary,
-        JSON.stringify(invocation),
-        JSON.stringify(result),
-        result.artifacts?.[0]?.content ?? null,
-        null,
-        null,
-        createdAt,
-        createdAt,
-        createdAt
-      );
+    insertExecutionRun(this.db, {
+      id: runId,
+      ideaId: source.ideaId,
+      draftId: variantId,
+      skillName: invocation.skillName,
+      skillVersion: invocation.skillVersion,
+      status: result.status,
+      summary: result.summary,
+      inputJson: JSON.stringify(invocation),
+      outputJson: JSON.stringify(result),
+      outputMarkdown: result.artifacts?.[0]?.content ?? null,
+      errorMessage: null,
+      logPath: null,
+      startedAt: createdAt,
+      finishedAt: createdAt,
+      createdAt
+    });
 
     const sourceTags = this.db
       .prepare(`

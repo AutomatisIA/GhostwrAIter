@@ -6,10 +6,8 @@ import {
 } from "../execution/skill-runner.service";
 import type { WorkshopSession } from "../../../shared/types/workshop";
 import type { StrategyBundle } from "../../../shared/types/strategy";
-
-function createId(prefix: string) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
-}
+import { createId } from "../../shared/create-id";
+import { insertExecutionRun } from "../execution/execution-runs.repository";
 
 export class NewsToPostService {
   constructor(
@@ -81,30 +79,23 @@ export class NewsToPostService {
         createdAt
       );
 
-    this.db
-      .prepare(`
-        INSERT INTO execution_runs (
-          id, idea_id, draft_id, skill_name, skill_version, status, summary, input_json, output_json,
-          output_markdown, error_message, log_path, started_at, finished_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
-      .run(
-        runId,
-        idea.id,
-        draftId,
-        invocation.skillName,
-        invocation.skillVersion,
-        result.status,
-        result.summary,
-        JSON.stringify(invocation),
-        JSON.stringify(result),
-        result.artifacts?.[0]?.content ?? null,
-        null,
-        null,
-        createdAt,
-        createdAt,
-        createdAt
-      );
+    insertExecutionRun(this.db, {
+      id: runId,
+      ideaId: idea.id,
+      draftId,
+      skillName: invocation.skillName,
+      skillVersion: invocation.skillVersion,
+      status: result.status,
+      summary: result.summary,
+      inputJson: JSON.stringify(invocation),
+      outputJson: JSON.stringify(result),
+      outputMarkdown: result.artifacts?.[0]?.content ?? null,
+      errorMessage: null,
+      logPath: null,
+      startedAt: createdAt,
+      finishedAt: createdAt,
+      createdAt
+    });
 
     return {
       idea,
