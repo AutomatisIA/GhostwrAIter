@@ -20,12 +20,137 @@ function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 }
 
-function ensureColumn(db: Database.Database, table: string, column: string, definition: string) {
-  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+type WorkshopColumnSpec = {
+  readonly table: "drafts" | "execution_runs";
+  readonly column: string;
+  readonly ddl: string;
+};
 
-  if (!columns.some((entry) => entry.name === column)) {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+/**
+ * Explicit allowlist of (table, column) pairs that may be added via
+ * ensureColumn. Every entry is hardcoded; callers pass only a symbolic key.
+ * This guarantees that ensureColumn never issues a DDL statement with a
+ * caller-controlled identifier, even if a future contributor wires user input
+ * into a workshop schema helper by mistake.
+ */
+export const WORKSHOP_COLUMN_ALLOWLIST = {
+  "drafts.status": {
+    table: "drafts",
+    column: "status",
+    ddl: "status TEXT NOT NULL DEFAULT 'draft'"
+  },
+  "drafts.source_draft_id": {
+    table: "drafts",
+    column: "source_draft_id",
+    ddl: "source_draft_id TEXT"
+  },
+  "drafts.typology": {
+    table: "drafts",
+    column: "typology",
+    ddl: "typology TEXT"
+  },
+  "drafts.objective": {
+    table: "drafts",
+    column: "objective",
+    ddl: "objective TEXT"
+  },
+  "drafts.structure_key": {
+    table: "drafts",
+    column: "structure_key",
+    ddl: "structure_key TEXT"
+  },
+  "drafts.structure_label": {
+    table: "drafts",
+    column: "structure_label",
+    ddl: "structure_label TEXT"
+  },
+  "drafts.selected_hook_text": {
+    table: "drafts",
+    column: "selected_hook_text",
+    ddl: "selected_hook_text TEXT"
+  },
+  "execution_runs.skill_version": {
+    table: "execution_runs",
+    column: "skill_version",
+    ddl: "skill_version TEXT"
+  },
+  "execution_runs.input_json": {
+    table: "execution_runs",
+    column: "input_json",
+    ddl: "input_json TEXT"
+  },
+  "execution_runs.output_json": {
+    table: "execution_runs",
+    column: "output_json",
+    ddl: "output_json TEXT"
+  },
+  "execution_runs.output_markdown": {
+    table: "execution_runs",
+    column: "output_markdown",
+    ddl: "output_markdown TEXT"
+  },
+  "execution_runs.error_message": {
+    table: "execution_runs",
+    column: "error_message",
+    ddl: "error_message TEXT"
+  },
+  "execution_runs.log_path": {
+    table: "execution_runs",
+    column: "log_path",
+    ddl: "log_path TEXT"
+  },
+  "execution_runs.started_at": {
+    table: "execution_runs",
+    column: "started_at",
+    ddl: "started_at TEXT"
+  },
+  "execution_runs.finished_at": {
+    table: "execution_runs",
+    column: "finished_at",
+    ddl: "finished_at TEXT"
   }
+} as const satisfies Record<string, WorkshopColumnSpec>;
+
+export type WorkshopColumnKey = keyof typeof WORKSHOP_COLUMN_ALLOWLIST;
+
+const ALLOWED_WORKSHOP_TABLES = new Set(["drafts", "execution_runs"]);
+
+/**
+ * Idempotent column addition constrained by the workshop column allowlist.
+ *
+ * The caller passes only a symbolic key (e.g. "drafts.status"). The function
+ * looks up the table name and the full DDL definition in the allowlist and
+ * issues the ALTER TABLE statement only if the column is missing. The table
+ * name is re-validated against ALLOWED_WORKSHOP_TABLES as defense in depth,
+ * so even if the allowlist map is mutated at runtime the function cannot
+ * issue DDL against an unexpected table.
+ *
+ * Throws if the key is not in the allowlist, if the key maps to a table that
+ * is not in the allowed workshop tables set, or if the key is malformed.
+ */
+export function ensureColumn(db: Database.Database, key: WorkshopColumnKey): void {
+  const spec = (WORKSHOP_COLUMN_ALLOWLIST as Record<string, WorkshopColumnSpec>)[key];
+  if (!spec) {
+    throw new Error(
+      `ensureColumn: '${key}' is not in the workshop column allowlist`
+    );
+  }
+  if (!ALLOWED_WORKSHOP_TABLES.has(spec.table)) {
+    throw new Error(
+      `ensureColumn: '${spec.table}' is not in the workshop column allowlist of tables`
+    );
+  }
+
+  const existingColumns = db
+    .prepare(`PRAGMA table_info(${spec.table})`)
+    .all() as Array<{ name: string }>;
+
+  if (existingColumns.some((entry) => entry.name === spec.column)) {
+    return;
+  }
+
+  const alterStatement = `ALTER TABLE ${spec.table} ADD COLUMN ${spec.ddl}`;
+  db.prepare(alterStatement).run();
 }
 
 function tokenizeTags(input: string) {
@@ -89,21 +214,21 @@ export function createWorkshopTables(db: Database.Database) {
     );
   `);
 
-  ensureColumn(db, "drafts", "status", "status TEXT NOT NULL DEFAULT 'draft'");
-  ensureColumn(db, "drafts", "source_draft_id", "source_draft_id TEXT");
-  ensureColumn(db, "drafts", "typology", "typology TEXT");
-  ensureColumn(db, "drafts", "objective", "objective TEXT");
-  ensureColumn(db, "drafts", "structure_key", "structure_key TEXT");
-  ensureColumn(db, "drafts", "structure_label", "structure_label TEXT");
-  ensureColumn(db, "drafts", "selected_hook_text", "selected_hook_text TEXT");
-  ensureColumn(db, "execution_runs", "skill_version", "skill_version TEXT");
-  ensureColumn(db, "execution_runs", "input_json", "input_json TEXT");
-  ensureColumn(db, "execution_runs", "output_json", "output_json TEXT");
-  ensureColumn(db, "execution_runs", "output_markdown", "output_markdown TEXT");
-  ensureColumn(db, "execution_runs", "error_message", "error_message TEXT");
-  ensureColumn(db, "execution_runs", "log_path", "log_path TEXT");
-  ensureColumn(db, "execution_runs", "started_at", "started_at TEXT");
-  ensureColumn(db, "execution_runs", "finished_at", "finished_at TEXT");
+  ensureColumn(db, "drafts.status");
+  ensureColumn(db, "drafts.source_draft_id");
+  ensureColumn(db, "drafts.typology");
+  ensureColumn(db, "drafts.objective");
+  ensureColumn(db, "drafts.structure_key");
+  ensureColumn(db, "drafts.structure_label");
+  ensureColumn(db, "drafts.selected_hook_text");
+  ensureColumn(db, "execution_runs.skill_version");
+  ensureColumn(db, "execution_runs.input_json");
+  ensureColumn(db, "execution_runs.output_json");
+  ensureColumn(db, "execution_runs.output_markdown");
+  ensureColumn(db, "execution_runs.error_message");
+  ensureColumn(db, "execution_runs.log_path");
+  ensureColumn(db, "execution_runs.started_at");
+  ensureColumn(db, "execution_runs.finished_at");
 }
 
 export class WorkshopService {

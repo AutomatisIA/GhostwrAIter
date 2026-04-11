@@ -6,6 +6,8 @@ import {
 } from "../../app/main/domains/ideas/ideas.repository";
 import {
   createWorkshopTables,
+  ensureColumn,
+  WORKSHOP_COLUMN_ALLOWLIST,
   WorkshopService
 } from "../../app/main/domains/workshop/workshop.service";
 import { SkillRunnerService } from "../../app/main/domains/execution/skill-runner.service";
@@ -194,5 +196,83 @@ describe("workshop service", () => {
     });
     expect(writerContext?.strategyOffersSummary).toContain("Audit IA PME");
     expect(writerContext?.strategyIcpSummary).toContain("Dirigeants de PME");
+  });
+});
+
+describe("ensureColumn (workshop schema helper)", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    db.prepare(
+      `CREATE TABLE drafts (
+        id TEXT PRIMARY KEY,
+        idea_id TEXT NOT NULL,
+        headline TEXT NOT NULL,
+        body_markdown TEXT NOT NULL,
+        quality_score REAL NOT NULL,
+        created_at TEXT NOT NULL
+      )`
+    ).run();
+    db.prepare(
+      `CREATE TABLE execution_runs (
+        id TEXT PRIMARY KEY,
+        idea_id TEXT NOT NULL,
+        draft_id TEXT NOT NULL,
+        skill_name TEXT NOT NULL,
+        status TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`
+    ).run();
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it("accepts a whitelisted column key and adds the column idempotently", () => {
+    expect(() => ensureColumn(db, "drafts.status")).not.toThrow();
+
+    const columns = db
+      .prepare("PRAGMA table_info(drafts)")
+      .all() as Array<{ name: string }>;
+    expect(columns.some((c) => c.name === "status")).toBe(true);
+  });
+
+  it("is idempotent: calling it twice with the same whitelisted key does not throw", () => {
+    ensureColumn(db, "drafts.status");
+    expect(() => ensureColumn(db, "drafts.status")).not.toThrow();
+  });
+
+  it("rejects an unknown column key with a clear error", () => {
+    expect(() => ensureColumn(db, "drafts.not_in_allowlist" as never)).toThrow(
+      /not in the workshop column allowlist/i
+    );
+  });
+
+  it("rejects a key whose table name is not a known workshop table", () => {
+    expect(() => ensureColumn(db, "random_table.some_column" as never)).toThrow(
+      /not in the workshop column allowlist/i
+    );
+  });
+
+  it("exposes an allowlist that covers both drafts and execution_runs columns", () => {
+    const keys = Object.keys(WORKSHOP_COLUMN_ALLOWLIST);
+    expect(keys).toContain("drafts.status");
+    expect(keys).toContain("drafts.source_draft_id");
+    expect(keys).toContain("drafts.typology");
+    expect(keys).toContain("drafts.objective");
+    expect(keys).toContain("drafts.structure_key");
+    expect(keys).toContain("drafts.structure_label");
+    expect(keys).toContain("drafts.selected_hook_text");
+    expect(keys).toContain("execution_runs.skill_version");
+    expect(keys).toContain("execution_runs.input_json");
+    expect(keys).toContain("execution_runs.output_json");
+    expect(keys).toContain("execution_runs.output_markdown");
+    expect(keys).toContain("execution_runs.error_message");
+    expect(keys).toContain("execution_runs.log_path");
+    expect(keys).toContain("execution_runs.started_at");
+    expect(keys).toContain("execution_runs.finished_at");
   });
 });

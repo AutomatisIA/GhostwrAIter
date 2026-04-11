@@ -1,6 +1,13 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { join } from "node:path";
 import log from "electron-log/main.js";
+import {
+  attachDevToolsGuard,
+  attachNavigationGuards,
+  buildHardenedWebPreferences,
+  isDevMode,
+  type WebContentsLike
+} from "./window-factory";
 import { CalendarRuntimeService, registerCalendarIpcHandlers } from "./ipc/calendar-ipc";
 import { createAppDatabase } from "./db/database";
 import { CodexCliRunner } from "./domains/execution/codex-cli-runner";
@@ -19,6 +26,9 @@ import { PrivacyService } from "./domains/privacy/privacy.service";
 log.initialize();
 
 function createWindow() {
+  const devMode = isDevMode();
+  const preloadPath = join(__dirname, "../preload/index.mjs");
+
   const window = new BrowserWindow({
     width: 1440,
     height: 960,
@@ -26,14 +36,24 @@ function createWindow() {
     minHeight: 760,
     title: "LinkedIn Poster",
     backgroundColor: "#f4efe6",
-    webPreferences: {
-      preload: join(__dirname, "../preload/index.mjs"),
-      sandbox: false
-    }  });
+    webPreferences: buildHardenedWebPreferences(preloadPath)
+  });
 
-  if (process.env.ELECTRON_RENDERER_URL) {
-    window.loadURL(process.env.ELECTRON_RENDERER_URL);
-    window.webContents.openDevTools({ mode: "detach" });
+  const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+  const allowedOrigins = devMode && rendererUrl
+    ? [new URL(rendererUrl).origin]
+    : ["file://"];
+
+  const webContents = window.webContents as unknown as WebContentsLike;
+  attachNavigationGuards(webContents, allowedOrigins, {
+    openExternal: (url) => {
+      void shell.openExternal(url);
+    }
+  });
+  attachDevToolsGuard(webContents, devMode);
+
+  if (devMode && rendererUrl) {
+    window.loadURL(rendererUrl);
     return;
   }
 
