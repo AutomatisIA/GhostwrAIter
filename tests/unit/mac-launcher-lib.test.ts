@@ -7,7 +7,7 @@ import {
   getMacLauncherPaths
 } from "../../scripts/mac-launcher-lib.mjs";
 
-describe("mac launcher helpers", () => {
+describe.skipIf(process.platform === "win32")("mac launcher helpers", () => {
   it("builds stable launcher paths inside the repository", () => {
     const repoRoot = "/tmp/linkedin-poster";
     const paths = getMacLauncherPaths(repoRoot);

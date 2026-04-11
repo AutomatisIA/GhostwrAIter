@@ -138,6 +138,13 @@ describe("resolveWorkspaceRoot — validation (FR-012, FR-013)", () => {
   });
 
   it("rejects a path whose parent is not writable with PARENT_NOT_WRITABLE", () => {
+    if (process.platform === "win32") {
+      // NTFS does not honor POSIX mode bits set by chmod, so chmod 0o500
+      // never makes a directory non-writable for the current user. The
+      // PARENT_NOT_WRITABLE branch in resolveWorkspaceRoot remains exercised
+      // by the macOS and Linux runners in the CI matrix.
+      return;
+    }
     if (process.getuid && process.getuid() === 0) {
       // root can write to any directory, skip this case
       return;

@@ -14,7 +14,7 @@ function makeDeps(overrides: Partial<FindCodexBinaryDeps> = {}): FindCodexBinary
   };
 }
 
-describe("findCodexBinary — darwin", () => {
+describe.skipIf(process.platform === "win32")("findCodexBinary — darwin", () => {
   it("returns the binary found in a PATH entry (preferred over fallbacks)", () => {
     const existsSync = vi.fn((path: string) => path === "/custom/bin/codex");
     const result = findCodexBinary(
@@ -70,7 +70,7 @@ describe("findCodexBinary — darwin", () => {
   });
 });
 
-describe("findCodexBinary — linux", () => {
+describe.skipIf(process.platform === "win32")("findCodexBinary — linux", () => {
   it("returns the binary found in a PATH entry", () => {
     const existsSync = vi.fn((path: string) => path === "/usr/local/bin/codex");
     const result = findCodexBinary(
