@@ -1,3 +1,6 @@
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CodexCliRunner,
@@ -5,6 +8,11 @@ import {
   type CodexCliCommandExecutor,
   type CodexCliFilesystem
 } from "../../app/main/domains/execution/codex-cli-runner";
+import {
+  SkillPromptNotFoundError,
+  createDefaultSkillPromptLoader,
+  type SkillPromptLoader
+} from "../../app/main/domains/execution/skill-prompt-loader";
 import type { SkillRunnerInvocation } from "../../app/main/domains/execution/skill-runner.service";
 
 describe("codex cli runner", () => {
@@ -384,5 +392,83 @@ describe("codex cli runner — timeout handling (FR-015, FR-016, FR-017)", () =>
     const secondResult = runner.execute(baseInvocation);
     expect(secondResult.status).toBe("succeeded");
     expect(secondResult.error).toBeUndefined();
+  });
+});
+
+describe("codex cli runner — SKILL.md integration (feature 006)", () => {
+  const baseInvocation: SkillRunnerInvocation = {
+    runId: "run_skillmd",
+    skillName: "linkedin-post-writer",
+    skillVersion: "1.0.0",
+    context: {},
+    payload: { title: "test", angle: "test" },
+    attachments: []
+  };
+
+  it("returns SKILL_PROMPT_NOT_FOUND when the loader throws", () => {
+    const stubLoader: SkillPromptLoader = {
+      loadPrompt(skillName: string): string {
+        throw new SkillPromptNotFoundError(skillName, `prompt missing for ${skillName}`);
+      }
+    };
+    const executor: CodexCliCommandExecutor = vi.fn().mockReturnValue({
+      status: 0,
+      stdout: "",
+      stderr: ""
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-skillmd-test"),
+      readFile: vi.fn().mockReturnValue(""),
+      removeDir: vi.fn()
+    };
+    const runner = new CodexCliRunner(executor, filesystem, stubLoader);
+
+    const result = runner.execute(baseInvocation);
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("SKILL_PROMPT_NOT_FOUND");
+    expect(result.error?.message).toContain("linkedin-post-writer");
+    expect(executor).not.toHaveBeenCalled();
+    expect(filesystem.makeTempDir).not.toHaveBeenCalled();
+  });
+
+  it("respects edited SKILL.md content on the next invocation (no cache)", () => {
+    const tmpRoot = mkdtempSync(join(tmpdir(), "linkedin-poster-runner-edit-"));
+    try {
+      mkdirSync(join(tmpRoot, "linkedin-post-writer"), { recursive: true });
+      const skillFile = join(tmpRoot, "linkedin-post-writer", "SKILL.md");
+
+      const promptV1 = "FIRST PROMPT BODY MARKER";
+      const promptV2 = "SECOND PROMPT BODY MARKER";
+
+      writeFileSync(skillFile, `# linkedin-post-writer\n\n## Prompt\n\n${promptV1}\n`, "utf-8");
+
+      const capturedPrompts: string[] = [];
+      const executor: CodexCliCommandExecutor = vi.fn().mockImplementation((_args, input) => {
+        capturedPrompts.push(input);
+        return { status: 0, stdout: "", stderr: "" };
+      });
+      const filesystem: CodexCliFilesystem = {
+        makeTempDir: vi.fn().mockReturnValue("/tmp/codex-edit-test"),
+        readFile: vi
+          .fn()
+          .mockReturnValue(JSON.stringify({ status: "succeeded", summary: "ok", data: {} })),
+        removeDir: vi.fn()
+      };
+      const loader = createDefaultSkillPromptLoader(tmpRoot);
+      const runner = new CodexCliRunner(executor, filesystem, loader);
+
+      runner.execute(baseInvocation);
+      writeFileSync(skillFile, `# linkedin-post-writer\n\n## Prompt\n\n${promptV2}\n`, "utf-8");
+      runner.execute(baseInvocation);
+
+      expect(capturedPrompts).toHaveLength(2);
+      expect(capturedPrompts[0]).toContain(promptV1);
+      expect(capturedPrompts[0]).not.toContain(promptV2);
+      expect(capturedPrompts[1]).toContain(promptV2);
+      expect(capturedPrompts[1]).not.toContain(promptV1);
+    } finally {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    }
   });
 });

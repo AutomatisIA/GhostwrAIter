@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-electron/
+dist-eval/
 out/
 playwright-report/
 test-results/
