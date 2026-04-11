@@ -65,6 +65,10 @@ TDD is a **non-negotiable** expectation for any testable business logic in this 
 
 A pull request that adds production code without a preceding failing test will be asked to be restructured. When the reviewer cannot clearly trace a test to the code change, they will ask you to add one before merging.
 
+## Editorial iteration
+
+Prompt-iteration work — improving the eight Codex skill prompts that power the editorial workflow — happens through a dedicated loop, separate from regular feature development. The full procedure is documented in [`docs/editorial-iteration-playbook.md`](docs/editorial-iteration-playbook.md): how to run the local benchmark, how to read the report, how to edit a `SKILL.md` without recompiling Electron, how to filter the bench to a single fixture, how to add a new fixture, the human "litmus test" that decides when a prompt is production-ready, and the explicit limits of automated grading. Read it before opening a pull request that touches `skills/linkedin-*/SKILL.md` or `scripts/eval-editorial-*.mjs`.
+
 ## Pull request process
 
 1. Fork the repository and create a branch from `main`. Branch names follow the pattern `NNN-short-description` where `NNN` is the feature number from the `specs/` directory when applicable.
