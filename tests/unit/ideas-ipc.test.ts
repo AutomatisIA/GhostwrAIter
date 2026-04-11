@@ -194,5 +194,24 @@ describe("ideas IPC", () => {
         expect(result.error.code).toBe("IPC_INPUT_INVALID");
       }
     });
+
+    it("returns IPC_HANDLER_ERROR when the service throws", async () => {
+      const { handlers, registrar } = createHarness();
+      registerIdeasIpcHandlers(registrar, service);
+
+      vi.spyOn(service, "generateFromStrategy").mockImplementation(() => {
+        throw new Error("simulated ideas generation failure");
+      });
+
+      const result = (await handlers.get("ideas:generate-from-strategy")?.(
+        undefined
+      )) as IpcResult<IdeaRecord[]>;
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("IPC_HANDLER_ERROR");
+        expect(result.error.message).toContain("simulated ideas generation failure");
+      }
+    });
   });
 });
