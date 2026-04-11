@@ -1,9 +1,6 @@
 import Database from "better-sqlite3";
 import type { CalendarItem, ScheduleDraftInput } from "../../../shared/types/calendar";
-
-function createId(prefix: string) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
-}
+import { createId } from "../../shared/create-id";
 
 export class CalendarService {
   constructor(private readonly db: Database.Database) {

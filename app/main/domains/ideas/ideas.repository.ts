@@ -1,9 +1,6 @@
 import Database from "better-sqlite3";
 import type { IdeaInput, IdeaRecord } from "../../../shared/types/ideas";
-
-function createId(prefix: string) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
-}
+import { createId } from "../../shared/create-id";
 
 export function createIdeasTables(db: Database.Database) {
   db.exec(`

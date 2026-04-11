@@ -3,6 +3,7 @@ import {
   type StrategyBundleInput,
   strategyBundleInputSchema
 } from "../../../shared/schemas/strategy";
+import { createId } from "../../shared/create-id";
 
 type RowWithCount = {
   count: number;
@@ -47,10 +48,6 @@ type StrategyBundleRecord = {
     ruleType: "do" | "dont" | "anti_style" | "format_rule";
   }>;
 };
-
-function createId(prefix: string, index = 0) {
-  return `${prefix}_${Date.now()}_${index}`;
-}
 
 export function createStrategyTables(db: Database.Database) {
   db.exec(`
