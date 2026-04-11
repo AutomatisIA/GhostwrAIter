@@ -7,13 +7,20 @@ import {
   WorkshopService
 } from "../domains/workshop/workshop.service";
 import type { HookOption, PostObjective, PostTypology } from "../../shared/types/workshop";
-
-type IpcRegistrar = {
-  handle: (
-    channel: string,
-    handler: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>
-  ) => void;
-};
+import {
+  correctDraftTupleSchema,
+  createVariantTupleSchema,
+  draftIdSchema,
+  generateFinalDraftTupleSchema,
+  generateHooksTupleSchema,
+  ideaIdSchema,
+  suggestedStructuresTupleSchema
+} from "../../shared/schemas/workshop";
+import {
+  registerValidatedHandler,
+  registerValidatedTupleHandler,
+  type IpcRegistrar
+} from "./register-validated-handler";
 
 export class WorkshopRuntimeService {
   private readonly service: WorkshopService;
@@ -86,28 +93,49 @@ export function registerWorkshopIpcHandlers(
   ipcRegistrar: IpcRegistrar,
   workshopService: WorkshopRuntimeService
 ) {
-  ipcRegistrar.handle("workshop:get-session-by-idea-id", async (_event, ideaId) =>
-    workshopService.getSessionByIdeaId(String(ideaId))
+  registerValidatedHandler(
+    ipcRegistrar,
+    "workshop:get-session-by-idea-id",
+    ideaIdSchema,
+    (ideaId) => workshopService.getSessionByIdeaId(ideaId)
   );
-  ipcRegistrar.handle("workshop:generate-from-idea", async (_event, ideaId) =>
-    workshopService.generateFromIdea(String(ideaId))
+  registerValidatedHandler(
+    ipcRegistrar,
+    "workshop:generate-from-idea",
+    ideaIdSchema,
+    (ideaId) => workshopService.generateFromIdea(ideaId)
   );
-  ipcRegistrar.handle(
+  registerValidatedTupleHandler<[string, PostTypology, PostObjective], unknown>(
+    ipcRegistrar,
     "workshop:get-suggested-structures",
-    async (_event, ideaId, typology, objective) =>
-      workshopService.getSuggestedStructures(
-        String(ideaId),
-        typology as PostTypology,
-        objective as PostObjective
-      )
+    suggestedStructuresTupleSchema,
+    (ideaId, typology, objective) =>
+      workshopService.getSuggestedStructures(ideaId, typology, objective)
   );
-  ipcRegistrar.handle("workshop:generate-hooks", async (_event, ideaId, typology, structureKey) =>
-    workshopService.generateHooks(String(ideaId), typology as PostTypology, String(structureKey))
+  registerValidatedTupleHandler<[string, PostTypology, string], unknown>(
+    ipcRegistrar,
+    "workshop:generate-hooks",
+    generateHooksTupleSchema,
+    (ideaId, typology, structureKey) =>
+      workshopService.generateHooks(ideaId, typology, structureKey)
   );
-  ipcRegistrar.handle(
+  registerValidatedTupleHandler<
+    [
+      string,
+      PostTypology,
+      PostObjective,
+      string,
+      string,
+      string,
+      string,
+      HookOption[]
+    ],
+    unknown
+  >(
+    ipcRegistrar,
     "workshop:generate-final-draft",
-    async (
-      _event,
+    generateFinalDraftTupleSchema,
+    (
       ideaId,
       typology,
       objective,
@@ -118,20 +146,30 @@ export function registerWorkshopIpcHandlers(
       hooks
     ) =>
       workshopService.generateFinalDraft(
-        String(ideaId),
-        typology as PostTypology,
-        objective as PostObjective,
-        String(structureKey),
-        String(structureLabel),
-        String(selectedHookId),
-        String(selectedHookText),
-        (hooks ?? []) as HookOption[]
+        ideaId,
+        typology,
+        objective,
+        structureKey,
+        structureLabel,
+        selectedHookId,
+        selectedHookText,
+        hooks
       )
   );
-  ipcRegistrar.handle("workshop:correct-draft", async (_event, draftId) =>
-    workshopService.correctDraft(String(draftId))
+  registerValidatedHandler(
+    ipcRegistrar,
+    "workshop:correct-draft",
+    draftIdSchema,
+    (draftId) => workshopService.correctDraft(draftId)
   );
-  ipcRegistrar.handle("workshop:create-variant", async (_event, draftId, variantType) =>
-    workshopService.createVariant(String(draftId), String(variantType))
+  registerValidatedTupleHandler<[string, string], unknown>(
+    ipcRegistrar,
+    "workshop:create-variant",
+    createVariantTupleSchema,
+    (draftId, variantType) => workshopService.createVariant(draftId, variantType)
   );
+  // `correctDraftTupleSchema` is intentionally exported for symmetry and
+  // potential future use; `correct-draft` uses the single-input variant
+  // because it has only one scalar argument.
+  void correctDraftTupleSchema;
 }
