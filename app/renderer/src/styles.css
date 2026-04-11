@@ -671,3 +671,48 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/**
+ * Narrow-viewport responsive tightening (feature 004).
+ *
+ * Kicks in below 768 pixels, on top of the 1100px collapse above. Tightens
+ * padding, gap, and panel radii so the application remains usable when the
+ * window is resized to tablet-narrow or mobile-narrow widths. Above 768px
+ * the visual appearance is identical to the feature 002/003 baseline.
+ *
+ * This is a defensive baseline, not a mobile-first redesign. A proper
+ * drawer-based mobile navigation is out of scope for chantier 3 and will
+ * be addressed in chantier 6 (UX debt) if the product direction requires
+ * it.
+ */
+@media (max-width: 768px) {
+  .shell {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .brand {
+    padding: 20px;
+  }
+
+  .brand h2 {
+    font-size: 1.4rem;
+  }
+
+  .nav-panel {
+    padding: 12px;
+  }
+
+  .nav-link {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+
+  .panel {
+    border-radius: 18px;
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+  }
+}
