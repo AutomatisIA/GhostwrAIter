@@ -1,24 +1,22 @@
 import type { IdeaRecord } from "./ideas";
 
-export type PostTypology =
-  | "expertise"
-  | "contrarian"
-  | "case_study"
-  | "tutorial"
-  | "thought_leadership";
-export type PostObjective = "awareness" | "authority" | "conversion" | "engagement";
+// Re-exported from the zod schemas in app/shared/schemas/workshop.ts which
+// is now the single source of truth for the workshop IPC input shapes
+// (feature 003).
+export type { HookOption } from "../schemas/workshop";
+import type { z } from "zod";
+import type {
+  postObjectiveSchema,
+  postTypologySchema
+} from "../schemas/workshop";
+
+export type PostTypology = z.infer<typeof postTypologySchema>;
+export type PostObjective = z.infer<typeof postObjectiveSchema>;
 
 export type StructureOption = {
   key: string;
   label: string;
   rationale: string;
-};
-
-export type HookOption = {
-  id: string;
-  family: string;
-  text: string;
-  score: number;
 };
 
 export type WorkshopHook = {

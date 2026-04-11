@@ -6,16 +6,9 @@ export type IdeaRecord = {
   createdAt: string;
 };
 
-export type IdeaInput = {
-  title: string;
-  angle: string;
-  pillarLabel: string;
-};
-
-export type NewsSourceInput = {
-  sourceTitle: string;
-  sourceSummary: string;
-};
+// Re-exported from the zod schema in app/shared/schemas/ideas.ts which is
+// now the single source of truth for the IPC input shapes (feature 003).
+export type { IdeaInput, NewsSourceInput } from "../schemas/ideas";
 
 export type IdeaDraftCreationResult = {
   idea: IdeaRecord;

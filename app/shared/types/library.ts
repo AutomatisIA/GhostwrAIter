@@ -10,12 +10,12 @@ export type LibraryEntry = {
   sourceDraftId: string | null;
 };
 
-export type LibrarySearchInput = {
-  query?: string;
-  pillarLabel?: string;
-  status?: LibraryEntry["status"];
-  tag?: string;
-};
+// Re-exported from the zod schema in app/shared/schemas/library.ts which is
+// now the single source of truth for the search-entries input shape. The
+// schema uses `SearchLibraryInput` as its derived name; both aliases are
+// provided here so existing imports continue to compile.
+export type { SearchLibraryInput } from "../schemas/library";
+export type { SearchLibraryInput as LibrarySearchInput } from "../schemas/library";
 
 export type LibraryApi = {
   listEntries: () => Promise<LibraryEntry[]>;
