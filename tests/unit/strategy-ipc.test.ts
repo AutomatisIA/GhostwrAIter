@@ -4,6 +4,7 @@ import {
   StrategyService,
   registerStrategyIpcHandlers
 } from "../../app/main/ipc/strategy-ipc";
+import { createStrictSkillRunnerService } from "./helpers/fake-codex";
 
 describe("strategy IPC", () => {
   let db: Database.Database;
@@ -86,7 +87,7 @@ describe("strategy IPC", () => {
 
   it("generates an editorial foundation summary from the active strategy", async () => {
     const handlers = new Map<string, (...args: unknown[]) => unknown>();
-    const service = new StrategyService(db);
+    const service = new StrategyService(db, createStrictSkillRunnerService());
 
     registerStrategyIpcHandlers(
       {

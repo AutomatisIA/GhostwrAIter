@@ -118,7 +118,16 @@ export class WorkshopService {
   generateDraftFromIdea(ideaId: string): WorkshopSession {
     const structures = this.getSuggestedStructures(ideaId, "expertise", "awareness");
     const hooks = this.generateHooks(ideaId, "expertise", structures[0].key);
-    return this.generateFinalDraft(ideaId, "expertise", "awareness", structures[0].key, hooks[0].id);
+    return this.generateFinalDraft(
+      ideaId,
+      "expertise",
+      "awareness",
+      structures[0].key,
+      structures[0].label,
+      hooks[0].id,
+      hooks[0].text,
+      hooks
+    );
   }
 
   getSuggestedStructures(

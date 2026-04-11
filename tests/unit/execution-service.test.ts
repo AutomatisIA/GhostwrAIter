@@ -66,7 +66,7 @@ describe("execution service", () => {
 
     const runs = executionService.listRuns();
 
-    expect(runs).toHaveLength(6);
+    expect(runs).toHaveLength(4);
     expect(runs[0]?.skillName).toBe("linkedin-post-editor");
     expect(runs[1]?.skillName).toBe("linkedin-post-writer");
     expect(runs.some((run) => run.skillName === "linkedin-hook-engine")).toBe(true);
@@ -94,7 +94,7 @@ describe("execution service", () => {
 
     const files = readdirSync(executionLogsDirectory);
 
-    expect(files.length).toBe(6);
+    expect(files.length).toBe(4);
 
     const firstLog = JSON.parse(
       readFileSync(join(executionLogsDirectory, files[0] ?? ""), "utf8")
