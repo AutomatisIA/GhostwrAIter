@@ -1,129 +1,85 @@
-# LinkedIn Poster - Editorial Cockpit
+# LinkedIn Poster
 
-LinkedIn Poster est une application desktop local-first pour consultants IA, conçue pour orchestrer la production de contenus LinkedIn haute qualité via des "skills" spécialisées (propulsées par Codex).
+A local-first Electron editorial cockpit for LinkedIn. LinkedIn Poster helps AI consultants and independent writers orchestrate the full production workflow of high-quality posts — from editorial strategy to hook engineering, drafting, and scheduling — through a library of specialized skills powered by OpenAI Codex. Every piece of content stays on your machine. No SaaS backend, no remote database, no vendor lock-in on your editorial IP.
 
-## Documentation
+## Stack
 
-- `docs/guide-decouverte.md` : comprendre le produit sans contexte préalable
-- `docs/fonctionnalites.md` : ce que fait chaque page et pourquoi elle existe
-- `docs/parcours-utilisateur.md` : mode d'emploi concret page par page pour un premier usage
-- `docs/architecture.md` : structure technique de l'application et circulation des donnees
-- `docs/skills-codex.md` : skills supportees, contrats attendus et cas d'echec
-- `docs/exploitation.md` : installation, diagnostic, audits reels, limites connues
-- `docs/audit-pages-2026-04-11.md` : audit réel page par page et dette UX restante
-- `TODO.md` : ameliorations encore possibles
+- **Electron** 41 for the desktop shell
+- **TypeScript** 6 for the main, preload, and renderer processes
+- **React** 19 + **Vite** 7 for the renderer UI
+- **SQLite** (via `better-sqlite3`) for local workspace storage
+- **Codex CLI** as the external AI execution engine (each skill is a structured prompt contract)
 
-## Architecture
+The application is built with electron-vite, tested with Vitest, and packaged with electron-builder for macOS, Windows, and Linux.
 
-- **Frontend**: React 19 + TypeScript + Vite.
-- **Backend**: Electron (Node.js 20).
-- **Stockage**: SQLite (via Drizzle ORM / better-sqlite3) + Système de fichiers local.
-- **Moteur d'IA**: Codex CLI en mode strict, sans fallback degradé.
+## Prerequisites
+
+- **Node.js 20** (the exact version targeted by every CI runner and the Electron runtime)
+- **Git** for cloning the repository
+- **Codex CLI** installed and authenticated on your machine (the application expects `codex` to be available on PATH or in a standard platform location — see `docs/exploitation.md` for the full detection logic)
+- A writable workspace directory where local data will live (typically `~/LinkedInPoster` on macOS and Linux, `%USERPROFILE%\LinkedInPoster` on Windows)
 
 ## Installation
 
-1.  **Prérequis**: Node.js 20+ installé.
-2.  **Installation des dépendances**:
-    ```bash
-    npm install
-    ```
-3.  **Initialisation du Workspace**:
-    ```bash
-    npm run db:init
-    ```
-    Cette commande crée les répertoires `content/`, `data/`, `logs/` et initialise la base SQLite.
-
-## Lancement
+### macOS
 
 ```bash
+git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
+cd LinkedIn-Poster
+npm ci
+npm run rebuild:native:electron
 npm run dev
 ```
 
-La commande reconstruit automatiquement `better-sqlite3` pour l'ABI d'Electron avant de lancer l'application.
+For a packaged `.app` build, run `npm run package:mac`. See `docs/exploitation.md` for notarization and distribution details.
 
-## Lanceur macOS
-
-Pour generer une vraie application macOS ouvrable sans terminal :
+### Windows
 
 ```bash
-npm run package:mac
+git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
+cd LinkedIn-Poster
+npm ci
+npm run rebuild:native:electron
+npm run dev
 ```
 
-Le build produit une application `.app` dans `dist-app/mac/LinkedIn Poster.app`.
+For a packaged NSIS installer or portable executable, run `npm run package:win`.
 
-Tu peux ensuite :
-
-- l'ouvrir depuis le Finder
-- la glisser dans `Applications`
-- l'epingler au Dock
-
-Attention: cette application packagee est une photo de l'etat du code au moment ou `npm run package:mac` a ete lance. Si tu modifies le repo ensuite, elle ne se met pas a jour toute seule.
-
-## Lanceur "toujours a jour" pour macOS
-
-Si tu veux un lanceur qui ouvre la derniere version locale du repo sans passer par un terminal visible :
+### Linux
 
 ```bash
-npm run make:mac-launcher
+git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
+cd LinkedIn-Poster
+npm ci
+npm run rebuild:native:electron
+npm run dev
 ```
 
-Cela genere `dist-launcher/LinkedIn Poster Launcher.app`.
+For a packaged AppImage or `.deb`, run `npm run package:linux`.
 
-Ce lanceur :
+For detailed operational guidance — diagnostics, log locations, Codex configuration, audit scripts, and known limitations — see [`docs/exploitation.md`](docs/exploitation.md).
 
-- ferme l'instance en cours si besoin
-- reconstruit et repackage l'application a partir du code local courant
-- ouvre ensuite la nouvelle version
+## Documentation
 
-Ce lanceur reprend l'icone de l'application Electron et s'affiche comme `LinkedIn Poster` dans le Dock. Tu peux l'epingler a la place de l'application packagee figee.
+The full project documentation lives under `docs/`:
 
-Si tu veux simplement faire la meme chose depuis une commande shell :
+- `docs/guide-decouverte.md` — product overview for new users
+- `docs/fonctionnalites.md` — page-by-page feature reference
+- `docs/parcours-utilisateur.md` — hands-on walkthrough of a first session
+- `docs/architecture.md` — technical architecture and data flow
+- `docs/skills-codex.md` — Codex skill contracts and failure modes
+- `docs/exploitation.md` — installation, diagnostics, real audits, known limits
 
-```bash
-npm run open:mac:latest
-```
+## Contributing
 
-## Workflow Editorial
+Contributions are welcome. Before opening a pull request, please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development workflow, commit convention, test-driven development expectations, and spec-kit authoring process.
 
-1.  **Stratégie**: Définissez votre socle (Profil, Offres, ICP, Règles de voix).
-2.  **Idées**: Capturez vos idées dans le backlog.
-3.  **Atelier**: Transformez une idée en post via le stepper guidé (Typologie -> Structure -> Hook -> Draft).
-4.  **Bibliothèque**: Capitalisez vos drafts, créez des variantes.
-5.  **Calendrier**: Planifiez votre présence éditoriale.
+By contributing you agree to abide by the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
-## Diagnostics et Runner
+## Security
 
-L'application utilise un système de "Runner" pour exécuter les skills.
+To report a security vulnerability, please follow the private disclosure process described in [`SECURITY.md`](SECURITY.md). Do not open a public issue for suspected vulnerabilities.
 
-- **Mode Codex**: si le CLI Codex est détecté et opérationnel, l'application délègue les générations à Codex.
-- **Mode indisponible**: si Codex n'est pas disponible ou ne respecte pas le contrat attendu, l'application remonte une erreur explicite et n'essaie pas de produire une sortie dégradée.
+## License
 
-Pour voir les logs d'exécution :
-```bash
-# Les logs JSON sont stockés dans le répertoire logs/
-ls logs/executions/
-```
-
-## Tests
-
-Le projet suit une approche TDD stricte.
-
-```bash
-# Tests unitaires et d'intégration
-npm test
-
-# Tests E2E (Playwright)
-npm run test:e2e
-```
-
-La commande `npm test` reconstruit automatiquement `better-sqlite3` pour l'ABI du Node local avant d'exécuter Vitest.
-
-Un audit réel Electron rejouable est aussi disponible :
-
-```bash
-node scripts/real-app-audit.mjs
-```
-
-## Confidentialité
-
-Toutes les données (stratégie, drafts, idées) restent **locales** sur votre machine dans le répertoire du projet. Aucune donnée n'est envoyée à un serveur tiers, excepté les prompts envoyés au runner Codex si configuré.
+LinkedIn Poster is released under the [MIT License](LICENSE). Copyright (c) 2026 Philippe Cohen.

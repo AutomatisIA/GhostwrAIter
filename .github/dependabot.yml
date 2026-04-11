@@ -1,0 +1,45 @@
+# Dependabot configuration — feature 005 (D7, D8)
+#
+# npm updates are checked weekly and grouped into two PRs:
+#   - production-dependencies (runtime code, reviewed carefully)
+#   - development-dependencies (tools/tests/build, batch-mergeable after green CI)
+# Major updates are always ignored because they require human judgment
+# (framework upgrades, breaking changes, coordinated refactors).
+#
+# github-actions are checked monthly (low churn, slow drift).
+
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"

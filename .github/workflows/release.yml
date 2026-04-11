@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - "Package"
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag whose packaged artifacts should be assembled into a draft release"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts from the packaging workflow run
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download artifacts for the supplied tag
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: linkedin-poster-${{ github.event.inputs.tag }}-*
+          merge-multiple: false
+
+      - name: Create draft GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          tag_name: ${{ github.event.inputs.tag || github.event.workflow_run.head_branch }}
+          files: artifacts/**/*
+          token: ${{ secrets.GITHUB_TOKEN }}

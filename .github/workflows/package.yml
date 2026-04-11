@@ -1,0 +1,54 @@
+name: Package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild native modules for Electron target
+        run: npm run rebuild:native:electron
+
+      - name: Package for macOS
+        if: matrix.os == 'macos-latest'
+        run: npm run package:mac
+
+      - name: Package for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run package:linux
+
+      - name: Package for Windows
+        if: matrix.os == 'windows-latest'
+        run: npm run package:win
+
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-poster-${{ github.ref_name }}-${{ matrix.os }}
+          path: dist-app/
+          if-no-files-found: error
