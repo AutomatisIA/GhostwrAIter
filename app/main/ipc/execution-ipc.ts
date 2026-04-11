@@ -2,13 +2,11 @@ import Database from "better-sqlite3";
 import { ExecutionService } from "../domains/execution/execution.service";
 import { SkillRegistryService } from "../domains/execution/skill-registry.service";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
-
-type IpcRegistrar = {
-  handle: (
-    channel: string,
-    handler: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>
-  ) => void;
-};
+import { emptyInputSchema } from "../../shared/schemas/execution";
+import {
+  registerValidatedHandler,
+  type IpcRegistrar
+} from "./register-validated-handler";
 
 export class ExecutionRuntimeService {
   private readonly service: ExecutionService;
@@ -40,8 +38,16 @@ export function registerExecutionIpcHandlers(
   ipcRegistrar: IpcRegistrar,
   executionService: ExecutionRuntimeService
 ) {
-  ipcRegistrar.handle("execution:list-runs", async () => executionService.listRuns());
-  ipcRegistrar.handle("execution:get-diagnostics", async () =>
-    executionService.getDiagnostics()
+  registerValidatedHandler(
+    ipcRegistrar,
+    "execution:list-runs",
+    emptyInputSchema,
+    () => executionService.listRuns()
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "execution:get-diagnostics",
+    emptyInputSchema,
+    () => executionService.getDiagnostics()
   );
 }
