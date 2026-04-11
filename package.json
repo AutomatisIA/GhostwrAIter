@@ -20,8 +20,9 @@
     "package:mac": "npm run build && electron-builder --mac dir",
     "package:win": "npm run build && electron-builder --win",
     "package:linux": "npm run build && electron-builder --linux",
-    "rebuild:native:node": "PYTHON=/usr/bin/python3 npm rebuild better-sqlite3",
-    "rebuild:native:electron": "electron-rebuild -f -w better-sqlite3"
+    "rebuild:native:node": "node scripts/rebuild-native-node.mjs",
+    "rebuild:native:electron": "electron-rebuild -f -w better-sqlite3",
+    "verify-hardening": "node scripts/verify-hardening.mjs"
   },
   "build": {
     "appId": "com.philippe.linkedin-poster",
