@@ -18,20 +18,23 @@ export class CalendarService {
   }
 
   scheduleDraft(input: ScheduleDraftInput): CalendarItem {
-    const item: CalendarItem = {
-      id: createId("cal"),
-      draftId: input.draftId,
-      plannedDate: input.plannedDate,
-      status: input.status
-    };
-
+    const id = createId("cal");
     this.db
       .prepare(`
         INSERT INTO calendar_items (id, draft_id, planned_date, status)
         VALUES (@id, @draftId, @plannedDate, @status)
       `)
-      .run(item);
+      .run({
+        id,
+        draftId: input.draftId,
+        plannedDate: input.plannedDate,
+        status: input.status
+      });
 
+    const item = this.listItems().find((i) => i.id === id);
+    if (!item) {
+      throw new Error("Failed to reload scheduled item");
+    }
     return item;
   }
 
@@ -39,12 +42,16 @@ export class CalendarService {
     return this.db
       .prepare(`
         SELECT
-          id,
-          draft_id AS draftId,
-          planned_date AS plannedDate,
-          status
-        FROM calendar_items
-        ORDER BY planned_date ASC, rowid DESC
+          c.id,
+          c.draft_id AS draftId,
+          d.headline AS draftHeadline,
+          i.pillar_label AS pillarLabel,
+          c.planned_date AS plannedDate,
+          c.status
+        FROM calendar_items c
+        INNER JOIN drafts d ON d.id = c.draft_id
+        INNER JOIN ideas i ON i.id = d.idea_id
+        ORDER BY c.planned_date ASC, c.rowid DESC
       `)
       .all() as CalendarItem[];
   }

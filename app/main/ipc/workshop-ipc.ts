@@ -6,7 +6,7 @@ import {
   createWorkshopTables,
   WorkshopService
 } from "../domains/workshop/workshop.service";
-import type { PostObjective, PostTypology } from "../../shared/types/workshop";
+import type { HookOption, PostObjective, PostTypology } from "../../shared/types/workshop";
 
 type IpcRegistrar = {
   handle: (
@@ -56,19 +56,29 @@ export class WorkshopRuntimeService {
     typology: PostTypology,
     objective: PostObjective,
     structureKey: string,
-    selectedHookId: string
+    structureLabel: string,
+    selectedHookId: string,
+    selectedHookText: string,
+    hooks: HookOption[]
   ) {
     return this.service.generateFinalDraft(
       ideaId,
       typology,
       objective,
       structureKey,
-      selectedHookId
+      structureLabel,
+      selectedHookId,
+      selectedHookText,
+      hooks
     );
   }
 
   correctDraft(draftId: string) {
     return this.service.correctDraft(draftId);
+  }
+
+  createVariant(draftId: string, variantType: string) {
+    return this.service.createVariant(draftId, variantType);
   }
 }
 
@@ -96,16 +106,32 @@ export function registerWorkshopIpcHandlers(
   );
   ipcRegistrar.handle(
     "workshop:generate-final-draft",
-    async (_event, ideaId, typology, objective, structureKey, selectedHookId) =>
+    async (
+      _event,
+      ideaId,
+      typology,
+      objective,
+      structureKey,
+      structureLabel,
+      selectedHookId,
+      selectedHookText,
+      hooks
+    ) =>
       workshopService.generateFinalDraft(
         String(ideaId),
         typology as PostTypology,
         objective as PostObjective,
         String(structureKey),
-        String(selectedHookId)
+        String(structureLabel),
+        String(selectedHookId),
+        String(selectedHookText),
+        (hooks ?? []) as HookOption[]
       )
   );
   ipcRegistrar.handle("workshop:correct-draft", async (_event, draftId) =>
     workshopService.correctDraft(String(draftId))
+  );
+  ipcRegistrar.handle("workshop:create-variant", async (_event, draftId, variantType) =>
+    workshopService.createVariant(String(draftId), String(variantType))
   );
 }

@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import { LibraryService } from "../domains/library/library.service";
+import type { StrategyBundle } from "../../shared/types/strategy";
 
 type IpcRegistrar = {
   handle: (
@@ -12,8 +13,12 @@ type IpcRegistrar = {
 export class LibraryRuntimeService {
   private readonly service: LibraryService;
 
-  constructor(db: Database.Database, skillRunnerService?: SkillRunnerService) {
-    this.service = new LibraryService(db, skillRunnerService);
+  constructor(
+    db: Database.Database,
+    skillRunnerService?: SkillRunnerService,
+    getActiveStrategy?: () => StrategyBundle | null
+  ) {
+    this.service = new LibraryService(db, skillRunnerService, getActiveStrategy);
   }
 
   listEntries() {

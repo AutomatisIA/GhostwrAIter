@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   createWorkspaceService,
+  resolveWorkspaceRoot,
   type WorkspacePaths
 } from "../../app/main/workspace/workspace.service";
 
@@ -42,5 +43,17 @@ describe("workspace service", () => {
     const second = service.ensureWorkspace();
 
     expect(second).toEqual(first satisfies WorkspacePaths);
+  });
+
+  it("supports overriding the workspace root from the environment", () => {
+    const userDataRoot = "/Users/test/Library/Application Support/LinkedIn Poster";
+    const overrideRoot = "/tmp/linkedin-poster-audit";
+
+    expect(resolveWorkspaceRoot(userDataRoot, {})).toBe(join(userDataRoot, "workspace"));
+    expect(
+      resolveWorkspaceRoot(userDataRoot, {
+        LINKEDIN_POSTER_WORKSPACE_ROOT: overrideRoot
+      })
+    ).toBe(overrideRoot);
   });
 });

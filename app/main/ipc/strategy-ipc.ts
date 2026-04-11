@@ -43,8 +43,12 @@ export class StrategyService {
       attachments: []
     });
 
+    if (result.status !== "succeeded" || !result.artifacts?.[0]?.content) {
+      throw new Error(result.error?.message ?? result.summary);
+    }
+
     return {
-      summaryMarkdown: result.artifacts?.[0]?.content ?? ""
+      summaryMarkdown: result.artifacts[0].content
     };
   }
 }

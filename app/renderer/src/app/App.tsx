@@ -1,5 +1,6 @@
 import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 import { CalendarScreen } from "../features/calendar/CalendarScreen";
+import { DashboardScreen } from "../features/dashboard/DashboardScreen";
 import { ExecutionScreen } from "../features/execution/ExecutionScreen";
 import { IdeasScreen } from "../features/ideas/IdeasScreen";
 import { LibraryScreen } from "../features/library/LibraryScreen";
@@ -11,66 +12,66 @@ const sections = [
   {
     path: "/",
     label: "Tableau de bord",
-    eyebrow: "Pilotage",
-    title: "Cockpit editorial local-first",
+    eyebrow: "Vue d'ensemble",
+    title: "Piloter toute la machine editoriale depuis un seul endroit",
     description:
-      "Vue centrale du systeme de production LinkedIn. Le socle est pret pour brancher strategie, atelier, bibliotheque et calendrier."
+      "Cette page sert a comprendre le produit, voir les sections disponibles et savoir par ou commencer si tu decouvres l'outil."
   },
   {
     path: "/strategie",
     label: "Strategie",
     eyebrow: "Socle",
-    title: "Positionnement, offre, ICP, voix",
+    title: "Definir le contexte qui guidera toutes les generations",
     description:
-      "Source de verite editoriale. Cette section accueillera le profil actif, les piliers, les regles anti-style et les preuves business."
+      "Ici, tu poses qui tu es, ce que tu vends, pour qui tu ecris et les regles de ton qui doivent rester stables."
   },
   {
     path: "/idees",
     label: "Idees",
     eyebrow: "Backlog",
-    title: "Generer, scorer, prioriser",
+    title: "Capturer des sujets avant qu'ils ne se perdent",
     description:
-      "Le backlog d'angles et d'observations terrain. Il servira de point d'entree au workflow guide de production."
+      "Cette page sert a transformer une intuition, une observation terrain ou une actualite en point de depart editorial."
   },
   {
     path: "/atelier",
     label: "Atelier",
     eyebrow: "Production",
-    title: "Sujet -> typologie -> structure -> hook -> draft",
+    title: "Transformer une idee en post structure",
     description:
-      "L'atelier pilotera les skills et exposera le contexte, les traces d'execution et les corrections recommandées."
+      "L'atelier decoupe la production en etapes visibles pour que la generation reste controlable et rejouable."
   },
   {
     path: "/bibliotheque",
     label: "Bibliotheque",
     eyebrow: "Capitalisation",
-    title: "Retrouver et reutiliser",
+    title: "Retrouver un draft et le reutiliser",
     description:
-      "Les contenus, hooks, variantes et brouillons seront consultables et filtrables localement."
+      "La bibliotheque evite de perdre les bons contenus et permet de creer rapidement des variantes utiles."
   },
   {
     path: "/runner",
     label: "Runner",
     eyebrow: "Diagnostic",
-    title: "Executions et logs",
+    title: "Comprendre ce que fait le runner",
     description:
-      "Suivre l'etat du runner local, des skills et des diagnostics d'execution."
+      "Cette page sert a verifier si Codex est bien detecte et a relire les executions recentes."
   },
   {
     path: "/parametres",
     label: "Parametres",
     eyebrow: "Maintenance",
-    title: "Export et confidentialite",
+    title: "Exporter et nettoyer le workspace local",
     description:
-      "Exporter le workspace, purger les logs et maintenir le cockpit local."
+      "Les parametres regroupent les actions utiles pour maintenir l'outil sans manipuler les fichiers a la main."
   },
   {
     path: "/calendrier",
     label: "Calendrier",
     eyebrow: "Planification",
-    title: "Vue simple des contenus prevus",
+    title: "Donner une date aux drafts a publier",
     description:
-      "Le calendrier V1 restera mono-canal LinkedIn, sans synchronisation externe."
+      "Le calendrier permet de passer d'un brouillon produit a un contenu prevu dans une cadence simple."
   }
 ];
 
@@ -93,17 +94,17 @@ function SectionPage({
         <article className="status-card">
           <span className="status-label">Plateforme</span>
           <strong>{window.linkedinPoster.appName}</strong>
-          <p>Shell desktop Electron pret pour l'implementation metier.</p>
+          <p>Application desktop locale pour produire, stocker et planifier des posts LinkedIn.</p>
         </article>
         <article className="status-card">
           <span className="status-label">Systeme</span>
           <strong>{window.linkedinPoster.platform}</strong>
-          <p>Le MVP cible macOS en priorite, avec extension possible plus tard.</p>
+          <p>Le flux prioritaire vise macOS, avec un usage simple depuis une seule machine.</p>
         </article>
         <article className="status-card">
-          <span className="status-label">Etat</span>
-          <strong>Setup en place</strong>
-          <p>Les prochaines etapes vont brancher SQLite, workspace et runner.</p>
+          <span className="status-label">Commencer Ici</span>
+          <strong>Strategie puis Idees</strong>
+          <p>Si tu decouvres l'outil, commence par remplir la strategie puis ajoute un premier sujet.</p>
         </article>
       </div>
     </section>
@@ -113,6 +114,10 @@ function SectionPage({
 function renderSection(path: string, eyebrow: string, title: string, description: string) {
   if (path === "/strategie") {
     return <StrategyScreen />;
+  }
+
+  if (path === "/") {
+    return <DashboardScreen />;
   }
 
   if (path === "/idees") {
@@ -151,8 +156,8 @@ export function App() {
             <div className="eyebrow">LinkedIn Poster</div>
             <h2>Machine editoriale</h2>
             <p>
-              Un cockpit local pour produire des posts credibles, structures et
-              reutilisables.
+              Un cockpit local pour passer d'une idee brute a un post credibile,
+              structuré et reutilisable.
             </p>
           </div>
 

@@ -5,6 +5,7 @@ import {
   type SkillRunnerInvocation
 } from "../execution/skill-runner.service";
 import type { WorkshopSession } from "../../../shared/types/workshop";
+import type { StrategyBundle } from "../../../shared/types/strategy";
 
 function createId(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
@@ -14,7 +15,8 @@ export class NewsToPostService {
   constructor(
     private readonly db: Database.Database,
     private readonly ideasRepository: IdeasRepository,
-    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService()
+    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService(),
+    private readonly getActiveStrategy?: () => StrategyBundle | null
   ) {}
 
   createDraftFromSource(input: {
@@ -29,15 +31,13 @@ export class NewsToPostService {
     const draftId = createId("draft");
     const runId = createId("run");
     const createdAt = new Date().toISOString();
+    const runnerContext = this.buildRunnerContext();
 
     const invocation: SkillRunnerInvocation = {
       runId,
       skillName: "linkedin-news-to-post",
       skillVersion: "1.0.0",
-      context: {
-        pillarLabel: "Veille",
-        voiceGuardrail: "Pas de hype, du terrain."
-      },
+      context: runnerContext,
       payload: input,
       attachments: []
     };
@@ -135,9 +135,35 @@ export class NewsToPostService {
       ],
       contextUsed: {
         pillarLabel: "Veille",
-        voiceGuardrail: "Pas de hype, du terrain.",
+        voiceGuardrail: runnerContext.voiceGuardrail,
         activeSkills: [invocation.skillName]
       }
+    };
+  }
+
+  private buildRunnerContext() {
+    const strategy = this.getActiveStrategy?.();
+
+    if (!strategy) {
+      throw new Error("No active strategy bundle is available.");
+    }
+
+    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
+
+    if (!strategy.profile.id) {
+      throw new Error("Strategy profile is missing an id.");
+    }
+
+    if (!antiStyleRule) {
+      throw new Error("Strategy is missing an anti-style rule.");
+    }
+
+    return {
+      profileId: strategy.profile.id,
+      strategyProfileName: strategy.profile.name,
+      strategyPositioning: strategy.profile.positioning,
+      pillarLabel: "Veille",
+      voiceGuardrail: antiStyleRule
     };
   }
 }

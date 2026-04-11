@@ -18,6 +18,12 @@ export function IdeasScreen() {
   const [form, setForm] = useState<IdeaInput>(emptyIdea);
   const [newsSource, setNewsSource] = useState<NewsSourceInput>(emptyNewsSource);
   const [status, setStatus] = useState("Chargement des idees...");
+  const [loading, setLoading] = useState(true);
+  const [isCreatingIdea, setIsCreatingIdea] = useState(false);
+  const [isCreatingFromNews, setIsCreatingFromNews] = useState(false);
+  const [isGeneratingFromStrategy, setIsGeneratingFromStrategy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [pillarFilter, setPillarFilter] = useState("all");
 
   async function loadIdeas() {
     const result = await window.linkedinPoster.ideas.listIdeas();
@@ -28,30 +34,104 @@ export function IdeasScreen() {
   useEffect(() => {
     loadIdeas().catch(() => {
       setStatus("Impossible de charger les idees.");
+    }).finally(() => {
+      setLoading(false);
     });
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await window.linkedinPoster.ideas.createIdea(form);
-    setForm(emptyIdea);
-    await loadIdeas();
-    setStatus("Idee ajoutee au backlog.");
+    setIsCreatingIdea(true);
+    setStatus("Creation de l'idee en cours...");
+    try {
+      await window.linkedinPoster.ideas.createIdea(form);
+      setForm(emptyIdea);
+      await loadIdeas();
+      setStatus("Idee ajoutee au backlog.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      setStatus(`Erreur lors de la creation de l'idee : ${message}`);
+    } finally {
+      setIsCreatingIdea(false);
+    }
   }
 
   async function handleNewsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await window.linkedinPoster.ideas.createFromNewsSource(newsSource);
-    setNewsSource(emptyNewsSource);
-    await loadIdeas();
-    setStatus("Draft veille cree depuis la source collee.");
+    setIsCreatingFromNews(true);
+    setStatus("Transformation de la veille en cours...");
+    try {
+      await window.linkedinPoster.ideas.createFromNewsSource(newsSource);
+      setNewsSource(emptyNewsSource);
+      await loadIdeas();
+      setStatus("Draft veille cree depuis la source collee.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      setStatus(`Erreur lors de la transformation de la veille : ${message}`);
+    } finally {
+      setIsCreatingFromNews(false);
+    }
   }
+
+  const visibleIdeas = ideas.filter((idea) => {
+    const matchesQuery =
+      query.trim().length === 0 ||
+      `${idea.title} ${idea.angle} ${idea.pillarLabel}`
+        .toLowerCase()
+        .includes(query.toLowerCase());
+    const matchesPillar = pillarFilter === "all" || idea.pillarLabel === pillarFilter;
+    return matchesQuery && matchesPillar;
+  });
+
+  const pillarOptions = Array.from(new Set(ideas.map((idea) => idea.pillarLabel))).sort();
 
   return (
     <section className="panel page-panel">
       <div className="eyebrow">Backlog</div>
       <h1>Idees editoriales</h1>
-      <p>Capture les angles terrain qui serviront de point d'entree au workflow de production.</p>
+      <p>
+        Cette page sert a saisir un sujet a la main, transformer une source de
+        veille ou lancer une generation depuis la strategie. L'objectif est de
+        ne jamais perdre un bon angle avant de l'envoyer dans l'atelier.
+      </p>
+
+      <div className="insight-strip">
+        <article className="insight-card">
+          <span className="status-label">Volume</span>
+          <strong>{loading ? "..." : `${visibleIdeas.length} idee${visibleIdeas.length > 1 ? "s" : ""} visible${visibleIdeas.length > 1 ? "s" : ""}`}</strong>
+        </article>
+        <article className="insight-card">
+          <span className="status-label">Piliers</span>
+          <strong>{loading ? "..." : `${pillarOptions.length || 0} pilier${pillarOptions.length > 1 ? "s" : ""}`}</strong>
+        </article>
+      </div>
+
+      <div className="filter-bar">
+        <label className="field compact-field">
+          <span>Filtrer les idees</span>
+          <input
+            aria-label="Filtrer les idees"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Sujet, angle, pilier..."
+          />
+        </label>
+        <label className="field compact-field">
+          <span>Filtrer par pilier</span>
+          <select
+            aria-label="Filtrer par pilier"
+            value={pillarFilter}
+            onChange={(event) => setPillarFilter(event.target.value)}
+          >
+            <option value="all">Tous les piliers</option>
+            {pillarOptions.map((pillar) => (
+              <option key={pillar} value={pillar}>
+                {pillar}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <form className="strategy-form" onSubmit={handleSubmit}>
         <label className="field">
@@ -72,9 +152,9 @@ export function IdeasScreen() {
           />
         </label>
         <label className="field">
-          <span>Pilier</span>
+          <span>Pilier editorial</span>
           <input
-            aria-label="Pilier"
+            aria-label="Pilier editorial"
             value={form.pillarLabel}
             onChange={(event) =>
               setForm((current) => ({ ...current, pillarLabel: event.target.value }))
@@ -82,7 +162,7 @@ export function IdeasScreen() {
           />
         </label>
         <div className="form-actions">
-          <button type="submit" className="primary-button">
+          <button type="submit" className="primary-button" disabled={isCreatingIdea}>
             Ajouter l'idee
           </button>
           <span className="form-status">{status}</span>
@@ -112,16 +192,26 @@ export function IdeasScreen() {
           />
         </label>
         <div className="form-actions">
-          <button type="submit" className="secondary-button">
+          <button type="submit" className="secondary-button" disabled={isCreatingFromNews}>
             Transformer la veille en draft
           </button>
           <button
             type="button"
             className="secondary-button"
+            disabled={isGeneratingFromStrategy}
             onClick={async () => {
-              await window.linkedinPoster.ideas.generateFromStrategy();
-              await loadIdeas();
-              setStatus("Sujets generes depuis la strategie.");
+              setIsGeneratingFromStrategy(true);
+              setStatus("Generation des sujets en cours...");
+              try {
+                await window.linkedinPoster.ideas.generateFromStrategy();
+                await loadIdeas();
+                setStatus("Sujets generes depuis la strategie.");
+              } catch (error) {
+                const message = error instanceof Error ? error.message : "Erreur inconnue";
+                setStatus(`Erreur lors de la generation des sujets : ${message}`);
+              } finally {
+                setIsGeneratingFromStrategy(false);
+              }
             }}
           >
             Generer des sujets depuis la strategie
@@ -129,8 +219,15 @@ export function IdeasScreen() {
         </div>
       </form>
 
+      {loading ? (
+        <div className="list-grid" aria-label="Chargement des idees">
+          <article className="list-card skeleton-card" />
+          <article className="list-card skeleton-card" />
+        </div>
+      ) : null}
+
       <div className="list-grid">
-        {ideas.map((idea) => (
+        {visibleIdeas.map((idea) => (
           <article key={idea.id} className="list-card">
             <div className="status-label">{idea.pillarLabel}</div>
             <strong>{idea.title}</strong>

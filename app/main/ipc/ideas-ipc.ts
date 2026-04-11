@@ -23,7 +23,12 @@ export class IdeasService {
     createStrategyTables(db);
     this.repository = new IdeasRepository(db);
     this.skillRunnerService = skillRunnerService ?? new SkillRunnerService();
-    this.newsToPostService = new NewsToPostService(db, this.repository, this.skillRunnerService);
+    this.newsToPostService = new NewsToPostService(
+      db,
+      this.repository,
+      this.skillRunnerService,
+      () => this.strategyRepository.getActiveStrategyBundle()
+    );
     this.strategyRepository = new StrategyRepository(db);
   }
 
@@ -55,6 +60,15 @@ export class IdeasService {
       },
       attachments: []
     });
+
+    if (result.status !== "succeeded" || !result.artifacts?.[0]?.content) {
+      throw new Error(result.error?.message ?? result.summary);
+    }
+
+    if (bundle.pillars.length === 0) {
+      throw new Error("Strategy must define at least one pillar before generating ideas.");
+    }
+
     const lines = (result.artifacts?.[0]?.content ?? "")
       .split("\n")
       .map((line) => line.trim())
@@ -64,11 +78,15 @@ export class IdeasService {
       const [titlePart, anglePart] = line
         .replace(/^\d+\.\s*/, "")
         .split("| angle: ");
-      const pillarLabel = bundle.pillars[index % Math.max(bundle.pillars.length, 1)]?.label ?? "General";
+      const pillarLabel = bundle.pillars[index % bundle.pillars.length]?.label;
+
+      if (!titlePart?.trim() || !anglePart?.split("| score:")[0]?.trim() || !pillarLabel) {
+        throw new Error("Codex returned malformed topic lines.");
+      }
 
       return this.repository.createIdea({
-        title: titlePart.split(" - ")[0]?.trim() ?? titlePart.trim(),
-        angle: anglePart?.split("| score:")[0]?.trim() ?? "Angle genere depuis la strategie",
+        title: titlePart.split(" - ")[0]?.trim() || titlePart.trim(),
+        angle: anglePart.split("| score:")[0].trim(),
         pillarLabel
       });
     });

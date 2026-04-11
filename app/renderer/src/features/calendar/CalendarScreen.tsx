@@ -1,14 +1,43 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { CalendarItem } from "@shared/types/calendar";
 import type { LibraryEntry } from "@shared/types/library";
 
+function formatCalendarStatus(status: CalendarItem["status"]) {
+  if (status === "planned") {
+    return "Planifie";
+  }
+
+  if (status === "published") {
+    return "Publie";
+  }
+
+  if (status === "missed") {
+    return "Manque";
+  }
+
+  return "Pret";
+}
+
 export function CalendarScreen() {
+  const [searchParams] = useSearchParams();
+  const draftIdFromUrl = searchParams.get("draftId");
+
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [form, setForm] = useState({
-    draftId: "",
+    draftId: draftIdFromUrl || "",
     plannedDate: ""
   });
+  const [statusFilter, setStatusFilter] = useState<CalendarItem["status"] | "all">("all");
+  const [loading, setLoading] = useState(true);
+  const [isScheduling, setIsScheduling] = useState(false);
+
+  useEffect(() => {
+    if (draftIdFromUrl) {
+      setForm((f) => ({ ...f, draftId: draftIdFromUrl }));
+    }
+  }, [draftIdFromUrl]);
   const [status, setStatus] = useState("Chargement du calendrier...");
 
   async function loadAll() {
@@ -25,11 +54,15 @@ export function CalendarScreen() {
   useEffect(() => {
     loadAll().catch(() => {
       setStatus("Impossible de charger le calendrier.");
+    }).finally(() => {
+      setLoading(false);
     });
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsScheduling(true);
+    setStatus("Planification en cours...");
     await window.linkedinPoster.calendar.scheduleDraft({
       draftId: form.draftId,
       plannedDate: form.plannedDate,
@@ -38,13 +71,56 @@ export function CalendarScreen() {
     setForm({ draftId: "", plannedDate: "" });
     await loadAll();
     setStatus("Draft planifie.");
+    setIsScheduling(false);
   }
+
+  const visibleItems = useMemo(
+    () => items.filter((item) => statusFilter === "all" || item.status === statusFilter),
+    [items, statusFilter]
+  );
 
   return (
     <section className="panel page-panel">
       <div className="eyebrow">Planification</div>
       <h1>Calendrier editorial</h1>
-      <p>Planifie les drafts valides pour leur donner une cadence de publication simple et visible.</p>
+      <p>
+        Le calendrier sert a donner une date a un draft deja pret. Son role est
+        simple: rendre visible ce qui doit sortir et a quel moment.
+      </p>
+
+      <div className="insight-strip">
+        <article className="insight-card">
+          <span className="status-label">A venir</span>
+          <strong>
+            {loading
+              ? "..."
+              : `${visibleItems.length} publication${visibleItems.length > 1 ? "s" : ""}`}
+          </strong>
+        </article>
+        <article className="insight-card">
+          <span className="status-label">Drafts disponibles</span>
+          <strong>{loading ? "..." : entries.length}</strong>
+        </article>
+      </div>
+
+      <div className="filter-bar">
+        <label className="field compact-field">
+          <span>Filtrer par statut</span>
+          <select
+            aria-label="Filtrer par statut"
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as CalendarItem["status"] | "all")
+            }
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="planned">Planifie</option>
+            <option value="ready">Pret</option>
+            <option value="published">Publie</option>
+            <option value="missed">Manque</option>
+          </select>
+        </label>
+      </div>
 
       <form className="strategy-form" onSubmit={handleSubmit}>
         <label className="field">
@@ -74,19 +150,28 @@ export function CalendarScreen() {
           />
         </label>
         <div className="form-actions">
-          <button type="submit" className="primary-button">
+          <button type="submit" className="primary-button" disabled={isScheduling}>
             Planifier le draft
           </button>
           <span className="form-status">{status}</span>
         </div>
       </form>
 
+      {loading ? (
+        <div className="list-grid" aria-label="Chargement du calendrier">
+          <article className="list-card skeleton-card" />
+          <article className="list-card skeleton-card" />
+        </div>
+      ) : null}
+
       <div className="list-grid">
-        {items.map((item) => (
+        {visibleItems.map((item) => (
           <article key={item.id} className="list-card">
+            <div className="status-label">
+              {item.pillarLabel} · {formatCalendarStatus(item.status)}
+            </div>
             <strong>{item.plannedDate}</strong>
-            <p>{item.draftId}</p>
-            <div className="status-label">{item.status}</div>
+            <p>{item.draftHeadline}</p>
           </article>
         ))}
       </div>

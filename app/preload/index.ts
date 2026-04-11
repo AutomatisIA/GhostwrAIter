@@ -30,15 +30,29 @@ const workshop: WorkshopApi = {
     ipcRenderer.invoke("workshop:get-suggested-structures", ideaId, typology, objective),
   generateHooks: (ideaId, typology, structureKey) =>
     ipcRenderer.invoke("workshop:generate-hooks", ideaId, typology, structureKey),
-  generateFinalDraft: (ideaId, typology, objective, structureKey, selectedHookId) =>
+  generateFinalDraft: (
+    ideaId,
+    typology,
+    objective,
+    structureKey,
+    structureLabel,
+    selectedHookId,
+    selectedHookText,
+    hooks
+  ) =>
     ipcRenderer.invoke(
       "workshop:generate-final-draft",
       ideaId,
       typology,
       objective,
       structureKey,
-      selectedHookId
-    )
+      structureLabel,
+      selectedHookId,
+      selectedHookText,
+      hooks
+    ),
+  createVariant: (draftId, variantType) =>
+    ipcRenderer.invoke("workshop:create-variant", draftId, variantType)
 };
 
 const library: LibraryApi = {

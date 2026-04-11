@@ -31,12 +31,15 @@ export class ExecutionService {
 
   getDiagnostics(): ExecutionDiagnostics {
     const codexAvailable = this.codexAvailabilityCheck();
-    const runnerMode = this.skillRunnerService?.getRunnerMode() ?? "local-simulated";
+    const runnerMode = this.skillRunnerService?.getRunnerMode() ?? "unavailable";
 
     return {
       runnerMode,
       codexAvailable,
-      message: `Runner operationnel en mode ${runnerMode}. Codex disponible: ${codexAvailable ? "oui" : "non"}.`,
+      message:
+        runnerMode === "codex"
+          ? "Codex disponible et actif. Les generations passent uniquement si la sortie respecte le contrat attendu."
+          : "Codex indisponible. Aucune generation n'est autorisee tant que le runner n'est pas disponible.",
       availableSkills: this.skillRegistryService.listInstalledSkills()
     };
   }

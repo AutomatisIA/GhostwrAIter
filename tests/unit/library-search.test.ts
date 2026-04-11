@@ -9,6 +9,10 @@ import {
   WorkshopService
 } from "../../app/main/domains/workshop/workshop.service";
 import { LibraryService } from "../../app/main/domains/library/library.service";
+import {
+  createStrategyBundleFixture,
+  createStrictSkillRunnerService
+} from "./helpers/fake-codex";
 
 describe("library search", () => {
   let db: Database.Database;
@@ -21,8 +25,16 @@ describe("library search", () => {
     createIdeasTables(db);
     createWorkshopTables(db);
     ideasRepository = new IdeasRepository(db);
-    workshopService = new WorkshopService(db, ideasRepository);
-    libraryService = new LibraryService(db);
+    const strategyBundle = createStrategyBundleFixture();
+    const skillRunnerService = createStrictSkillRunnerService();
+    workshopService = new WorkshopService(
+      db,
+      ideasRepository,
+      () => strategyBundle,
+      undefined,
+      skillRunnerService
+    );
+    libraryService = new LibraryService(db, skillRunnerService, () => strategyBundle);
   });
 
   afterEach(() => {

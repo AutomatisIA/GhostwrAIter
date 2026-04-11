@@ -9,6 +9,10 @@ import {
   WorkshopService
 } from "../../app/main/domains/workshop/workshop.service";
 import { CalendarService } from "../../app/main/domains/calendar/calendar.service";
+import {
+  createStrategyBundleFixture,
+  createStrictSkillRunnerService
+} from "./helpers/fake-codex";
 
 describe("calendar service", () => {
   let db: Database.Database;
@@ -21,7 +25,13 @@ describe("calendar service", () => {
     createIdeasTables(db);
     createWorkshopTables(db);
     ideasRepository = new IdeasRepository(db);
-    workshopService = new WorkshopService(db, ideasRepository);
+    workshopService = new WorkshopService(
+      db,
+      ideasRepository,
+      () => createStrategyBundleFixture(),
+      undefined,
+      createStrictSkillRunnerService()
+    );
     calendarService = new CalendarService(db);
   });
 
@@ -47,6 +57,8 @@ describe("calendar service", () => {
 
     expect(items).toHaveLength(1);
     expect(items[0]?.draftId).toBe(session.draft.id);
+    expect(items[0]?.draftHeadline).toBe("Le vrai cout de l'IA mal cadree");
+    expect(items[0]?.pillarLabel).toBe("ROI");
     expect(items[0]?.plannedDate).toBe("2026-04-15");
   });
 });

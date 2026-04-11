@@ -7,7 +7,7 @@ export type ExecutionRunEntry = {
 };
 
 export type ExecutionDiagnostics = {
-  runnerMode: "local-simulated" | "codex";
+  runnerMode: "unavailable" | "codex";
   codexAvailable: boolean;
   message: string;
   availableSkills: string[];

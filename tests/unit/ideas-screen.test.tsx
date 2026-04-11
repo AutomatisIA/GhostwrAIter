@@ -53,6 +53,7 @@ describe("IdeasScreen", () => {
     renderIdeasScreen();
 
     expect(await screen.findByText("Pourquoi les PME echouent sur l'IA")).toBeTruthy();
+    expect(screen.getByText("1 idee visible")).toBeTruthy();
   });
 
   it("creates an idea and refreshes the backlog", async () => {
@@ -98,7 +99,7 @@ describe("IdeasScreen", () => {
 
     await user.type(screen.getByLabelText("Titre du sujet"), "Les 3 cas d'usage a prioriser");
     await user.type(screen.getByLabelText("Angle"), "Commencer petit mais utile");
-    await user.type(screen.getByLabelText("Pilier"), "ROI");
+    await user.type(screen.getByLabelText("Pilier editorial"), "ROI");
     await user.click(screen.getByRole("button", { name: "Ajouter l'idee" }));
 
     await waitFor(() => {
@@ -192,6 +193,45 @@ describe("IdeasScreen", () => {
     expect(await screen.findByText("Draft veille cree depuis la source collee.")).toBeTruthy();
   });
 
+  it("surfaces a visible error when transforming a news source fails", async () => {
+    const user = userEvent.setup();
+
+    window.linkedinPoster = {
+      platform: "darwin",
+      appName: "LinkedIn Poster",
+      strategy: {
+        getActiveBundle: vi.fn(),
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
+      },
+      ideas: {
+        listIdeas: vi.fn().mockResolvedValue([]),
+        createIdea: vi.fn(),
+        createFromNewsSource: vi
+          .fn()
+          .mockRejectedValue(new Error("Codex unavailable or usage limit reached")),
+        generateFromStrategy: vi.fn()
+      },
+      workshop: {
+        generateFromIdea: vi.fn(),
+        correctDraft: vi.fn(),
+        getSessionByIdeaId: vi.fn()
+      }
+    };
+
+    renderIdeasScreen();
+
+    await user.type(screen.getByLabelText("Titre source"), "Titre");
+    await user.type(screen.getByLabelText("Resume source"), "Resume");
+    await user.click(screen.getByRole("button", { name: "Transformer la veille en draft" }));
+
+    expect(
+      await screen.findByText(
+        "Erreur lors de la transformation de la veille : Codex unavailable or usage limit reached"
+      )
+    ).toBeTruthy();
+  });
+
   it("generates scored ideas from the active strategy", async () => {
     const user = userEvent.setup();
     const listIdeas = vi
@@ -246,5 +286,96 @@ describe("IdeasScreen", () => {
     });
 
     expect(await screen.findByText("Pourquoi l'adoption IA bloque en PME")).toBeTruthy();
+  });
+
+  it("shows a clear in-progress state while generating ideas from the strategy", async () => {
+    let resolveGeneration: ((value: unknown) => void) | undefined;
+    const generateFromStrategy = vi.fn().mockReturnValue(
+      new Promise((resolve) => {
+        resolveGeneration = resolve;
+      })
+    );
+
+    window.linkedinPoster = {
+      platform: "darwin",
+      appName: "LinkedIn Poster",
+      strategy: {
+        getActiveBundle: vi.fn(),
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
+      },
+      ideas: {
+        listIdeas: vi.fn().mockResolvedValue([]),
+        createIdea: vi.fn(),
+        createFromNewsSource: vi.fn(),
+        generateFromStrategy
+      },
+      workshop: {
+        generateFromIdea: vi.fn(),
+        correctDraft: vi.fn(),
+        getSessionByIdeaId: vi.fn()
+      }
+    };
+
+    renderIdeasScreen();
+
+    const button = await screen.findByRole("button", {
+      name: "Generer des sujets depuis la strategie"
+    });
+    button.click();
+
+    expect(await screen.findByText("Generation des sujets en cours...")).toBeTruthy();
+
+    resolveGeneration?.([]);
+  });
+
+  it("filters ideas by keyword and pillar locally", async () => {
+    const user = userEvent.setup();
+    window.linkedinPoster = {
+      platform: "darwin",
+      appName: "LinkedIn Poster",
+      strategy: {
+        getActiveBundle: vi.fn(),
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
+      },
+      ideas: {
+        listIdeas: vi.fn().mockResolvedValue([
+          {
+            id: "idea_1",
+            title: "Pourquoi les PME echouent sur l'IA",
+            angle: "Commencer par l'outil",
+            pillarLabel: "Adoption IA",
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: "idea_2",
+            title: "Comment mesurer le ROI d'un copilote",
+            angle: "Piloter avant d'etendre",
+            pillarLabel: "ROI",
+            createdAt: new Date().toISOString()
+          }
+        ]),
+        createIdea: vi.fn(),
+        createFromNewsSource: vi.fn(),
+        generateFromStrategy: vi.fn()
+      },
+      workshop: {
+        generateFromIdea: vi.fn(),
+        correctDraft: vi.fn(),
+        getSessionByIdeaId: vi.fn()
+      }
+    };
+
+    renderIdeasScreen();
+
+    expect(await screen.findByText("Pourquoi les PME echouent sur l'IA")).toBeTruthy();
+    expect(screen.getByText("Comment mesurer le ROI d'un copilote")).toBeTruthy();
+
+    await user.type(screen.getByLabelText("Filtrer les idees"), "ROI");
+    await user.selectOptions(screen.getByLabelText("Filtrer par pilier"), "ROI");
+
+    expect(await screen.findByText("Comment mesurer le ROI d'un copilote")).toBeTruthy();
+    expect(screen.queryByText("Pourquoi les PME echouent sur l'IA")).toBeNull();
   });
 });

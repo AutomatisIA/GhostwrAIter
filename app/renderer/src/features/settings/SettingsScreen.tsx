@@ -18,7 +18,11 @@ export function SettingsScreen() {
     <section className="panel page-panel">
       <div className="eyebrow">Parametres</div>
       <h1>Maintenance locale</h1>
-      <p>Exporte le workspace local et purger les journaux sensibles depuis un ecran dedie.</p>
+      <p>
+        Cette page regroupe les actions de maintenance. Tu peux exporter ton
+        workspace pour le sauvegarder ou purger les logs si tu veux nettoyer les
+        traces d'execution locales.
+      </p>
 
       <div className="form-actions">
         <button type="button" className="primary-button" onClick={handleExport}>

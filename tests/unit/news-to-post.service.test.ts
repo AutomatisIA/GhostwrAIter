@@ -8,6 +8,10 @@ import {
   createWorkshopTables
 } from "../../app/main/domains/workshop/workshop.service";
 import { NewsToPostService } from "../../app/main/domains/news/news-to-post.service";
+import {
+  createStrategyBundleFixture,
+  createStrictSkillRunnerService
+} from "./helpers/fake-codex";
 
 describe("news to post service", () => {
   let db: Database.Database;
@@ -19,7 +23,12 @@ describe("news to post service", () => {
     createIdeasTables(db);
     createWorkshopTables(db);
     ideasRepository = new IdeasRepository(db);
-    newsToPostService = new NewsToPostService(db, ideasRepository);
+    newsToPostService = new NewsToPostService(
+      db,
+      ideasRepository,
+      createStrictSkillRunnerService(),
+      () => createStrategyBundleFixture()
+    );
   });
 
   afterEach(() => {

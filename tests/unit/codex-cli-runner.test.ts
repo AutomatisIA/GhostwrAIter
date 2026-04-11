@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildCodexCliPath,
   CodexCliRunner,
   type CodexCliCommandExecutor,
   type CodexCliFilesystem
@@ -68,6 +69,11 @@ describe("codex cli runner", () => {
     expect(result.status).toBe("succeeded");
     expect(result.summary).toContain("Codex");
     expect(executor).toHaveBeenCalled();
+    const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(prompt).toContain("You are a premium LinkedIn editorial skill runner");
+    expect(prompt).toContain("Do not expose internal labels");
+    expect(prompt).toContain("Anti-hype");
+    expect(prompt).toContain("French");
   });
 
   it("reports unavailable when codex execution fails", () => {
@@ -87,5 +93,143 @@ describe("codex cli runner", () => {
 
     expect(result.status).toBe("failed");
     expect(result.error?.code).toBe("CODEX_CLI_FAILED");
+  });
+
+  it("adds common macOS binary directories to the CLI PATH", () => {
+    const path = buildCodexCliPath("/usr/bin");
+
+    expect(path.split(":")).toContain("/opt/homebrew/bin");
+    expect(path.split(":")).toContain("/usr/local/bin");
+    expect(path.startsWith("/usr/bin")).toBe(true);
+  });
+
+  it("demands the exact structure-selector contract fields in the prompt", () => {
+    const executor: CodexCliCommandExecutor = vi.fn().mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "forced failure"
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-runner"),
+      readFile: vi.fn(),
+      removeDir: vi.fn()
+    };
+    const runner = new CodexCliRunner(executor, filesystem);
+
+    runner.execute({
+      ...invocation,
+      skillName: "linkedin-structure-selector"
+    });
+
+    const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(prompt).toContain('Do not use "partial". If the contract cannot be fully satisfied, return "failed".');
+    expect(prompt).toContain('"data": { "structure": { "key": "..."');
+    expect(prompt).toContain('"qualitySignals": { "clarity": 0.0, "specificity": 0.0, "antiHypeAlignment": 0.0 }');
+  });
+
+  it("demands the exact strategy-foundation contract fields in the prompt", () => {
+    const executor: CodexCliCommandExecutor = vi.fn().mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "forced failure"
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-runner"),
+      readFile: vi.fn(),
+      removeDir: vi.fn()
+    };
+    const runner = new CodexCliRunner(executor, filesystem);
+
+    runner.execute({
+      ...invocation,
+      skillName: "linkedin-strategy-foundation"
+    });
+
+    const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(prompt).toContain('Never place artifacts inside "data". Use the top-level "artifacts" array only.');
+    expect(prompt).toContain('"artifacts": [{ "kind": "markdown", "label": "editorial_foundation", "content": "# ..." }]');
+    expect(prompt).toContain('"error": null');
+  });
+
+  it("demands normalized hook scores and quality signals in the hook-engine prompt", () => {
+    const executor: CodexCliCommandExecutor = vi.fn().mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "forced failure"
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-runner"),
+      readFile: vi.fn(),
+      removeDir: vi.fn()
+    };
+    const runner = new CodexCliRunner(executor, filesystem);
+
+    runner.execute({
+      ...invocation,
+      skillName: "linkedin-hook-engine"
+    });
+
+    const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(prompt).toContain('Return hook scores as decimals between 0 and 1. Never use percentages like 87 or 91.');
+    expect(prompt).toContain('"hooks":[{"family":"...","text":"...","score":0.0}]');
+    expect(prompt).toContain('"qualitySignals":{"clarity":0.0,"specificity":0.0,"antiHypeAlignment":0.0}');
+    expect(prompt).toContain("Use these editorial references for sharpness, not for copy-paste");
+    expect(prompt).toContain("La plupart des PME ne ratent pas l IA a cause des outils.");
+    expect(prompt).toContain("Ban openings that are now too recognizable");
+  });
+
+  it("demands the publishable post-writer contract in the prompt", () => {
+    const executor: CodexCliCommandExecutor = vi.fn().mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "forced failure"
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-runner"),
+      readFile: vi.fn(),
+      removeDir: vi.fn()
+    };
+    const runner = new CodexCliRunner(executor, filesystem);
+
+    runner.execute({
+      ...invocation,
+      skillName: "linkedin-post-writer"
+    });
+
+    const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(prompt).toContain('Return this exact success shape: {"status":"succeeded","summary":"...","data":{"draft":{"headline":"...","bodyMarkdown":"..."}');
+    expect(prompt).toContain('"qualitySignals":{"clarity":0.0,"specificity":0.0,"antiHypeAlignment":0.0}');
+    expect(prompt).toContain('If the draft is not publication-ready, return "failed" instead of a weak draft.');
+    expect(prompt).toContain("The first two paragraphs must already contain a concrete business consequence or operational cost.");
+    expect(prompt).toContain("Avoid generic openings such as 'On vend X comme l'etape d'apres'");
+    expect(prompt).toContain("Use these editorial references for sharpness, not for copy-paste");
+    expect(prompt).toContain("Une PME n a pas besoin de 20 cas d usage IA. Elle a besoin des 3 bons.");
+    expect(prompt).toContain("Never open with formulas such as 'Le sujet n est pas...', 'Le debat n est pas...'");
+  });
+
+  it("demands a real editorial angle shift in the repurpose prompt", () => {
+    const executor: CodexCliCommandExecutor = vi.fn().mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "forced failure"
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-runner"),
+      readFile: vi.fn(),
+      removeDir: vi.fn()
+    };
+    const runner = new CodexCliRunner(executor, filesystem);
+
+    runner.execute({
+      ...invocation,
+      skillName: "linkedin-repurpose"
+    });
+
+    const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
+    expect(prompt).toContain("The new angle must be obvious within the first two paragraphs.");
+    expect(prompt).toContain("Avoid generic transitions such as 'dans beaucoup de PME' or 'en realite'");
+    expect(prompt).toContain("Do not reuse the original headline pattern or the same opening move.");
+    expect(prompt).toContain("The first paragraph must signal the new editorial promise immediately");
+    expect(prompt).toContain("Push the variant toward a genuinely different business lens");
   });
 });

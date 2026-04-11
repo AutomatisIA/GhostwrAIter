@@ -30,9 +30,9 @@ describe("ExecutionScreen", () => {
       calendar: { listItems: vi.fn(), scheduleDraft: vi.fn() },
       execution: {
         getDiagnostics: vi.fn().mockResolvedValue({
-          runnerMode: "local-simulated",
-          codexAvailable: true,
-          message: "Runner operationnel en mode local-simulated.",
+          runnerMode: "unavailable",
+          codexAvailable: false,
+          message: "Codex indisponible. Aucune generation n'est autorisee tant que le runner n'est pas disponible.",
           availableSkills: ["linkedin-post-writer", "linkedin-post-editor"]
         }),
         listRuns: vi.fn().mockResolvedValue([
@@ -49,9 +49,13 @@ describe("ExecutionScreen", () => {
 
     render(<ExecutionScreen />);
 
-    expect(await screen.findByText("Runner operationnel en mode local-simulated.")).toBeTruthy();
-    expect((await screen.findAllByText("linkedin-post-writer")).length).toBeGreaterThan(0);
+    expect(await screen.findByText("Comprendre ce que fait le runner")).toBeTruthy();
+    expect(screen.getByText("Mode actuel")).toBeTruthy();
+    expect(screen.getByText("unavailable")).toBeTruthy();
+    expect(screen.getByText("Codex indisponible.")).toBeTruthy();
+    expect(screen.getByText("Capacites detectees")).toBeTruthy();
+    expect(screen.getAllByText("Rediger un post").length).toBeGreaterThan(0);
     expect(screen.getByText("Draft generated")).toBeTruthy();
-    expect(screen.getByText("linkedin-post-editor")).toBeTruthy();
+    expect(screen.getByText("Ce que cela veut dire")).toBeTruthy();
   });
 });

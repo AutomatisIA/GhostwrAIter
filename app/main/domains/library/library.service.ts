@@ -3,6 +3,7 @@ import {
   SkillRunnerService,
   type SkillRunnerInvocation
 } from "../execution/skill-runner.service";
+import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   LibraryEntry,
   LibrarySearchInput
@@ -20,10 +21,25 @@ type RawLibraryRow = {
   tags: string | null;
 };
 
+type VariantSourceRow = {
+  draftId: string;
+  ideaId: string;
+  headline: string;
+  bodyMarkdown: string;
+  qualityScore: number;
+  pillarLabel: string;
+  typology: string | null;
+  objective: string | null;
+  structureKey: string | null;
+  structureLabel: string | null;
+  selectedHookText: string | null;
+};
+
 export class LibraryService {
   constructor(
     private readonly db: Database.Database,
-    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService()
+    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService(),
+    private readonly getActiveStrategy?: () => StrategyBundle | null
   ) {}
 
   listEntries(): LibraryEntry[] {
@@ -43,21 +59,17 @@ export class LibraryService {
           d.headline,
           d.body_markdown AS bodyMarkdown,
           d.quality_score AS qualityScore,
-          i.pillar_label AS pillarLabel
+          i.pillar_label AS pillarLabel,
+          d.typology AS typology,
+          d.objective AS objective,
+          d.structure_key AS structureKey,
+          d.structure_label AS structureLabel,
+          d.selected_hook_text AS selectedHookText
         FROM drafts d
         INNER JOIN ideas i ON i.id = d.idea_id
         WHERE d.id = ?
       `)
-      .get(draftId) as
-        | {
-            draftId: string;
-            ideaId: string;
-            headline: string;
-            bodyMarkdown: string;
-            qualityScore: number;
-            pillarLabel: string;
-          }
-        | undefined;
+      .get(draftId) as VariantSourceRow | undefined;
 
     if (!source) {
       throw new Error(`Draft not found: ${draftId}`);
@@ -70,13 +82,16 @@ export class LibraryService {
       runId,
       skillName: "linkedin-repurpose",
       skillVersion: "1.0.0",
-      context: {
-        pillarLabel: source.pillarLabel,
-        voiceGuardrail: "Pas de hype, du terrain."
-      },
+      context: this.buildRunnerContext(source.pillarLabel),
       payload: {
         headline: source.headline,
-        bodyMarkdown: source.bodyMarkdown
+        bodyMarkdown: source.bodyMarkdown,
+        sourceQualityScore: source.qualityScore,
+        originalTypology: source.typology ?? "unknown",
+        originalObjective: source.objective ?? "unknown",
+        originalStructureKey: source.structureKey ?? "unknown",
+        originalStructureLabel: source.structureLabel ?? "unknown",
+        originalHook: source.selectedHookText ?? ""
       },
       attachments: []
     };
@@ -166,6 +181,50 @@ export class LibraryService {
     }
 
     return created;
+  }
+
+  private buildRunnerContext(pillarLabel: string) {
+    const strategy = this.getActiveStrategy?.();
+
+    if (!strategy) {
+      throw new Error("No active strategy bundle is available.");
+    }
+
+    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
+
+    if (!strategy.profile.id) {
+      throw new Error("Strategy profile is missing an id.");
+    }
+
+    if (!antiStyleRule) {
+      throw new Error("Strategy is missing an anti-style rule.");
+    }
+
+    return {
+      profileId: strategy.profile.id,
+      strategyProfileName: strategy.profile.name,
+      strategyPositioning: strategy.profile.positioning,
+      strategyBio: strategy.profile.bio,
+      strategyExpertiseSummary: strategy.profile.expertiseSummary,
+      strategyOffersSummary: this.summarizeOffers(strategy),
+      strategyIcpSummary: this.summarizeIcps(strategy),
+      pillarLabel,
+      pillarDescription:
+        strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
+      voiceGuardrail: antiStyleRule
+    };
+  }
+
+  private summarizeOffers(strategy: StrategyBundle) {
+    return strategy.offers
+      .map((offer) => `${offer.name}: ${offer.promise}. Problemes: ${offer.problems}`)
+      .join(" | ");
+  }
+
+  private summarizeIcps(strategy: StrategyBundle) {
+    return strategy.icps
+      .map((icp) => `${icp.segment}: douleurs=${icp.pains}. objections=${icp.objections ?? ""}`)
+      .join(" | ");
   }
 
   private readEntries(input: LibrarySearchInput): LibraryEntry[] {

@@ -1,6 +1,8 @@
 export type CalendarItem = {
   id: string;
   draftId: string;
+  draftHeadline: string;
+  pillarLabel: string;
   plannedDate: string;
   status: "planned" | "ready" | "published" | "missed";
 };

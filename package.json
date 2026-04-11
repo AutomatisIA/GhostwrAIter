@@ -6,15 +6,40 @@
   "main": "dist-electron/main/index.js",
   "type": "module",
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "dev": "npm run rebuild:native:electron && electron-vite dev",
+    "build": "npm run rebuild:native:electron && electron-vite build",
     "preview": "electron-vite preview",
+    "open:mac:latest": "./scripts/open-mac-latest.sh",
+    "make:mac-launcher": "node scripts/build-mac-launcher.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run",
+    "test": "npm run rebuild:native:node && vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:init": "node scripts/init-workspace.mjs"
+    "db:init": "node scripts/init-workspace.mjs",
+    "package:mac": "npm run build && electron-builder --mac dir",
+    "rebuild:native:node": "PYTHON=/usr/bin/python3 npm rebuild better-sqlite3",
+    "rebuild:native:electron": "electron-rebuild -f -w better-sqlite3"
+  },
+  "build": {
+    "appId": "com.philippe.linkedin-poster",
+    "productName": "LinkedIn Poster",
+    "directories": {
+      "output": "dist-app"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "out/renderer/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dir"
+      ]
+    }
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
@@ -26,6 +51,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@playwright/test": "^1.55.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
@@ -35,6 +61,7 @@
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.0.4",
     "electron": "^38.3.0",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^4.0.0",
     "eslint": "^9.37.0",
     "eslint-plugin-react-hooks": "^5.2.0",

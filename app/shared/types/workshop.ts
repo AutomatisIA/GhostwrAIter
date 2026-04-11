@@ -31,6 +31,11 @@ export type WorkshopDraft = {
   headline: string;
   bodyMarkdown: string;
   qualityScore: number;
+  typology?: PostTypology;
+  objective?: PostObjective;
+  structureKey?: string;
+  structureLabel?: string;
+  selectedHookText?: string;
 };
 
 export type WorkshopVersion = {
@@ -84,6 +89,10 @@ export type WorkshopApi = {
     typology: PostTypology,
     objective: PostObjective,
     structureKey: string,
-    selectedHookId: string
+    structureLabel: string,
+    selectedHookId: string,
+    selectedHookText: string,
+    hooks: HookOption[]
   ) => Promise<WorkshopSession>;
+  createVariant: (draftId: string, variantType: string) => Promise<WorkshopSession>;
 };

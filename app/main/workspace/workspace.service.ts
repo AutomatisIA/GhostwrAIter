@@ -25,6 +25,13 @@ const requiredDirectories = [
   "config"
 ];
 
+export function resolveWorkspaceRoot(
+  userDataPath: string,
+  env: NodeJS.ProcessEnv = process.env
+) {
+  return env.LINKEDIN_POSTER_WORKSPACE_ROOT || join(userDataPath, "workspace");
+}
+
 export function createWorkspaceService(rootDirectory: string) {
   function ensureWorkspace(): WorkspacePaths {
     for (const directory of requiredDirectories) {

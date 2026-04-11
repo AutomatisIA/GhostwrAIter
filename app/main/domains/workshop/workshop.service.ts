@@ -92,7 +92,10 @@ export function createWorkshopTables(db: Database.Database) {
   ensureColumn(db, "drafts", "status", "status TEXT NOT NULL DEFAULT 'draft'");
   ensureColumn(db, "drafts", "source_draft_id", "source_draft_id TEXT");
   ensureColumn(db, "drafts", "typology", "typology TEXT");
+  ensureColumn(db, "drafts", "objective", "objective TEXT");
   ensureColumn(db, "drafts", "structure_key", "structure_key TEXT");
+  ensureColumn(db, "drafts", "structure_label", "structure_label TEXT");
+  ensureColumn(db, "drafts", "selected_hook_text", "selected_hook_text TEXT");
   ensureColumn(db, "execution_runs", "skill_version", "skill_version TEXT");
   ensureColumn(db, "execution_runs", "input_json", "input_json TEXT");
   ensureColumn(db, "execution_runs", "output_json", "output_json TEXT");
@@ -192,20 +195,29 @@ export class WorkshopService {
     typology: PostTypology,
     objective: PostObjective,
     structureKey: string,
-    selectedHookId: string
+    structureLabel: string,
+    selectedHookId: string,
+    selectedHookText: string,
+    hooks: HookOption[]
   ): WorkshopSession {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const draftId = createId("draft");
     const createdAt = new Date().toISOString();
 
-    const hooks = this.generateHooks(ideaId, typology, structureKey);
-    const selectedHook =
-      hooks.find((h) => h.id === selectedHookId) ||
-      hooks[0] ||
-      ({ text: "Accroche par defaut", family: "default" } as HookOption);
+    const selectedHook = hooks.find((h) => h.id === selectedHookId);
+    const selectedStructure = {
+      key: structureKey,
+      label: structureLabel,
+      rationale: ""
+    };
 
-    const structures = this.getSuggestedStructures(ideaId, typology, objective);
-    const selectedStructure = structures.find((s) => s.key === structureKey) || structures[0];
+    if (!selectedHook) {
+      throw new Error("Selected hook is missing or invalid.");
+    }
+
+    if (!selectedStructure.key || !selectedStructure.label) {
+      throw new Error("Selected structure is missing or invalid.");
+    }
 
     const writerInvocation: SkillRunnerInvocation = {
       runId: createId("run"),
@@ -220,7 +232,7 @@ export class WorkshopService {
         objective,
         structureKey,
         structureLabel: selectedStructure.label,
-        selectedHook: selectedHook.text,
+        selectedHook: selectedHookText || selectedHook.text,
         hooks: hooks.map((h) => ({ text: h.text, family: h.family, score: h.score }))
       },
       attachments: []
@@ -233,17 +245,33 @@ export class WorkshopService {
 
     const headline = writerResult.data.draft.headline;
     const bodyMarkdown = writerResult.data.draft.bodyMarkdown;
+    const generationQualityScore = this.computeDraftQualityScore(writerResult, headline, bodyMarkdown);
 
     this.db
       .prepare(
         `
-        INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status, typology, structure_key)
-        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+        INSERT INTO drafts (
+          id, idea_id, headline, body_markdown, quality_score, created_at, status,
+          typology, objective, structure_key, structure_label, selected_hook_text
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)
       `
       )
-      .run(draftId, idea.id, headline, bodyMarkdown, 0.61, createdAt, typology, structureKey);
+      .run(
+        draftId,
+        idea.id,
+        headline,
+        bodyMarkdown,
+        generationQualityScore,
+        createdAt,
+        typology,
+        objective,
+        structureKey,
+        selectedStructure.label,
+        selectedHookText || selectedHook.text
+      );
 
-    const hookTexts = (writerResult.data.hooks || hooks).map((hook) => hook.text);
+    const hookTexts = (writerResult.data.hooks ?? hooks).map((hook) => hook.text);
 
     for (const text of hookTexts) {
       this.db
@@ -252,10 +280,90 @@ export class WorkshopService {
     }
 
     this.recordExecutionRun(writerInvocation, writerResult, idea.id, draftId, createdAt);
-    this.recordDraftVersion(draftId, bodyMarkdown, 0.61, "generation", createdAt);
+    this.recordDraftVersion(draftId, bodyMarkdown, generationQualityScore, "generation", createdAt);
     this.syncDraftTags(draftId, idea.title, idea.angle, idea.pillarLabel, false);
 
     return this.getSessionByDraftId(draftId);
+  }
+
+  createVariant(draftId: string, variantType: string): WorkshopSession {
+    const draft = this.db
+      .prepare(
+        `SELECT
+          idea_id AS ideaId,
+          headline,
+          body_markdown AS bodyMarkdown,
+          typology,
+          objective,
+          structure_key AS structureKey,
+          structure_label AS structureLabel,
+          selected_hook_text AS selectedHookText,
+          quality_score AS qualityScore
+        FROM drafts
+        WHERE id = ?`
+      )
+      .get(draftId) as
+        | {
+            ideaId: string;
+            headline: string;
+            bodyMarkdown: string;
+            typology?: string;
+            objective?: string;
+            structureKey?: string;
+            structureLabel?: string;
+            selectedHookText?: string;
+            qualityScore: number;
+          }
+        | undefined;
+
+    if (!draft) {
+      throw new Error(`Draft not found: ${draftId}`);
+    }
+
+    const idea = this.ideasRepository.getIdeaById(draft.ideaId);
+    const createdAt = new Date().toISOString();
+    const variantId = createId("draft");
+
+    const invocation: SkillRunnerInvocation = {
+      runId: createId("run"),
+      skillName: "linkedin-repurpose",
+      skillVersion: "1.0.0",
+      context: this.buildRunnerContext(idea.pillarLabel),
+      payload: {
+        headline: draft.headline,
+        bodyMarkdown: draft.bodyMarkdown,
+        variantType,
+        sourceQualityScore: draft.qualityScore,
+        originalTypology: draft.typology ?? "unknown",
+        originalObjective: draft.objective ?? "unknown",
+        originalStructureKey: draft.structureKey ?? "unknown",
+        originalStructureLabel: draft.structureLabel ?? "unknown",
+        originalHook: draft.selectedHookText ?? ""
+      },
+      attachments: []
+    };
+
+    const result = this.executeSkill(invocation);
+    if (result.status !== "succeeded" || !result.data?.draft) {
+      throw new Error(result.error?.message ?? result.summary);
+    }
+
+    const variantBody = result.data.draft.bodyMarkdown;
+
+    this.db
+      .prepare(
+        `
+        INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status, source_draft_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?)
+      `
+      )
+      .run(variantId, idea.id, result.data.draft.headline, variantBody, 0.72, createdAt, draftId);
+
+    this.recordExecutionRun(invocation, result, idea.id, variantId, createdAt);
+    this.recordDraftVersion(variantId, variantBody, 0.72, "variant", createdAt);
+    this.syncDraftTags(variantId, idea.title, idea.angle, idea.pillarLabel, true);
+
+    return this.getSessionByDraftId(variantId);
   }
 
   correctDraft(draftId: string): WorkshopSession {
@@ -290,13 +398,22 @@ export class WorkshopService {
     }
 
     const correctedBody = editorResult.data.draft.bodyMarkdown;
+    const currentHeadline =
+      (this.db.prepare("SELECT headline FROM drafts WHERE id = ?").get(draftId) as
+        | { headline: string }
+        | undefined)?.headline ?? idea.title;
+    const correctedQualityScore = this.computeDraftQualityScore(
+      editorResult,
+      currentHeadline,
+      correctedBody
+    );
 
     this.db
       .prepare("UPDATE drafts SET body_markdown = ?, quality_score = ? WHERE id = ?")
-      .run(correctedBody, 0.89, draftId);
+      .run(correctedBody, correctedQualityScore, draftId);
 
     this.recordExecutionRun(editorInvocation, editorResult, draft.ideaId, draftId, correctedAt);
-    this.recordDraftVersion(draftId, correctedBody, 0.89, "correction", correctedAt);
+    this.recordDraftVersion(draftId, correctedBody, correctedQualityScore, "correction", correctedAt);
 
     return this.getSessionByDraftId(draftId);
   }
@@ -322,7 +439,17 @@ export class WorkshopService {
   private getSessionByDraftId(draftId: string): WorkshopSession {
     const draft = this.db
       .prepare(`
-        SELECT id, idea_id AS ideaId, headline, body_markdown AS bodyMarkdown, quality_score AS qualityScore
+        SELECT
+          id,
+          idea_id AS ideaId,
+          headline,
+          body_markdown AS bodyMarkdown,
+          quality_score AS qualityScore,
+          typology,
+          objective,
+          structure_key AS structureKey,
+          structure_label AS structureLabel,
+          selected_hook_text AS selectedHookText
         FROM drafts
         WHERE id = ?
       `)
@@ -333,6 +460,11 @@ export class WorkshopService {
             headline: string;
             bodyMarkdown: string;
             qualityScore: number;
+            typology?: PostTypology;
+            objective?: PostObjective;
+            structureKey?: string;
+            structureLabel?: string;
+            selectedHookText?: string;
           }
         | undefined;
 
@@ -378,15 +510,23 @@ export class WorkshopService {
   }
 
   private buildContextUsed(pillarLabel: string): WorkshopSession["contextUsed"] {
-    const strategy = this.getActiveStrategy?.() ?? null;
-    const antiStyleRule =
-      strategy?.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText ??
-      "Pas de hype, du terrain.";
+    const strategy = this.requireActiveStrategy();
+    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
+
+    if (!antiStyleRule) {
+      throw new Error("Strategy is missing an anti-style rule.");
+    }
 
     return {
       pillarLabel,
-      strategyProfileName: strategy?.profile.name,
-      strategyPositioning: strategy?.profile.positioning,
+      strategyProfileName: strategy.profile.name,
+      strategyPositioning: strategy.profile.positioning,
+      strategyBio: strategy.profile.bio,
+      strategyExpertiseSummary: strategy.profile.expertiseSummary,
+      strategyOffersSummary: this.summarizeOffers(strategy),
+      strategyIcpSummary: this.summarizeIcps(strategy),
+      pillarDescription:
+        strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
       voiceGuardrail: antiStyleRule,
       activeSkills: [
         "linkedin-structure-selector",
@@ -402,17 +542,52 @@ export class WorkshopService {
   }
 
   private buildRunnerContext(pillarLabel: string) {
-    const strategy = this.getActiveStrategy?.() ?? null;
+    const strategy = this.requireActiveStrategy();
+    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
+
+    if (!strategy.profile.id) {
+      throw new Error("Strategy profile is missing an id.");
+    }
+
+    if (!antiStyleRule) {
+      throw new Error("Strategy is missing an anti-style rule.");
+    }
 
     return {
-      profileId: strategy?.profile.id ?? "profile_active",
-      strategyProfileName: strategy?.profile.name,
-      strategyPositioning: strategy?.profile.positioning,
+      profileId: strategy.profile.id,
+      strategyProfileName: strategy.profile.name,
+      strategyPositioning: strategy.profile.positioning,
+      strategyBio: strategy.profile.bio,
+      strategyExpertiseSummary: strategy.profile.expertiseSummary,
+      strategyOffersSummary: this.summarizeOffers(strategy),
+      strategyIcpSummary: this.summarizeIcps(strategy),
       pillarLabel,
-      voiceGuardrail:
-        strategy?.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText ??
-        "Pas de hype, du terrain."
+      pillarDescription:
+        strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
+      voiceGuardrail: antiStyleRule
     };
+  }
+
+  private requireActiveStrategy() {
+    const strategy = this.getActiveStrategy?.();
+
+    if (!strategy) {
+      throw new Error("No active strategy bundle is available.");
+    }
+
+    return strategy;
+  }
+
+  private summarizeOffers(strategy: StrategyBundle) {
+    return strategy.offers
+      .map((offer) => `${offer.name}: ${offer.promise}. Problemes: ${offer.problems}`)
+      .join(" | ");
+  }
+
+  private summarizeIcps(strategy: StrategyBundle) {
+    return strategy.icps
+      .map((icp) => `${icp.segment}: douleurs=${icp.pains}. objections=${icp.objections ?? ""}`)
+      .join(" | ");
   }
 
   private recordExecutionRun(
@@ -488,6 +663,74 @@ export class WorkshopService {
         VALUES (?, ?, ?, ?, ?, ?)
       `)
       .run(createId("version"), draftId, bodyMarkdown, qualityScore, reason, createdAt);
+  }
+
+  private computeDraftQualityScore(
+    result: SkillRunnerResult,
+    headline: string,
+    bodyMarkdown: string
+  ) {
+    const signals = result.data?.qualitySignals;
+    const signalScore = signals
+      ? signals.clarity * 0.4 + signals.specificity * 0.4 + signals.antiHypeAlignment * 0.2
+      : 0.55;
+    const heuristicScore = this.estimateDraftQuality(headline, bodyMarkdown);
+
+    return Number(
+      Math.max(0.2, Math.min(0.95, signalScore * 0.45 + heuristicScore * 0.55)).toFixed(2)
+    );
+  }
+
+  private estimateDraftQuality(headline: string, bodyMarkdown: string) {
+    const nonEmptyLines = bodyMarkdown
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const normalizedLines = nonEmptyLines.map((line) => line.toLowerCase());
+    const wordCount = bodyMarkdown
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter(Boolean).length;
+    const duplicatePenalty = normalizedLines.length - new Set(normalizedLines).size;
+    const genericPatterns = [
+      /structure retenue/i,
+      /version revue/i,
+      /ce post part d['’]un constat/i,
+      /on gagne plus vite/i,
+      /^ma grille de lecture ici/i
+    ];
+    const genericHits = genericPatterns.filter((pattern) => pattern.test(bodyMarkdown)).length;
+    const startsByRepeatingHeadline =
+      normalizedLines[0] === headline.trim().toLowerCase() ||
+      normalizedLines[0] === `${headline.trim().toLowerCase()}.`;
+    const specificitySignals =
+      (/[0-9]/.test(bodyMarkdown) ? 1 : 0) +
+      (/:/.test(bodyMarkdown) ? 1 : 0) +
+      (/vs|contre|compar|cout|risque|process|pilot|roi/i.test(bodyMarkdown) ? 1 : 0);
+
+    let score = 0.58;
+
+    if (nonEmptyLines.length >= 4 && nonEmptyLines.length <= 9) {
+      score += 0.08;
+    } else if (nonEmptyLines.length < 3) {
+      score -= 0.12;
+    }
+
+    if (wordCount >= 70 && wordCount <= 220) {
+      score += 0.08;
+    } else if (wordCount < 45) {
+      score -= 0.16;
+    }
+
+    score += Math.min(0.09, specificitySignals * 0.03);
+    score -= Math.min(0.2, genericHits * 0.1);
+    score -= Math.min(0.12, duplicatePenalty * 0.04);
+
+    if (startsByRepeatingHeadline) {
+      score -= 0.08;
+    }
+
+    return Math.max(0.15, Math.min(0.92, score));
   }
 
   private syncDraftTags(
