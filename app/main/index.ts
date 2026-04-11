@@ -19,7 +19,11 @@ import { LibraryRuntimeService, registerLibraryIpcHandlers } from "./ipc/library
 import { SettingsRuntimeService, registerSettingsIpcHandlers } from "./ipc/settings-ipc";
 import { registerStrategyIpcHandlers, StrategyService } from "./ipc/strategy-ipc";
 import { registerWorkshopIpcHandlers, WorkshopRuntimeService } from "./ipc/workshop-ipc";
-import { createWorkspaceService, resolveWorkspaceRoot } from "./workspace/workspace.service";
+import {
+  createWorkspaceService,
+  resolveWorkspaceRoot,
+  WorkspaceConfigurationError
+} from "./workspace/workspace.service";
 import { ExportService } from "./domains/export/export.service";
 import { PrivacyService } from "./domains/privacy/privacy.service";
 
@@ -61,7 +65,21 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  const workspaceRoot = resolveWorkspaceRoot(app.getPath("userData"));
+  let workspaceRoot: string;
+  try {
+    workspaceRoot = resolveWorkspaceRoot(app.getPath("userData"));
+  } catch (err) {
+    if (err instanceof WorkspaceConfigurationError) {
+      log.error(
+        `[startup] workspace configuration invalid (${err.reason}): ${err.message}`
+      );
+      // Also print to stderr so a terminal launch shows the error directly.
+      console.error(`\n[linkedin-poster] ${err.message}\n`);
+      app.exit(1);
+      return;
+    }
+    throw err;
+  }
   const workspaceService = createWorkspaceService(workspaceRoot);
   const workspacePaths = workspaceService.ensureWorkspace();
   const db = createAppDatabase(workspacePaths.databasePath);
