@@ -35,9 +35,7 @@ export const scheduleDraftInputSchema = z.object({
 
 export type ScheduleDraftInput = z.infer<typeof scheduleDraftInputSchema>;
 
-/**
- * Empty-input schema for `calendar:list-items`. The channel takes no
- * payload; the schema explicitly accepts `undefined` and rejects
- * anything else.
- */
-export const emptyInputSchema = z.undefined();
+// `calendar:list-items` takes no input; re-export the shared
+// emptyInputSchema from common.ts so the registration site can use
+// the same canonical constant as every other empty-input channel.
+export { emptyInputSchema } from "./common";

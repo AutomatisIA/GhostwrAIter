@@ -1,12 +1,10 @@
 import { ExportService } from "../domains/export/export.service";
 import { PrivacyService } from "../domains/privacy/privacy.service";
-
-type IpcRegistrar = {
-  handle: (
-    channel: string,
-    handler: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>
-  ) => void;
-};
+import { emptyInputSchema } from "../../shared/schemas/settings";
+import {
+  registerValidatedHandler,
+  type IpcRegistrar
+} from "./register-validated-handler";
 
 export class SettingsRuntimeService {
   constructor(
@@ -27,10 +25,16 @@ export function registerSettingsIpcHandlers(
   ipcRegistrar: IpcRegistrar,
   settingsService: SettingsRuntimeService
 ) {
-  ipcRegistrar.handle("settings:export-workspace", async () =>
-    settingsService.exportWorkspace()
+  registerValidatedHandler(
+    ipcRegistrar,
+    "settings:export-workspace",
+    emptyInputSchema,
+    () => settingsService.exportWorkspace()
   );
-  ipcRegistrar.handle("settings:purge-execution-logs", async () =>
-    settingsService.purgeExecutionLogs()
+  registerValidatedHandler(
+    ipcRegistrar,
+    "settings:purge-execution-logs",
+    emptyInputSchema,
+    () => settingsService.purgeExecutionLogs()
   );
 }
