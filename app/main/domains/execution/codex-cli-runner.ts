@@ -14,7 +14,29 @@ export type CodexCliCommandExecutor = (
   status: number | null;
   stdout: string;
   stderr: string;
+  signal?: NodeJS.Signals | null;
 };
+
+const DEFAULT_CODEX_CLI_TIMEOUT_MS = 120_000;
+
+/**
+ * Reads the Codex CLI timeout from the environment variable
+ * `CODEX_CLI_TIMEOUT_MS`. Accepts only a finite positive integer; any other
+ * value (missing, empty, non-numeric, zero, negative) resolves to the default
+ * of 120 000 ms (2 minutes). Read lazily per invocation so tests can override
+ * by mutating `process.env` between calls.
+ */
+export function resolveCodexCliTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.CODEX_CLI_TIMEOUT_MS;
+  if (raw === undefined || raw === null || raw === "") {
+    return DEFAULT_CODEX_CLI_TIMEOUT_MS;
+  }
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_CODEX_CLI_TIMEOUT_MS;
+  }
+  return parsed;
+}
 
 export type CodexCliFilesystem = {
   makeTempDir: () => string;
@@ -31,6 +53,7 @@ export function buildCodexCliPath(existingPath = process.env.PATH ?? "") {
 }
 
 function defaultExecutor(args: string[], input: string) {
+  const timeoutMs = resolveCodexCliTimeoutMs();
   const result = spawnSync("codex", args, {
     input,
     encoding: "utf8",
@@ -38,13 +61,15 @@ function defaultExecutor(args: string[], input: string) {
     env: {
       ...process.env,
       PATH: buildCodexCliPath()
-    }
+    },
+    timeout: timeoutMs
   });
 
   return {
     status: result.status,
     stdout: result.stdout ?? "",
-    stderr: result.stderr ?? ""
+    stderr: result.stderr ?? "",
+    signal: result.signal
   };
 }
 
@@ -83,6 +108,18 @@ export class CodexCliRunner {
         ],
         this.buildPrompt(invocation)
       );
+
+      if (result.signal === "SIGTERM" && result.status === null) {
+        const timeoutMs = resolveCodexCliTimeoutMs();
+        return {
+          status: "failed",
+          summary: "Codex CLI execution timed out",
+          error: {
+            code: "CODEX_CLI_TIMEOUT",
+            message: `Codex CLI did not respond within ${timeoutMs} ms. Increase CODEX_CLI_TIMEOUT_MS or verify Codex availability.`
+          }
+        };
+      }
 
       if (result.status !== 0) {
         return {
