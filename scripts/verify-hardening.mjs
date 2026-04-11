@@ -1,3 +1,4 @@
+/* global window, document */
 /**
  * Automated verification of the security hardening introduced by
  * feature 002-security-hardening.
