@@ -1,6 +1,7 @@
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  assertDarwinHost,
   buildMacLauncherAppleScript,
   buildMacLauncherShellCommand,
   getMacLauncherPaths
@@ -35,5 +36,38 @@ describe("mac launcher helpers", () => {
     expect(appleScript).toContain("do shell script");
     expect(appleScript).toContain(path.join(repoRoot, "scripts", "open-mac-latest.sh"));
     expect(appleScript).toContain("LinkedIn Poster Latest");
+  });
+});
+
+describe("assertDarwinHost cross-platform guard", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it("returns true on darwin without warning", () => {
+    const result = assertDarwinHost("darwin");
+    expect(result).toBe(true);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns false on linux and prints an advisory", () => {
+    const result = assertDarwinHost("linux");
+    expect(result).toBe(false);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toContain("macOS-only");
+    expect(warnSpy.mock.calls[0]?.[0]).toContain("linux");
+  });
+
+  it("returns false on win32 and prints an advisory", () => {
+    const result = assertDarwinHost("win32");
+    expect(result).toBe(false);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toContain("macOS-only");
   });
 });

@@ -1,11 +1,12 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import type {
   SkillRunnerInvocation,
   SkillRunnerResult
 } from "./skill-runner.service";
+import { findCodexBinary } from "./find-codex-binary";
 
 export type CodexCliCommandExecutor = (
   args: string[],
@@ -44,24 +45,25 @@ export type CodexCliFilesystem = {
   removeDir: (path: string) => void;
 };
 
-const commonCliDirectories = ["/opt/homebrew/bin", "/usr/local/bin"];
-
-export function buildCodexCliPath(existingPath = process.env.PATH ?? "") {
-  return [...existingPath.split(delimiter).filter(Boolean), ...commonCliDirectories]
-    .filter((entry, index, entries) => entries.indexOf(entry) === index)
-    .join(delimiter);
+/**
+ * Resolves the Codex CLI command to invoke for the current host. Uses
+ * `findCodexBinary()` to locate an absolute path when possible, and falls
+ * back to the bare name `codex` so the shell PATH resolution handles the
+ * lookup as a last resort. Exported so the runner's tests can verify the
+ * host-platform branch without spawning a real process.
+ */
+export function resolveCodexCommand(): string {
+  return findCodexBinary() ?? "codex";
 }
 
 function defaultExecutor(args: string[], input: string) {
   const timeoutMs = resolveCodexCliTimeoutMs();
-  const result = spawnSync("codex", args, {
+  const command = resolveCodexCommand();
+  const result = spawnSync(command, args, {
     input,
     encoding: "utf8",
     cwd: process.cwd(),
-    env: {
-      ...process.env,
-      PATH: buildCodexCliPath()
-    },
+    env: process.env,
     timeout: timeoutMs
   });
 

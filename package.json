@@ -18,6 +18,8 @@
     "test:e2e": "playwright test",
     "db:init": "node scripts/init-workspace.mjs",
     "package:mac": "npm run build && electron-builder --mac dir",
+    "package:win": "npm run build && electron-builder --win",
+    "package:linux": "npm run build && electron-builder --linux",
     "rebuild:native:node": "PYTHON=/usr/bin/python3 npm rebuild better-sqlite3",
     "rebuild:native:electron": "electron-rebuild -f -w better-sqlite3"
   },
@@ -38,7 +40,23 @@
       "category": "public.app-category.productivity",
       "target": [
         "dir"
-      ]
+      ],
+      "icon": "resources/icons/icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icons/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "resources/icons/icon.png",
+      "category": "Office"
     }
   },
   "dependencies": {

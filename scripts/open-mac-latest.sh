@@ -2,6 +2,18 @@
 
 set -euo pipefail
 
+# macOS-only launcher. On Windows or Linux hosts, skip gracefully with an
+# advisory message so a contributor invoking this script by mistake does not
+# see a raw shell error.
+HOST_OS="$(uname -s 2>/dev/null || echo unknown)"
+if [ "$HOST_OS" != "Darwin" ]; then
+  printf '%s\n' \
+    "open-mac-latest.sh is macOS-only (detected host: $HOST_OS)." \
+    "On Windows, launch the packaged .exe produced by 'npm run package:win'." \
+    "On Linux, launch the AppImage produced by 'npm run package:linux'." >&2
+  exit 0
+fi
+
 SCRIPT_DIR=${0:A:h}
 REPO_ROOT=${SCRIPT_DIR:h}
 APP_PATH="$REPO_ROOT/dist-app/mac-arm64/LinkedIn Poster.app"

@@ -3,11 +3,18 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildMacLauncherAppleScript, getMacLauncherPaths } from "./mac-launcher-lib.mjs";
+import {
+  buildMacLauncherAppleScript,
+  getMacLauncherPaths,
+  assertDarwinHost
+} from "./mac-launcher-lib.mjs";
 
 const execFileAsync = promisify(execFile);
 
 async function main() {
+  if (!assertDarwinHost()) {
+    return;
+  }
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
   const repoRoot = path.resolve(scriptDir, "..");
   const {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  buildCodexCliPath,
   CodexCliRunner,
+  resolveCodexCommand,
   type CodexCliCommandExecutor,
   type CodexCliFilesystem
 } from "../../app/main/domains/execution/codex-cli-runner";
@@ -95,12 +95,14 @@ describe("codex cli runner", () => {
     expect(result.error?.code).toBe("CODEX_CLI_FAILED");
   });
 
-  it("adds common macOS binary directories to the CLI PATH", () => {
-    const path = buildCodexCliPath("/usr/bin");
-
-    expect(path.split(":")).toContain("/opt/homebrew/bin");
-    expect(path.split(":")).toContain("/usr/local/bin");
-    expect(path.startsWith("/usr/bin")).toBe(true);
+  it("resolves the Codex command via the cross-platform helper without throwing", () => {
+    // The helper returns either an absolute path (when a binary exists on the
+    // host) or the bare "codex" fallback. Either outcome is acceptable for
+    // this smoke test; the exact per-platform lookup behavior is exhaustively
+    // covered by tests/unit/find-codex-binary.test.ts.
+    const command = resolveCodexCommand();
+    expect(typeof command).toBe("string");
+    expect(command.length).toBeGreaterThan(0);
   });
 
   it("demands the exact structure-selector contract fields in the prompt", () => {
