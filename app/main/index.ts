@@ -27,7 +27,7 @@ log.initialize();
 
 function createWindow() {
   const devMode = isDevMode();
-  const preloadPath = join(__dirname, "../preload/index.mjs");
+  const preloadPath = join(__dirname, "../preload/index.cjs");
 
   const window = new BrowserWindow({
     width: 1440,

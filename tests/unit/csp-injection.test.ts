@@ -61,8 +61,15 @@ describe("injectCspMetaTag — production", () => {
   it("contains the strict production directives", () => {
     expect(injected).toContain("script-src 'self'");
     expect(injected).toContain("object-src 'none'");
-    expect(injected).toContain("frame-ancestors 'none'");
+    expect(injected).toContain("form-action 'self'");
     expect(injected).not.toContain("'unsafe-eval'");
+  });
+
+  it("omits frame-ancestors because meta-tag delivery does not honor it", () => {
+    // The CSP spec mandates that frame-ancestors is ignored when delivered via
+    // <meta http-equiv>. Embedding protection for the Electron renderer is
+    // enforced by the sandbox and navigation guards, not CSP.
+    expect(injected).not.toContain("frame-ancestors");
   });
 
   it("preserves the existing HTML content", () => {
@@ -82,9 +89,8 @@ describe("injectCspMetaTag — development", () => {
     expect(injected).toContain("connect-src 'self' ws:");
   });
 
-  it("keeps object-src 'none' and frame-ancestors 'none' tight even in dev", () => {
+  it("keeps object-src 'none' tight even in dev", () => {
     expect(injected).toContain("object-src 'none'");
-    expect(injected).toContain("frame-ancestors 'none'");
   });
 });
 

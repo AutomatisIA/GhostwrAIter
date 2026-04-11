@@ -18,6 +18,11 @@
 
 export type CspMode = "production" | "development";
 
+// Note: `frame-ancestors` is intentionally omitted from these meta-tag
+// policies because the CSP specification mandates it to be ignored when
+// delivered via <meta http-equiv>. Embedding protection for Electron
+// renderers is enforced by the sandbox and the `setWindowOpenHandler`
+// deny-all policy in `app/main/window-factory.ts`, not by CSP.
 export const productionCsp: string = [
   "default-src 'self'",
   "script-src 'self'",
@@ -27,7 +32,6 @@ export const productionCsp: string = [
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
-  "frame-ancestors 'none'",
   "form-action 'self'"
 ].join("; ");
 
@@ -40,7 +44,6 @@ export const developmentCsp: string = [
   "connect-src 'self' ws: http://localhost:* http://127.0.0.1:*",
   "object-src 'none'",
   "base-uri 'self'",
-  "frame-ancestors 'none'",
   "form-action 'self'"
 ].join("; ");
 
