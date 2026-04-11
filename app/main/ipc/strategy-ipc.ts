@@ -4,14 +4,15 @@ import {
   StrategyRepository,
   createStrategyTables
 } from "../domains/strategy/strategy.repository";
-import { type StrategyBundleInput } from "../../shared/schemas/strategy";
-
-type IpcRegistrar = {
-  handle: (
-    channel: string,
-    handler: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>
-  ) => void;
-};
+import {
+  strategyBundleInputSchema,
+  type StrategyBundleInput
+} from "../../shared/schemas/strategy";
+import { emptyInputSchema } from "../../shared/schemas/common";
+import {
+  registerValidatedHandler,
+  type IpcRegistrar
+} from "./register-validated-handler";
 
 export class StrategyService {
   private readonly repository: StrategyRepository;
@@ -57,16 +58,25 @@ export function registerStrategyIpcHandlers(
   ipcRegistrar: IpcRegistrar,
   strategyService: StrategyService
 ) {
-  ipcRegistrar.handle("strategy:get-active-bundle", async () =>
-    strategyService.getActiveStrategyBundle()
+  registerValidatedHandler(
+    ipcRegistrar,
+    "strategy:get-active-bundle",
+    emptyInputSchema,
+    () => strategyService.getActiveStrategyBundle()
   );
-
-  ipcRegistrar.handle("strategy:save-bundle", async (_event, payload) => {
-    strategyService.saveStrategyBundle(payload as StrategyBundleInput);
-
-    return strategyService.getActiveStrategyBundle();
-  });
-  ipcRegistrar.handle("strategy:generate-foundation", async () =>
-    strategyService.generateFoundation()
+  registerValidatedHandler(
+    ipcRegistrar,
+    "strategy:save-bundle",
+    strategyBundleInputSchema,
+    (input) => {
+      strategyService.saveStrategyBundle(input);
+      return strategyService.getActiveStrategyBundle();
+    }
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "strategy:generate-foundation",
+    emptyInputSchema,
+    () => strategyService.generateFoundation()
   );
 }

@@ -5,6 +5,8 @@ import {
   registerStrategyIpcHandlers
 } from "../../app/main/ipc/strategy-ipc";
 import { createStrictSkillRunnerService } from "./helpers/fake-codex";
+import { SkillRunnerService } from "../../app/main/domains/execution/skill-runner.service";
+import type { IpcResult } from "../../app/main/ipc/register-validated-handler";
 
 describe("strategy IPC", () => {
   let db: Database.Database;
@@ -76,13 +78,20 @@ describe("strategy IPC", () => {
       voiceRules: []
     });
 
-    const result = await getHandler?.(undefined);
+    const result = (await getHandler?.(undefined)) as IpcResult<{
+      profile: { name: string };
+      offers: Array<{ name: string }>;
+      pillars: Array<{ label: string }>;
+    }>;
 
-    expect(result).toMatchObject({
-      profile: { name: "Philippe" },
-      offers: [{ name: "Offre coeur" }],
-      pillars: [{ label: "Adoption" }]
-    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data).toMatchObject({
+        profile: { name: "Philippe" },
+        offers: [{ name: "Offre coeur" }],
+        pillars: [{ label: "Adoption" }]
+      });
+    }
   });
 
   it("generates an editorial foundation summary from the active strategy", async () => {
@@ -111,10 +120,119 @@ describe("strategy IPC", () => {
       voiceRules: [{ category: "anti-style", ruleText: "Pas de hype", ruleType: "anti_style" }]
     });
 
-    const result = await handlers.get("strategy:generate-foundation")?.(undefined);
+    const result = (await handlers.get("strategy:generate-foundation")?.(
+      undefined
+    )) as IpcResult<{ summaryMarkdown: string }>;
 
-    expect(result).toMatchObject({
-      summaryMarkdown: expect.stringContaining("Consultant IA PME")
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.summaryMarkdown).toContain("Consultant IA PME");
+    }
+  });
+
+  it("rejects a save-bundle payload with a missing required field (IPC_INPUT_INVALID)", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const service = new StrategyService(db, createStrictSkillRunnerService());
+
+    registerStrategyIpcHandlers(
+      {
+        handle(channel, handler) {
+          handlers.set(channel, handler);
+        }
+      },
+      service
+    );
+
+    const result = (await handlers.get("strategy:save-bundle")?.(undefined, {
+      // profile is missing entirely
+      offers: [],
+      icps: [],
+      pillars: [],
+      voiceRules: []
+    })) as IpcResult<unknown>;
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("IPC_INPUT_INVALID");
+      expect(result.error.field).toBe("profile");
+    }
+  });
+
+  it("rejects a save-bundle payload with a wrong-type positioning (IPC_INPUT_INVALID)", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const service = new StrategyService(db, createStrictSkillRunnerService());
+
+    registerStrategyIpcHandlers(
+      {
+        handle(channel, handler) {
+          handlers.set(channel, handler);
+        }
+      },
+      service
+    );
+
+    const result = (await handlers.get("strategy:save-bundle")?.(undefined, {
+      profile: {
+        name: "Philippe",
+        positioning: 42,
+        bio: "",
+        expertiseSummary: ""
+      },
+      offers: [],
+      icps: [],
+      pillars: [],
+      voiceRules: []
+    })) as IpcResult<unknown>;
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("IPC_INPUT_INVALID");
+      expect(result.error.field).toContain("positioning");
+    }
+  });
+
+  it("returns IPC_HANDLER_ERROR when the foundation skill runner throws", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const throwingRunner = new SkillRunnerService({
+      codexCliRunner: {
+        isAvailable: () => true,
+        execute: () => {
+          throw new Error("simulated skill runner failure");
+        }
+      }
     });
+    const service = new StrategyService(db, throwingRunner);
+
+    registerStrategyIpcHandlers(
+      {
+        handle(channel, handler) {
+          handlers.set(channel, handler);
+        }
+      },
+      service
+    );
+
+    await handlers.get("strategy:save-bundle")?.(undefined, {
+      profile: {
+        name: "Philippe",
+        positioning: "Consultant IA PME",
+        bio: "",
+        expertiseSummary: ""
+      },
+      offers: [{ name: "Offre coeur", promise: "Promise", problems: "Problems" }],
+      icps: [],
+      pillars: [{ label: "Adoption", position: 1 }],
+      voiceRules: []
+    });
+
+    const result = (await handlers.get("strategy:generate-foundation")?.(
+      undefined
+    )) as IpcResult<unknown>;
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("IPC_HANDLER_ERROR");
+      expect(result.error.message).toContain("simulated skill runner failure");
+    }
   });
 });
