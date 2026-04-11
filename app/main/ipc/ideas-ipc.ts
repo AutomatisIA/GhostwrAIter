@@ -3,14 +3,17 @@ import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import { createStrategyTables, StrategyRepository } from "../domains/strategy/strategy.repository";
 import { createIdeasTables, IdeasRepository } from "../domains/ideas/ideas.repository";
 import { NewsToPostService } from "../domains/news/news-to-post.service";
-import type { IdeaInput, NewsSourceInput } from "../../shared/types/ideas";
-
-type IpcRegistrar = {
-  handle: (
-    channel: string,
-    handler: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>
-  ) => void;
-};
+import {
+  emptyInputSchema,
+  ideaInputSchema,
+  newsSourceInputSchema,
+  type IdeaInput,
+  type NewsSourceInput
+} from "../../shared/schemas/ideas";
+import {
+  registerValidatedHandler,
+  type IpcRegistrar
+} from "./register-validated-handler";
 
 export class IdeasService {
   private readonly repository: IdeasRepository;
@@ -101,14 +104,25 @@ export function registerIdeasIpcHandlers(
   ipcRegistrar: IpcRegistrar,
   ideasService: IdeasService
 ) {
-  ipcRegistrar.handle("ideas:list", async () => ideasService.listIdeas());
-  ipcRegistrar.handle("ideas:create", async (_event, payload) =>
-    ideasService.createIdea(payload as IdeaInput)
+  registerValidatedHandler(ipcRegistrar, "ideas:list", emptyInputSchema, () =>
+    ideasService.listIdeas()
   );
-  ipcRegistrar.handle("ideas:create-from-news-source", async (_event, payload) =>
-    ideasService.createFromNewsSource(payload as NewsSourceInput)
+  registerValidatedHandler(
+    ipcRegistrar,
+    "ideas:create",
+    ideaInputSchema,
+    (input) => ideasService.createIdea(input)
   );
-  ipcRegistrar.handle("ideas:generate-from-strategy", async () =>
-    ideasService.generateFromStrategy()
+  registerValidatedHandler(
+    ipcRegistrar,
+    "ideas:create-from-news-source",
+    newsSourceInputSchema,
+    (input) => ideasService.createFromNewsSource(input)
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "ideas:generate-from-strategy",
+    emptyInputSchema,
+    () => ideasService.generateFromStrategy()
   );
 }
