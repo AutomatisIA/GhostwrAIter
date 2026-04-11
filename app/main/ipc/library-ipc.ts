@@ -2,13 +2,16 @@ import Database from "better-sqlite3";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import { LibraryService } from "../domains/library/library.service";
 import type { StrategyBundle } from "../../shared/types/strategy";
-
-type IpcRegistrar = {
-  handle: (
-    channel: string,
-    handler: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>
-  ) => void;
-};
+import {
+  draftIdSchema,
+  emptyInputSchema,
+  searchLibraryInputSchema,
+  type SearchLibraryInput
+} from "../../shared/schemas/library";
+import {
+  registerValidatedHandler,
+  type IpcRegistrar
+} from "./register-validated-handler";
 
 export class LibraryRuntimeService {
   private readonly service: LibraryService;
@@ -25,7 +28,7 @@ export class LibraryRuntimeService {
     return this.service.listEntries();
   }
 
-  searchEntries(input: Parameters<LibraryService["searchEntries"]>[0]) {
+  searchEntries(input: SearchLibraryInput) {
     return this.service.searchEntries(input);
   }
 
@@ -38,11 +41,22 @@ export function registerLibraryIpcHandlers(
   ipcRegistrar: IpcRegistrar,
   libraryService: LibraryRuntimeService
 ) {
-  ipcRegistrar.handle("library:list-entries", async () => libraryService.listEntries());
-  ipcRegistrar.handle("library:search-entries", async (_event, input) =>
-    libraryService.searchEntries((input ?? {}) as Parameters<LibraryService["searchEntries"]>[0])
+  registerValidatedHandler(
+    ipcRegistrar,
+    "library:list-entries",
+    emptyInputSchema,
+    () => libraryService.listEntries()
   );
-  ipcRegistrar.handle("library:create-variant-from-draft", async (_event, draftId) =>
-    libraryService.createVariantFromDraft(String(draftId))
+  registerValidatedHandler(
+    ipcRegistrar,
+    "library:search-entries",
+    searchLibraryInputSchema,
+    (input) => libraryService.searchEntries(input)
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "library:create-variant-from-draft",
+    draftIdSchema,
+    (draftId) => libraryService.createVariantFromDraft(draftId)
   );
 }
