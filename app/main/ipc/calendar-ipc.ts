@@ -1,13 +1,14 @@
 import Database from "better-sqlite3";
 import { CalendarService } from "../domains/calendar/calendar.service";
-import type { ScheduleDraftInput } from "../../shared/types/calendar";
-
-type IpcRegistrar = {
-  handle: (
-    channel: string,
-    handler: (event: unknown, ...args: unknown[]) => unknown | Promise<unknown>
-  ) => void;
-};
+import {
+  emptyInputSchema,
+  scheduleDraftInputSchema,
+  type ScheduleDraftInput
+} from "../../shared/schemas/calendar";
+import {
+  registerValidatedHandler,
+  type IpcRegistrar
+} from "./register-validated-handler";
 
 export class CalendarRuntimeService {
   private readonly service: CalendarService;
@@ -29,8 +30,13 @@ export function registerCalendarIpcHandlers(
   ipcRegistrar: IpcRegistrar,
   calendarService: CalendarRuntimeService
 ) {
-  ipcRegistrar.handle("calendar:list-items", async () => calendarService.listItems());
-  ipcRegistrar.handle("calendar:schedule-draft", async (_event, payload) =>
-    calendarService.scheduleDraft(payload as ScheduleDraftInput)
+  registerValidatedHandler(ipcRegistrar, "calendar:list-items", emptyInputSchema, () =>
+    calendarService.listItems()
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "calendar:schedule-draft",
+    scheduleDraftInputSchema,
+    (input) => calendarService.scheduleDraft(input)
   );
 }
