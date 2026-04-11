@@ -7,8 +7,10 @@
 // recognised by cmd/PowerShell, and /usr/bin/python3 does not exist anyway —
 // node-gyp on Windows discovers Python via PATH and the Windows registry.
 //
-// This wrapper keeps the same npm script name (`rebuild:native:node`) so
-// nothing upstream changes, while making the gate cross-OS green.
+// Uses spawnSync with shell:true so that `npm` resolves to `npm.cmd` on
+// Windows (CVE-2024-27980 hardening prevents Node from executing .cmd files
+// directly). The command and arguments are fully hardcoded — no external
+// input flows into the shell, so there is no injection surface.
 
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -21,11 +23,14 @@ if (!isWindows && existsSync("/usr/bin/python3")) {
   env.PYTHON = "/usr/bin/python3";
 }
 
-const npmCommand = isWindows ? "npm.cmd" : "npm";
-const result = spawnSync(npmCommand, ["rebuild", "better-sqlite3"], {
+const result = spawnSync("npm", ["rebuild", "better-sqlite3"], {
   stdio: "inherit",
   env,
-  shell: false
+  shell: true
 });
 
+if (result.error) {
+  console.error(result.error);
+  process.exit(1);
+}
 process.exit(result.status ?? 1);
