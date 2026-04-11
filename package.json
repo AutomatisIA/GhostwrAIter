@@ -22,7 +22,8 @@
     "package:linux": "npm run build && electron-builder --linux",
     "rebuild:native:node": "node scripts/rebuild-native-node.mjs",
     "rebuild:native:electron": "electron-rebuild -f -w better-sqlite3",
-    "verify-hardening": "node scripts/verify-hardening.mjs"
+    "verify-hardening": "node scripts/verify-hardening.mjs",
+    "eval:editorial": "node scripts/eval-editorial-quality.mjs"
   },
   "build": {
     "appId": "com.philippe.linkedin-poster",
