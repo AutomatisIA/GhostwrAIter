@@ -58,6 +58,8 @@ The target versions below were resolved on 2026-04-11 by querying the public reg
 
 **Follow-up during implementation**: read `https://www.electronjs.org/docs/latest/breaking-changes` for the cumulative list of breaking changes from 38 → 41. Known areas to check: `app.getPath()` deprecations, `session.setPermissionRequestHandler` signature changes, any `webPreferences` field renames. No API used by this codebase is on the high-risk deprecation list at the time of writing, but the list must be re-read at implementation time.
 
+**Shipped as planned (2026-04-11)**: Electron upgraded to 41.2.0. Neither typecheck nor lint nor the 132-test suite surfaced any breaking-change migration requirement from 38 → 41 against the APIs used by this codebase. `npm audit` reports zero vulnerabilities after the upgrade. One unrelated fix was required during US2 verification: activating `sandbox: true` forced the preload script to be rebuilt as CommonJS (captured separately in commit `fix(002): make preload sandbox-compatible and drop frame-ancestors meta directive`).
+
 ### D2 — Removal of `drizzle-orm`
 
 **Decision**: Remove `drizzle-orm` from `dependencies`. Do not add it back.
@@ -91,6 +93,8 @@ The target versions below were resolved on 2026-04-11 by querying the public reg
 **Alternatives considered**:
 - Stay one version behind on the whole cluster to avoid the synchronization risk. Rejected because it would push a second upgrade into chantier 5 (CI) and mix maintenance with release work.
 
+**Contingency applied at implementation time (2026-04-11)**: the cluster was held at Vite **7.3.2** instead of 8.0.8, because `electron-vite@5.0.0` (the latest stable) peer-depends on `vite ^5.0.0 || ^6.0.0 || ^7.0.0`. A `vite-8`-compatible release of `electron-vite` only exists as `6.0.0-beta.0`, which does not qualify as a stable release per the spec mandate. `@vitejs/plugin-react` was held at **5.2.0** for the same reason (6.0.1 peer-depends on `vite ^8.0.0`). Vitest 4.1.4, electron-vite 5.0.0 and TypeScript 6.0.2 were installed as planned. Revisit this decision in a maintenance commit outside the 002 feature once `electron-vite` publishes a stable vite-8-compatible release.
+
 ### D5 — TypeScript 5.9 → 6.0 upgrade
 
 **Decision**: Upgrade `typescript` to 6.0.2 and `typescript-eslint` to 8.58.1 in the same step as the Vite/Vitest cluster (D4).
@@ -107,6 +111,8 @@ The target versions below were resolved on 2026-04-11 by querying the public reg
 **Alternatives considered**:
 - Pin TypeScript to 5.9.x explicitly. Rejected as first choice per spec mandate but kept as the contingency path.
 
+**Shipped as planned (2026-04-11)**: TypeScript 6.0.2 installed. `npm run typecheck` is clean on the entire codebase (main process, preload, renderer, shared types, build helpers, test files). No strictness-migration contingency was triggered. No downgrade needed.
+
 ### D6 — ESLint 9 → 10 upgrade
 
 **Decision**: Upgrade `eslint` to 10.2.0, and re-align `eslint-plugin-react-hooks` and `eslint-plugin-react-refresh` to whatever stable versions declare peer compatibility with ESLint 10.
@@ -116,6 +122,8 @@ The target versions below were resolved on 2026-04-11 by querying the public reg
 **Known risks**:
 - ESLint 10 is a recent major and the assistant does not have high-confidence knowledge of its specific breaking changes. The flat config format (already in use in `eslint.config.js`) is unlikely to be removed, as that was the stated goal of the 9.0 migration. Most likely breaking changes: removal of deprecated rule options, changes in default rule severity, potential removal of legacy `.eslintrc` support (already dropped in 9).
 - The two React plugins may not yet support ESLint 10 officially. If a peer-dependency resolution fails, the contingency is to stay on ESLint 9 (latest 9.x) and document.
+
+**Contingency applied at implementation time (2026-04-11)**: ESLint was held at **9.39.4** (latest 9.x) instead of 10.2.0 because `eslint-plugin-react-hooks@7.0.1` peer-depends on `eslint ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0`, which excludes ESLint 10. Additionally, `eslint-plugin-react-hooks@7.0.1` introduces a new discipline rule `react-hooks/set-state-in-effect` that flags pre-existing patterns in `CalendarScreen.tsx` (calling `setState` inside a `useEffect` body). Refactoring those effects is explicitly in the scope of chantier 4 (code quality), not chantier 1 (security hardening). `eslint-plugin-react-hooks` was therefore held at **6.1.1** as a clean major bump from the previous 5.2.0 that does not introduce the new rule, preserving the hardening scope boundary. Revisit both holds in chantier 4 or in a dedicated dependency-maintenance commit.
 
 ### D7 — `jsdom` 27 → 29 upgrade
 
