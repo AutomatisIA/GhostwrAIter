@@ -6,10 +6,12 @@ import {
   draftIdSchema,
   emptyInputSchema,
   searchLibraryInputSchema,
+  updateEntryTextTupleSchema,
   type SearchLibraryInput
 } from "../../shared/schemas/library";
 import {
   registerValidatedHandler,
+  registerValidatedTupleHandler,
   type IpcRegistrar
 } from "./register-validated-handler";
 
@@ -35,6 +37,14 @@ export class LibraryRuntimeService {
   createVariantFromDraft(draftId: string) {
     return this.service.createVariantFromDraft(draftId);
   }
+
+  updateEntryText(draftId: string, headline: string, bodyMarkdown: string) {
+    return this.service.updateEntryText(draftId, headline, bodyMarkdown);
+  }
+
+  createDivergentVariant(draftId: string) {
+    return this.service.createDivergentVariant(draftId);
+  }
 }
 
 export function registerLibraryIpcHandlers(
@@ -58,5 +68,18 @@ export function registerLibraryIpcHandlers(
     "library:create-variant-from-draft",
     draftIdSchema,
     (draftId) => libraryService.createVariantFromDraft(draftId)
+  );
+  registerValidatedTupleHandler<[string, string, string], unknown>(
+    ipcRegistrar,
+    "library:update-entry-text",
+    updateEntryTextTupleSchema,
+    (draftId, headline, bodyMarkdown) =>
+      libraryService.updateEntryText(draftId, headline, bodyMarkdown)
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "library:create-divergent-variant",
+    draftIdSchema,
+    (draftId) => libraryService.createDivergentVariant(draftId)
   );
 }

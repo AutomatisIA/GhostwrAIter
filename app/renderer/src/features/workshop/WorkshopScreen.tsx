@@ -39,7 +39,9 @@ export function WorkshopScreen() {
     nextToStep4,
     reopenStructureSelection,
     reopenHookSelection,
-    correct
+    correct,
+    saveDraftText,
+    isSavingDraftText
   } = useWorkshopFlow(ideaId);
 
   if (!ideaId) {
@@ -123,6 +125,8 @@ export function WorkshopScreen() {
               onReopenHookSelection={reopenHookSelection}
               onCorrect={correct}
               isLoadingCorrection={isLoadingCorrection}
+              onSaveDraftText={saveDraftText}
+              isSavingDraftText={isSavingDraftText}
             />
           )}
         </div>

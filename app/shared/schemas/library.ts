@@ -32,5 +32,11 @@ export type SearchLibraryInput = z.infer<typeof searchLibraryInputSchema>;
  */
 export const draftIdSchema = z.string().min(1, "draftId is required");
 
+export const updateEntryTextTupleSchema = z.tuple([
+  draftIdSchema,
+  z.string().min(1, "headline is required"),
+  z.string().min(1, "bodyMarkdown is required")
+]);
+
 // Re-export the shared empty-input schema for `library:list-entries`.
 export { emptyInputSchema } from "./common";

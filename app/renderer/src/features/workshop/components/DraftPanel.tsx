@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type {
   HookOption,
   PostObjective,
@@ -19,6 +20,8 @@ type DraftPanelProps = {
   onReopenHookSelection: () => void;
   onCorrect: () => void;
   isLoadingCorrection: boolean;
+  onSaveDraftText: (headline: string, bodyMarkdown: string) => void;
+  isSavingDraftText: boolean;
 };
 
 export function DraftPanel({
@@ -32,9 +35,29 @@ export function DraftPanel({
   onReopenStructureSelection,
   onReopenHookSelection,
   onCorrect,
-  isLoadingCorrection
+  isLoadingCorrection,
+  onSaveDraftText,
+  isSavingDraftText
 }: DraftPanelProps) {
   const qualityFeedback = getQualityFeedback(session.draft.qualityScore);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editHeadline, setEditHeadline] = useState(session.draft.headline);
+  const [editBody, setEditBody] = useState(session.draft.bodyMarkdown);
+
+  function handleStartEditing() {
+    setEditHeadline(session.draft.headline);
+    setEditBody(session.draft.bodyMarkdown);
+    setIsEditing(true);
+  }
+
+  function handleCancelEditing() {
+    setIsEditing(false);
+  }
+
+  function handleSave() {
+    onSaveDraftText(editHeadline, editBody);
+    setIsEditing(false);
+  }
 
   return (
     <div className="workshop-layout">
@@ -43,8 +66,8 @@ export function DraftPanel({
           <div className="status-label">Pret a publier ou retravailler</div>
           <strong>{session.draft.headline}</strong>
           <p>
-            Le draft est genere. Tu peux maintenant le corriger, le relire
-            ou l'envoyer dans la bibliotheque puis au calendrier.
+            Le draft est genere. Tu peux le modifier a la main, lancer une
+            correction premium ou l'envoyer dans la bibliotheque puis au calendrier.
           </p>
         </article>
 
@@ -72,21 +95,33 @@ export function DraftPanel({
         </article>
 
         <div className="workshop-summary">
-          <button className="secondary-button full-width" onClick={onReopenCadrage}>
+          <button type="button" className="secondary-button full-width" onClick={onReopenCadrage}>
             Revoir le cadrage
           </button>
-          <button className="secondary-button full-width" onClick={onReopenStructureSelection}>
+          <button type="button" className="secondary-button full-width" onClick={onReopenStructureSelection}>
             Changer la structure
           </button>
-          <button className="secondary-button full-width" onClick={onReopenHookSelection}>
+          <button type="button" className="secondary-button full-width" onClick={onReopenHookSelection}>
             Changer l'accroche
           </button>
         </div>
 
+        {!isEditing ? (
+          <button
+            type="button"
+            className="primary-button full-width"
+            onClick={handleStartEditing}
+            disabled={isLoadingCorrection || isSavingDraftText}
+          >
+            Modifier le texte
+          </button>
+        ) : null}
+
         <button
+          type="button"
           className="secondary-button full-width"
           onClick={onCorrect}
-          disabled={isLoadingCorrection}
+          disabled={isLoadingCorrection || isEditing}
         >
           {isLoadingCorrection ? (
             <>
@@ -100,17 +135,62 @@ export function DraftPanel({
       </div>
 
       <article className="list-card workshop-draft main-content">
-        <div className="status-label">Post Final</div>
-        <strong>{session.draft.headline}</strong>
-        <div className="draft-body">
-          {session.draft.bodyMarkdown.split("\n").map((line, i) => (
-            <p key={i}>{line || "\u00A0"}</p>
-          ))}
-        </div>
-        <div className="quality-row">
-          <span>Qualite estimée</span>
-          <strong>{Math.round(session.draft.qualityScore * 100)}%</strong>
-        </div>
+        <div className="status-label">{isEditing ? "Mode edition" : "Post Final"}</div>
+        {isEditing ? (
+          <>
+            <input
+              className="draft-edit-headline"
+              value={editHeadline}
+              onChange={(e) => setEditHeadline(e.target.value)}
+              aria-label="Titre du post"
+            />
+            <textarea
+              className="draft-edit-body"
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              rows={16}
+              aria-label="Corps du post"
+            />
+            <div className="form-actions">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleSave}
+                disabled={isSavingDraftText || !editHeadline.trim() || !editBody.trim()}
+              >
+                {isSavingDraftText ? (
+                  <>
+                    <span className="spinner-inline" aria-hidden="true" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  "Enregistrer"
+                )}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleCancelEditing}
+                disabled={isSavingDraftText}
+              >
+                Annuler
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <strong>{session.draft.headline}</strong>
+            <div className="draft-body">
+              {session.draft.bodyMarkdown.split("\n").map((line, i) => (
+                <p key={i}>{line || "\u00A0"}</p>
+              ))}
+            </div>
+            <div className="quality-row">
+              <span>Qualite estimee</span>
+              <strong>{Math.round(session.draft.qualityScore * 100)}%</strong>
+            </div>
+          </>
+        )}
       </article>
     </div>
   );

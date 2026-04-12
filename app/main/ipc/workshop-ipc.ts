@@ -14,7 +14,8 @@ import {
   generateFinalDraftTupleSchema,
   generateHooksTupleSchema,
   ideaIdSchema,
-  suggestedStructuresTupleSchema
+  suggestedStructuresTupleSchema,
+  updateDraftTextTupleSchema
 } from "../../shared/schemas/workshop";
 import {
   registerValidatedHandler,
@@ -86,6 +87,10 @@ export class WorkshopRuntimeService {
 
   createVariant(draftId: string, variantType: string) {
     return this.service.createVariant(draftId, variantType);
+  }
+
+  updateDraftText(draftId: string, headline: string, bodyMarkdown: string) {
+    return this.service.updateDraftText(draftId, headline, bodyMarkdown);
   }
 }
 
@@ -171,5 +176,12 @@ export function registerWorkshopIpcHandlers(
   // `correctDraftTupleSchema` is intentionally exported for symmetry and
   // potential future use; `correct-draft` uses the single-input variant
   // because it has only one scalar argument.
+  registerValidatedTupleHandler<[string, string, string], unknown>(
+    ipcRegistrar,
+    "workshop:update-draft-text",
+    updateDraftTextTupleSchema,
+    (draftId, headline, bodyMarkdown) =>
+      workshopService.updateDraftText(draftId, headline, bodyMarkdown)
+  );
   void correctDraftTupleSchema;
 }

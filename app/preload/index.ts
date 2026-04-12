@@ -118,14 +118,26 @@ const workshop: WorkshopApi = {
       )
     ),
   createVariant: (draftId, variantType) =>
-    unwrap("workshop:create-variant", ipcRenderer.invoke("workshop:create-variant", draftId, variantType))
+    unwrap("workshop:create-variant", ipcRenderer.invoke("workshop:create-variant", draftId, variantType)),
+  updateDraftText: (draftId, headline, bodyMarkdown) =>
+    unwrap(
+      "workshop:update-draft-text",
+      ipcRenderer.invoke("workshop:update-draft-text", draftId, headline, bodyMarkdown)
+    )
 };
 
 const library: LibraryApi = {
   listEntries: () => unwrap("library:list-entries", ipcRenderer.invoke("library:list-entries")),
   searchEntries: (input) => unwrap("library:search-entries", ipcRenderer.invoke("library:search-entries", input)),
   createVariantFromDraft: (draftId) =>
-    unwrap("library:create-variant-from-draft", ipcRenderer.invoke("library:create-variant-from-draft", draftId))
+    unwrap("library:create-variant-from-draft", ipcRenderer.invoke("library:create-variant-from-draft", draftId)),
+  updateEntryText: (draftId, headline, bodyMarkdown) =>
+    unwrap(
+      "library:update-entry-text",
+      ipcRenderer.invoke("library:update-entry-text", draftId, headline, bodyMarkdown)
+    ),
+  createDivergentVariant: (draftId) =>
+    unwrap("library:create-divergent-variant", ipcRenderer.invoke("library:create-divergent-variant", draftId))
 };
 
 const calendar: CalendarApi = {

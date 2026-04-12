@@ -579,6 +579,26 @@ export class WorkshopService {
     return this.getSessionByDraftId(draftId);
   }
 
+  updateDraftText(draftId: string, headline: string, bodyMarkdown: string): WorkshopSession {
+    const draft = this.db
+      .prepare("SELECT id, idea_id AS ideaId, quality_score AS qualityScore FROM drafts WHERE id = ?")
+      .get(draftId) as { id: string; ideaId: string; qualityScore: number } | undefined;
+
+    if (!draft) {
+      throw new Error(`Draft not found: ${draftId}`);
+    }
+
+    const now = new Date().toISOString();
+
+    this.db
+      .prepare("UPDATE drafts SET headline = ?, body_markdown = ? WHERE id = ?")
+      .run(headline, bodyMarkdown, draftId);
+
+    this.recordDraftVersion(draftId, bodyMarkdown, draft.qualityScore, "manual_edit", now);
+
+    return this.getSessionByDraftId(draftId);
+  }
+
   getSessionByIdeaId(ideaId: string): WorkshopSession | null {
     const latestDraft = this.db
       .prepare(`
@@ -806,7 +826,7 @@ export class WorkshopService {
     draftId: string,
     bodyMarkdown: string,
     qualityScore: number,
-    reason: "generation" | "correction" | "variant",
+    reason: "generation" | "correction" | "variant" | "manual_edit",
     createdAt: string
   ) {
     this.db

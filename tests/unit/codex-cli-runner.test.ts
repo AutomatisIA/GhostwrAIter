@@ -236,11 +236,11 @@ describe("codex cli runner", () => {
     });
 
     const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
-    expect(prompt).toContain("The new angle must be obvious within the first two paragraphs.");
-    expect(prompt).toContain("Avoid generic transitions such as 'dans beaucoup de PME' or 'en realite'");
-    expect(prompt).toContain("Do not reuse the original headline pattern or the same opening move.");
-    expect(prompt).toContain("The first paragraph must signal the new editorial promise immediately");
-    expect(prompt).toContain("Push the variant toward a genuinely different business lens");
+    expect(prompt).toContain("HARD CONSTRAINTS");
+    expect(prompt).toContain("Different narrative structure");
+    expect(prompt).toContain("Different hook family");
+    expect(prompt).toContain("Different angle of attack");
+    expect(prompt).toContain("NEVER reuse the source structure");
   });
 });
 

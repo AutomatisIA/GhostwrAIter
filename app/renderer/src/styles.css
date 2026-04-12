@@ -614,6 +614,30 @@ a {
   margin-top: 16px;
 }
 
+.draft-edit-headline {
+  width: 100%;
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+}
+
+.draft-edit-body {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 12px 14px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  resize: vertical;
+  min-height: 260px;
+}
+
 .capability-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

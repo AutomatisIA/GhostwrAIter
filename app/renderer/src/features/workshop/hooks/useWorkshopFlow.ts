@@ -285,6 +285,28 @@ export function useWorkshopFlow(ideaId: string | null) {
     }
   }
 
+  const [isSavingDraftText, setIsSavingDraftText] = useState(false);
+
+  async function saveDraftText(headline: string, bodyMarkdown: string) {
+    if (!session) return;
+    clearError();
+    setIsSavingDraftText(true);
+    try {
+      const result = await window.linkedinPoster.workshop.updateDraftText(
+        session.draft.id,
+        headline,
+        bodyMarkdown
+      );
+      setSession(result);
+      setStatus("Texte enregistre.");
+    } catch (err) {
+      setError(extractError(err));
+      setStatus("Echec de l'enregistrement.");
+    } finally {
+      setIsSavingDraftText(false);
+    }
+  }
+
   return {
     step,
     setStep,
@@ -313,6 +335,8 @@ export function useWorkshopFlow(ideaId: string | null) {
     nextToStep4,
     reopenStructureSelection,
     reopenHookSelection,
-    correct
+    correct,
+    saveDraftText,
+    isSavingDraftText
   };
 }

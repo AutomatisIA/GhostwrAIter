@@ -97,3 +97,9 @@ export const createVariantTupleSchema = z.tuple([draftIdSchema, variantTypeSchem
  * tuple-variant wrapper consistently with its siblings.
  */
 export const correctDraftTupleSchema = z.tuple([draftIdSchema]);
+
+export const updateDraftTextTupleSchema = z.tuple([
+  draftIdSchema,
+  z.string().min(1, "headline is required"),
+  z.string().min(1, "bodyMarkdown is required")
+]);

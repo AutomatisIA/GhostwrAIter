@@ -40,7 +40,7 @@ export type WorkshopVersion = {
   id: string;
   bodyMarkdown: string;
   qualityScore: number;
-  reason: "generation" | "correction" | "variant";
+  reason: "generation" | "correction" | "variant" | "manual_edit";
   createdAt: string;
 };
 
@@ -93,4 +93,9 @@ export type WorkshopApi = {
     hooks: HookOption[]
   ) => Promise<WorkshopSession>;
   createVariant: (draftId: string, variantType: string) => Promise<WorkshopSession>;
+  updateDraftText: (
+    draftId: string,
+    headline: string,
+    bodyMarkdown: string
+  ) => Promise<WorkshopSession>;
 };

@@ -2,6 +2,7 @@ export type LibraryEntry = {
   draftId: string;
   headline: string;
   bodyPreview: string;
+  bodyMarkdown: string;
   qualityScore: number;
   createdAt: string;
   status: "draft" | "variant" | "scheduled";
@@ -21,4 +22,10 @@ export type LibraryApi = {
   listEntries: () => Promise<LibraryEntry[]>;
   searchEntries: (input: LibrarySearchInput) => Promise<LibraryEntry[]>;
   createVariantFromDraft: (draftId: string) => Promise<LibraryEntry>;
+  updateEntryText: (
+    draftId: string,
+    headline: string,
+    bodyMarkdown: string
+  ) => Promise<void>;
+  createDivergentVariant: (draftId: string) => Promise<LibraryEntry>;
 };

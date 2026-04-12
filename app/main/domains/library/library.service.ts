@@ -14,6 +14,7 @@ type RawLibraryRow = {
   draftId: string;
   headline: string;
   bodyPreview: string;
+  bodyMarkdown: string;
   qualityScore: number;
   createdAt: string;
   status: LibraryEntry["status"];
@@ -176,6 +177,132 @@ export class LibraryService {
     return created;
   }
 
+  updateEntryText(draftId: string, headline: string, bodyMarkdown: string): void {
+    const draft = this.db
+      .prepare("SELECT id, status FROM drafts WHERE id = ?")
+      .get(draftId) as { id: string; status: string } | undefined;
+
+    if (!draft) {
+      throw new Error(`Draft not found: ${draftId}`);
+    }
+
+    this.db
+      .prepare("UPDATE drafts SET headline = ?, body_markdown = ? WHERE id = ?")
+      .run(headline, bodyMarkdown, draftId);
+
+    const qualityScore = (this.db
+      .prepare("SELECT quality_score AS qualityScore FROM drafts WHERE id = ?")
+      .get(draftId) as { qualityScore: number }).qualityScore;
+
+    this.db
+      .prepare(`
+        INSERT INTO draft_versions (id, draft_id, body_markdown, quality_score, reason, created_at)
+        VALUES (?, ?, ?, ?, 'manual_edit', ?)
+      `)
+      .run(`version_${Date.now()}`, draftId, bodyMarkdown, qualityScore, new Date().toISOString());
+  }
+
+  createDivergentVariant(sourceDraftId: string): LibraryEntry {
+    const source = this.db
+      .prepare(`
+        SELECT
+          d.id AS draftId,
+          d.idea_id AS ideaId,
+          d.headline,
+          d.body_markdown AS bodyMarkdown,
+          d.quality_score AS qualityScore,
+          i.pillar_label AS pillarLabel,
+          d.typology AS typology,
+          d.objective AS objective,
+          d.structure_key AS structureKey,
+          d.structure_label AS structureLabel,
+          d.selected_hook_text AS selectedHookText
+        FROM drafts d
+        INNER JOIN ideas i ON i.id = d.idea_id
+        WHERE d.id = ?
+      `)
+      .get(sourceDraftId) as VariantSourceRow | undefined;
+
+    if (!source) {
+      throw new Error(`Draft not found: ${sourceDraftId}`);
+    }
+
+    const variantId = `draft_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+    const runId = `run_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+    const createdAt = new Date().toISOString();
+    const invocation: SkillRunnerInvocation = {
+      runId,
+      skillName: "linkedin-repurpose",
+      skillVersion: "2.0.0",
+      context: this.buildRunnerContext(source.pillarLabel),
+      payload: {
+        mode: "divergent",
+        sourceHeadline: source.headline,
+        sourceBodyMarkdown: source.bodyMarkdown,
+        sourceTypology: source.typology ?? "unknown",
+        sourceObjective: source.objective ?? "unknown",
+        sourceStructureKey: source.structureKey ?? "unknown",
+        sourceStructureLabel: source.structureLabel ?? "unknown",
+        sourceHookText: source.selectedHookText ?? "",
+        sourceQualityScore: source.qualityScore
+      },
+      attachments: []
+    };
+    const result = this.skillRunnerService.execute(invocation);
+
+    if (result.status !== "succeeded" || !result.data?.draft) {
+      throw new Error(result.error?.message ?? result.summary);
+    }
+
+    const headline = result.data.draft.headline;
+    const bodyMarkdown = result.data.draft.bodyMarkdown;
+    const qualityScore =
+      result.data.qualitySignals
+        ? (result.data.qualitySignals.clarity +
+            result.data.qualitySignals.specificity +
+            result.data.qualitySignals.antiHypeAlignment) / 3
+        : 0.8;
+
+    this.db
+      .prepare(`
+        INSERT INTO drafts (
+          id, idea_id, headline, body_markdown, quality_score, created_at, status, source_draft_id
+        ) VALUES (?, ?, ?, ?, ?, ?, 'variant', ?)
+      `)
+      .run(variantId, source.ideaId, headline, bodyMarkdown, qualityScore, createdAt, source.draftId);
+
+    this.db
+      .prepare(`
+        INSERT INTO draft_versions (id, draft_id, body_markdown, quality_score, reason, created_at)
+        VALUES (?, ?, ?, ?, 'variant', ?)
+      `)
+      .run(`version_${Date.now()}`, variantId, bodyMarkdown, qualityScore, createdAt);
+
+    insertExecutionRun(this.db, {
+      id: runId,
+      ideaId: source.ideaId,
+      draftId: variantId,
+      skillName: invocation.skillName,
+      skillVersion: invocation.skillVersion,
+      status: result.status,
+      summary: result.summary,
+      inputJson: JSON.stringify(invocation),
+      outputJson: JSON.stringify(result),
+      outputMarkdown: result.artifacts?.[0]?.content ?? null,
+      errorMessage: null,
+      logPath: null,
+      startedAt: createdAt,
+      finishedAt: createdAt,
+      createdAt
+    });
+
+    const created = this.readEntries({}).find((entry) => entry.draftId === variantId);
+    if (!created) {
+      throw new Error("Divergent variant could not be reloaded");
+    }
+    return created;
+  }
+
   private buildRunnerContext(pillarLabel: string) {
     const strategy = this.getActiveStrategy?.();
 
@@ -183,14 +310,8 @@ export class LibraryService {
       throw new Error("No active strategy bundle is available.");
     }
 
-    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
-
     if (!strategy.profile.id) {
       throw new Error("Strategy profile is missing an id.");
-    }
-
-    if (!antiStyleRule) {
-      throw new Error("Strategy is missing an anti-style rule.");
     }
 
     return {
@@ -204,7 +325,11 @@ export class LibraryService {
       pillarLabel,
       pillarDescription:
         strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
-      voiceGuardrail: antiStyleRule
+      voiceRules: strategy.voiceRules.map((rule) => ({
+        category: rule.category,
+        ruleType: rule.ruleType,
+        ruleText: rule.ruleText
+      }))
     };
   }
 
@@ -260,6 +385,7 @@ export class LibraryService {
           d.id AS draftId,
           d.headline,
           substr(d.body_markdown, 1, 140) AS bodyPreview,
+          d.body_markdown AS bodyMarkdown,
           d.quality_score AS qualityScore,
           d.created_at AS createdAt,
           d.status AS status,
