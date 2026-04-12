@@ -149,9 +149,9 @@ describe("LibraryScreen", () => {
     expect(screen.getByText("Draft en cours")).toBeTruthy();
     expect(screen.queryByText("Draft planifie")).toBeNull();
 
-    const variantButton = screen.getByRole("button", { name: "Variante divergente" });
+    const variantButton = screen.getByRole("button", { name: "Variante" });
     await user.click(variantButton);
-    expect(await screen.findByText("Generation en cours...")).toBeTruthy();
+    expect(await screen.findByText("En cours...")).toBeTruthy();
 
     resolveVariant?.();
   });

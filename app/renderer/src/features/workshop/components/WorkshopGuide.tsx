@@ -50,7 +50,16 @@ export function WorkshopGuide({
           </div>
           <div>
             <span className="status-label">Structure</span>
-            <strong>{selectedStructure?.label ?? "Pas encore choisie"}</strong>
+            <strong>
+              {selectedStructure?.label
+                ? selectedStructure.label.split(/\s*->\s*/).map((part, i, arr) => (
+                    <span key={i}>
+                      {part}
+                      {i < arr.length - 1 ? <span style={{ color: "var(--color-accent-sky)", margin: "0 6px" }}>›</span> : null}
+                    </span>
+                  ))
+                : "Pas encore choisie"}
+            </strong>
           </div>
           <div>
             <span className="status-label">Accroche</span>

@@ -46,6 +46,7 @@ export function LibraryScreen() {
   const [status, setStatus] = useState("Chargement de la bibliotheque...");
   const [loading, setLoading] = useState(true);
   const [busyDraftId, setBusyDraftId] = useState<string | null>(null);
+  const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editHeadline, setEditHeadline] = useState("");
   const [editBody, setEditBody] = useState("");
@@ -156,6 +157,7 @@ export function LibraryScreen() {
   }
 
   function handleStartEditing(entry: LibraryEntry) {
+    setDeletingDraftId(null);
     setEditingDraftId(entry.draftId);
     setEditHeadline(entry.headline);
     setEditBody(entry.bodyMarkdown);
@@ -176,6 +178,23 @@ export function LibraryScreen() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       setStatus(`Erreur d'enregistrement : ${message}`);
+    } finally {
+      setBusyDraftId(null);
+    }
+  }
+
+  async function handleDeleteEntry(draftId: string) {
+    setBusyDraftId(draftId);
+    setStatus("Suppression en cours...");
+    try {
+      await window.linkedinPoster.library.deleteEntry(draftId);
+      const refreshed = await window.linkedinPoster.library.listEntries();
+      setEntries(refreshed);
+      setDeletingDraftId(null);
+      setStatus("Draft supprime.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setStatus(`Erreur de suppression : ${message}`);
     } finally {
       setBusyDraftId(null);
     }
@@ -375,17 +394,35 @@ export function LibraryScreen() {
                   </>
                 ) : (
                   <>
-                    <strong>{entry.headline}</strong>
-                    <p>{entry.bodyPreview}</p>
-                    <p>{entry.tags.join(", ")}</p>
-                    <div className="quality-row">
-                      <span>Qualite</span>
-                      <strong>{Math.round(entry.qualityScore * 100)}%</strong>
+                  <div style={{ display: "flex", gap: 16 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <strong style={{ fontSize: "1.05rem" }}>{entry.headline}</strong>
+                      <p style={{ color: "var(--color-text-secondary)", fontSize: "0.92rem", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", margin: "6px 0" }}>
+                        {entry.bodyPreview}
+                      </p>
+                      {entry.tags.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+                          {entry.tags.map((tag) => (
+                            <span key={tag} style={{ fontSize: "0.72rem", fontWeight: 600, padding: "2px 8px", borderRadius: 6, background: "var(--color-sky-bg)", color: "var(--color-accent-sky)", border: "1px solid var(--color-sky-border)" }}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                        <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--color-border-medium)", overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${Math.round(entry.qualityScore * 100)}%`, borderRadius: 3, background: entry.qualityScore >= 0.8 ? "var(--color-accent-sky)" : "var(--color-accent)" }} />
+                        </div>
+                        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--color-text-secondary)", minWidth: 36, textAlign: "right" }}>
+                          {Math.round(entry.qualityScore * 100)}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="form-actions" style={{ marginTop: "1rem" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 130 }}>
                       <button
                         type="button"
                         className="secondary-button"
+                        style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%" }}
                         onClick={() => handleStartEditing(entry)}
                         disabled={busyDraftId !== null}
                       >
@@ -394,16 +431,18 @@ export function LibraryScreen() {
                       <button
                         type="button"
                         className="secondary-button"
+                        style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%" }}
                         disabled={busyDraftId !== null}
                         onClick={() => void handleCreateDivergentVariant(entry.draftId)}
                       >
                         {busyDraftId === entry.draftId
-                          ? "Generation en cours..."
-                          : "Variante divergente"}
+                          ? "En cours..."
+                          : "Variante"}
                       </button>
                       <button
                         type="button"
-                        className="primary-button"
+                        className="secondary-button"
+                        style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%" }}
                         disabled={busyDraftId !== null}
                         onClick={() => {
                           if (schedulingDraftId === entry.draftId) {
@@ -417,7 +456,31 @@ export function LibraryScreen() {
                       >
                         Planifier
                       </button>
+                      {deletingDraftId === entry.draftId ? (
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%", color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }}
+                          disabled={busyDraftId !== null}
+                          onClick={() => void handleDeleteEntry(entry.draftId)}
+                        >
+                          Confirmer
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%", color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }}
+                          disabled={busyDraftId !== null}
+                          onClick={() => {
+                            setDeletingDraftId(entry.draftId);
+                          }}
+                        >
+                          Supprimer
+                        </button>
+                      )}
                     </div>
+                  </div>
 
                     {/* Inline scheduling form */}
                     {schedulingDraftId === entry.draftId && (

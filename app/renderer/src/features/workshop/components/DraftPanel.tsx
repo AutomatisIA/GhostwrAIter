@@ -43,6 +43,7 @@ export function DraftPanel({
   const [isEditing, setIsEditing] = useState(false);
   const [editHeadline, setEditHeadline] = useState(session.draft.headline);
   const [editBody, setEditBody] = useState(session.draft.bodyMarkdown);
+  const [copyLabel, setCopyLabel] = useState("Copier le post");
 
   function handleStartEditing() {
     setEditHeadline(session.draft.headline);
@@ -57,6 +58,14 @@ export function DraftPanel({
   function handleSave() {
     onSaveDraftText(editHeadline, editBody);
     setIsEditing(false);
+  }
+
+  function handleCopyPost() {
+    const text = session.draft.headline + "\n\n" + session.draft.bodyMarkdown;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyLabel("Copie !");
+      setTimeout(() => setCopyLabel("Copier le post"), 1500);
+    });
   }
 
   return (
@@ -88,7 +97,14 @@ export function DraftPanel({
           <div className="status-label">Configuration</div>
           <p>Typologie : {TYPOLOGIES.find((item) => item.value === typology)?.label}</p>
           <p>Objectif : {formatObjectiveLabel(objective)}</p>
-          <p>Structure : {selectedStructure?.label ?? selectedStructureKey}</p>
+          <p>Structure : {selectedStructure?.label
+            ? selectedStructure.label.split(/\s*->\s*/).map((part, i, arr) => (
+                <span key={i}>
+                  {part}
+                  {i < arr.length - 1 ? <span style={{ color: "var(--color-accent-sky)", margin: "0 6px" }}>›</span> : null}
+                </span>
+              ))
+            : selectedStructureKey}</p>
           <p>
             Accroche : {selectedHook?.text ?? session.draft.selectedHookText ?? "Non definie"}
           </p>
@@ -194,6 +210,15 @@ export function DraftPanel({
             <div className="quality-row">
               <span>Qualite estimee</span>
               <strong>{Math.round(session.draft.qualityScore * 100)}%</strong>
+            </div>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleCopyPost}
+              >
+                {copyLabel}
+              </button>
             </div>
           </>
         )}

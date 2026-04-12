@@ -202,6 +202,20 @@ export class LibraryService {
       .run(`version_${Date.now()}`, draftId, bodyMarkdown, qualityScore, new Date().toISOString());
   }
 
+  deleteEntry(draftId: string): void {
+    const draft = this.db
+      .prepare("SELECT id FROM drafts WHERE id = ?")
+      .get(draftId) as { id: string } | undefined;
+    if (!draft) {
+      throw new Error(`Draft not found: ${draftId}`);
+    }
+    this.db.prepare("DELETE FROM tag_links WHERE draft_id = ?").run(draftId);
+    this.db.prepare("DELETE FROM draft_versions WHERE draft_id = ?").run(draftId);
+    this.db.prepare("DELETE FROM hooks WHERE draft_id = ?").run(draftId);
+    this.db.prepare("DELETE FROM calendar_items WHERE draft_id = ?").run(draftId);
+    this.db.prepare("DELETE FROM drafts WHERE id = ?").run(draftId);
+  }
+
   createDivergentVariant(sourceDraftId: string): LibraryEntry {
     const source = this.db
       .prepare(`

@@ -137,7 +137,9 @@ const library: LibraryApi = {
       ipcRenderer.invoke("library:update-entry-text", draftId, headline, bodyMarkdown)
     ),
   createDivergentVariant: (draftId) =>
-    unwrap("library:create-divergent-variant", ipcRenderer.invoke("library:create-divergent-variant", draftId))
+    unwrap("library:create-divergent-variant", ipcRenderer.invoke("library:create-divergent-variant", draftId)),
+  deleteEntry: (draftId) =>
+    unwrap("library:delete-entry", ipcRenderer.invoke("library:delete-entry", draftId))
 };
 
 const calendar: CalendarApi = {

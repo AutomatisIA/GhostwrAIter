@@ -26,7 +26,7 @@ describe("WorkshopScreen Stepper", () => {
     const user = userEvent.setup();
 
     const getSuggestedStructures = vi.fn().mockResolvedValue([
-      { key: "belief-terrain-reality", label: "Croyance -> terrain -> realite", rationale: "Rationale structures" }
+      { key: "belief-terrain-reality", label: "Croyance › terrain › realite", rationale: "Rationale structures" }
     ]);
     const generateHooks = vi.fn().mockResolvedValue([
       { id: "hook_option_0", family: "contrarian", text: "Le vrai probleme...", score: 0.91 }
@@ -70,7 +70,7 @@ describe("WorkshopScreen Stepper", () => {
 
     // Step 2: Structure
     expect(await screen.findByText("Selectionne une structure narrative")).toBeTruthy();
-    expect((await screen.findAllByText("Croyance -> terrain -> realite")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Croyance › terrain › realite")).length).toBeGreaterThan(0);
     expect(screen.getByText("Typologie retenue")).toBeTruthy();
     expect(screen.getAllByText("Expertise").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: /Suivant : Accroche/i }));
@@ -94,7 +94,7 @@ describe("WorkshopScreen Stepper", () => {
     const getSuggestedStructures = vi.fn().mockResolvedValue([
       {
         key: "belief-terrain-reality",
-        label: "Croyance -> terrain -> realite",
+        label: "Croyance › terrain › realite",
         rationale: "Montrer le decalage entre discours et terrain."
       },
       {
@@ -125,7 +125,7 @@ describe("WorkshopScreen Stepper", () => {
             typology: "expertise",
             objective: "awareness",
             structureKey: "belief-terrain-reality",
-            structureLabel: "Croyance -> terrain -> realite",
+            structureLabel: "Croyance › terrain › realite",
             selectedHookText: "Le vrai sujet n'est pas l'autonomie."
           },
           hooks: [
@@ -164,8 +164,7 @@ describe("WorkshopScreen Stepper", () => {
     renderWorkshop();
 
     expect(await screen.findByText("Le vrai sujet n'est pas l'autonomie.")).toBeTruthy();
-    expect(screen.getByText("Croyance -> terrain -> realite")).toBeTruthy();
-    expect(screen.getByText("Structure : Croyance -> terrain -> realite")).toBeTruthy();
+    expect(screen.getAllByText((_content, node) => node?.textContent?.includes("Croyance › terrain › realite") ?? false).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "Changer la structure" }));
 

@@ -201,7 +201,7 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
               />
             </label>
             <div className="form-actions">
-              <button type="submit" className="secondary-button" disabled={isCreatingFromNews}>
+              <button type="submit" className="primary-button" disabled={isCreatingFromNews}>
                 Transformer la veille en draft
               </button>
             </div>
@@ -218,7 +218,7 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
           <div className="form-actions">
             <button
               type="button"
-              className="secondary-button"
+              className="primary-button"
               disabled={isGeneratingFromStrategy}
               onClick={async () => {
                 setIsGeneratingFromStrategy(true);

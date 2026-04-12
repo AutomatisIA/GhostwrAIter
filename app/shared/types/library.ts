@@ -28,4 +28,5 @@ export type LibraryApi = {
     bodyMarkdown: string
   ) => Promise<void>;
   createDivergentVariant: (draftId: string) => Promise<LibraryEntry>;
+  deleteEntry: (draftId: string) => Promise<void>;
 };

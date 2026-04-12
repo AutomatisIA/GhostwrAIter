@@ -45,6 +45,10 @@ export class LibraryRuntimeService {
   createDivergentVariant(draftId: string) {
     return this.service.createDivergentVariant(draftId);
   }
+
+  deleteEntry(draftId: string) {
+    return this.service.deleteEntry(draftId);
+  }
 }
 
 export function registerLibraryIpcHandlers(
@@ -81,5 +85,11 @@ export function registerLibraryIpcHandlers(
     "library:create-divergent-variant",
     draftIdSchema,
     (draftId) => libraryService.createDivergentVariant(draftId)
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "library:delete-entry",
+    draftIdSchema,
+    (draftId) => libraryService.deleteEntry(draftId)
   );
 }

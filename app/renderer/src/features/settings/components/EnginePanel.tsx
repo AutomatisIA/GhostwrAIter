@@ -82,9 +82,9 @@ export function EnginePanel() {
   if (loading) {
     return (
       <div className="ideas-modes">
-        <article className="idea-card skeleton-card" aria-busy="true" />
-        <article className="idea-card skeleton-card" aria-busy="true" />
-        <article className="idea-card skeleton-card" aria-busy="true" />
+        <article className="skeleton-card" style={{ minHeight: 160, borderRadius: 18 }} aria-busy="true" />
+        <article className="skeleton-card" style={{ minHeight: 160, borderRadius: 18 }} aria-busy="true" />
+        <article className="skeleton-card" style={{ minHeight: 160, borderRadius: 18 }} aria-busy="true" />
       </div>
     );
   }
