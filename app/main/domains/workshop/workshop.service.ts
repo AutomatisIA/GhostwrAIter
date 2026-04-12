@@ -717,7 +717,7 @@ export class WorkshopService {
   }
 
   private executeSkill(invocation: SkillRunnerInvocation): SkillRunnerResult {
-    return this.skillRunnerService.execute(invocation) as unknown as SkillRunnerResult;
+    return this.skillRunnerService.execute(invocation);
   }
 
   private buildRunnerContext(pillarLabel: string) {

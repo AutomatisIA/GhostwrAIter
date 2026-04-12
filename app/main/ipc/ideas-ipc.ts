@@ -47,9 +47,9 @@ export class IdeasService {
     return this.newsToPostService.createDraftFromSource(input);
   }
 
-  generateFromStrategy() {
+  async generateFromStrategy() {
     const bundle = this.strategyRepository.getActiveStrategyBundle();
-    const result = this.skillRunnerService.execute({
+    const result = await this.skillRunnerService.executeAsync({
       runId: `run_${Date.now()}`,
       skillName: "linkedin-topic-generator",
       skillVersion: "1.0.0",

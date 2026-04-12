@@ -51,7 +51,6 @@ function extractErrorCode(outputJson: string | null): string | null {
 export class ExecutionService {
   constructor(
     private readonly db: Database.Database,
-    private readonly codexAvailabilityCheck: () => boolean,
     private readonly skillRegistryService: SkillRegistryService,
     private readonly skillRunnerService?: SkillRunnerService,
     private readonly executionLogsDirectory?: string,

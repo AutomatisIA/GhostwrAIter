@@ -79,7 +79,7 @@ app.whenReady().then(() => {
         `[startup] workspace configuration invalid (${err.reason}): ${err.message}`
       );
       // Also print to stderr so a terminal launch shows the error directly.
-      console.error(`\n[linkedin-poster] ${err.message}\n`);
+      console.error(`\n[ghostwraiter] ${err.message}\n`);
       app.exit(1);
       return;
     }
@@ -118,7 +118,6 @@ app.whenReady().then(() => {
   const calendarService = new CalendarRuntimeService(db);
   const executionService = new ExecutionRuntimeService(
     db,
-    () => new CodexCliRunner().isAvailable(),
     new SkillRegistryService([
       join(app.getAppPath(), "skills"),
       join(workspacePaths.rootDirectory, "skills")

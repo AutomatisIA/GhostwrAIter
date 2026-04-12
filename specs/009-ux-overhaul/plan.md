@@ -10,7 +10,7 @@ Refonte complète de l'expérience utilisateur de LinkedIn Poster : réduction d
 
 **Language/Version**: TypeScript 6.0.2  
 **Primary Dependencies**: React 19.2.5, React Router DOM 7.14, Electron 41.2.0, electron-vite 5, Vite 7.3.2  
-**Storage**: SQLite via better-sqlite3 (local, `${workspace}/data/linkedin-poster.db`)  
+**Storage**: SQLite via better-sqlite3 (local, `${workspace}/data/ghostwraiter.db`)  
 **Testing**: Vitest 4.1.4 (unit + component), Playwright 1.59 (e2e)  
 **Target Platform**: Desktop (macOS, Windows, Linux via Electron)  
 **Project Type**: Desktop app (Electron)  

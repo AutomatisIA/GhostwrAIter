@@ -18,7 +18,6 @@ export class ExecutionRuntimeService {
 
   constructor(
     db: Database.Database,
-    codexAvailabilityCheck: () => boolean,
     skillRegistryService: SkillRegistryService,
     skillRunnerService?: SkillRunnerService,
     executionLogsDirectory?: string,
@@ -26,7 +25,6 @@ export class ExecutionRuntimeService {
   ) {
     this.service = new ExecutionService(
       db,
-      codexAvailabilityCheck,
       skillRegistryService,
       skillRunnerService,
       executionLogsDirectory,

@@ -102,13 +102,10 @@ export function EnginePanel() {
           const canSelect = engine.installState === "authenticated";
 
           return (
-            <button
+            <div
               key={engine.name}
-              type="button"
               className={`idea-card${isActive ? " idea-card--selected" : ""}`}
-              onClick={() => canSelect && handleSelect(engine.name)}
               style={{
-                cursor: canSelect ? "pointer" : "default",
                 opacity: engine.installState === "not-installed" ? 0.7 : 1,
                 textAlign: "left"
               }}
@@ -140,7 +137,19 @@ export function EnginePanel() {
                   <CopyButton text={engine.loginCommand} />
                 </div>
               </div>
-            </button>
+
+              <div style={{ marginTop: "12px" }}>
+                <button
+                  type="button"
+                  className="lib-card-action"
+                  disabled={!canSelect || isActive}
+                  onClick={() => handleSelect(engine.name)}
+                  style={{ fontWeight: 700, color: canSelect && !isActive ? "var(--color-accent)" : undefined }}
+                >
+                  {isActive ? "Actif" : "Selectionner"}
+                </button>
+              </div>
+            </div>
           );
         })}
       </div>

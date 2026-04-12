@@ -13,6 +13,7 @@ export function SettingsScreen() {
   const [searchParams] = useSearchParams();
   const [exportPath, setExportPath] = useState("");
   const [purgeState, setPurgeState] = useState<PurgeState>({ stage: "idle" });
+  const [status, setStatus] = useState("");
 
   const autoExpandDiagnostics = searchParams.get("section") === "diagnostics";
 
@@ -29,8 +30,9 @@ export function SettingsScreen() {
     try {
       const result = await window.linkedinPoster.settings.countExecutionLogs();
       setPurgeState({ stage: "confirming", count: result.count });
-    } catch {
-      // silent
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setStatus(`Erreur: ${message}`);
     }
   }
 
@@ -38,8 +40,9 @@ export function SettingsScreen() {
     try {
       const result = await window.linkedinPoster.settings.purgeExecutionLogs();
       setPurgeState({ stage: "done", deletedCount: result.deletedCount });
-    } catch {
-      // silent
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setStatus(`Erreur: ${message}`);
     }
   }
 
@@ -100,6 +103,7 @@ export function SettingsScreen() {
             ) : null}
           </div>
 
+          {status ? <p className="form-status">{status}</p> : null}
           {exportPath ? <p>{exportPath}</p> : null}
           {purgeState.stage === "done" ? (
             <p>{purgeState.deletedCount} logs supprimes localement.</p>

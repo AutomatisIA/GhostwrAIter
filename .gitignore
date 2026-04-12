@@ -20,6 +20,7 @@ logs/executions/*.json
 electron.vite.config.*.mjs
 
 .DS_Store
+*.tsbuildinfo
 
 # Strategic editorial source documents — local-only, never published
 *.docx

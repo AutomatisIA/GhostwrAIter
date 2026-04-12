@@ -43,9 +43,9 @@ describe("execution service", () => {
     );
     executionService = new ExecutionService(
       db,
-      () => true,
       new SkillRegistryService(skillsDirectory),
-      skillRunnerService
+      skillRunnerService,
+      executionLogsDirectory
     );
   });
 

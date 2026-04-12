@@ -33,9 +33,9 @@ export class StrategyService {
     return this.repository.getActiveStrategyBundle();
   }
 
-  generateFoundation() {
+  async generateFoundation() {
     const bundle = this.repository.getActiveStrategyBundle();
-    const result = this.skillRunnerService.execute({
+    const result = await this.skillRunnerService.executeAsync({
       runId: `run_${Date.now()}`,
       skillName: "linkedin-strategy-foundation",
       skillVersion: "1.0.0",

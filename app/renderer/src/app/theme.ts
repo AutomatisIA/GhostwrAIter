@@ -2,6 +2,7 @@ import type { ThemePreference } from "../../../shared/types/settings";
 
 const MEDIA_QUERY = "(prefers-color-scheme: dark)";
 
+let mediaQueryList: MediaQueryList | null = null;
 let mediaListener: (() => void) | null = null;
 
 function resolveEffectiveTheme(preference: ThemePreference): "light" | "dark" {
@@ -14,17 +15,19 @@ function setDataTheme(theme: "light" | "dark") {
 }
 
 export function applyTheme(preference: ThemePreference): void {
-  if (mediaListener) {
-    window.matchMedia(MEDIA_QUERY).removeEventListener("change", mediaListener);
+  if (mediaListener && mediaQueryList) {
+    mediaQueryList.removeEventListener("change", mediaListener);
     mediaListener = null;
+    mediaQueryList = null;
   }
 
   setDataTheme(resolveEffectiveTheme(preference));
 
   if (preference === "system") {
+    mediaQueryList = window.matchMedia(MEDIA_QUERY);
     mediaListener = () => {
       setDataTheme(resolveEffectiveTheme("system"));
     };
-    window.matchMedia(MEDIA_QUERY).addEventListener("change", mediaListener);
+    mediaQueryList.addEventListener("change", mediaListener);
   }
 }

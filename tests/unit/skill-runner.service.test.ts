@@ -34,7 +34,7 @@ describe("skill runner service", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("CODEX_UNAVAILABLE");
+    expect(result.error?.code).toBe("ENGINE_UNAVAILABLE");
   });
 
   it("returns a failed contract for an unknown skill", async () => {
@@ -337,7 +337,7 @@ describe("skill runner service", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("CODEX_INVALID_CONTRACT");
+    expect(result.error?.code).toBe("ENGINE_INVALID_CONTRACT");
   });
 
   it("fails when Codex returns hooks without valid numeric scores", async () => {
@@ -379,7 +379,7 @@ describe("skill runner service", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("CODEX_INVALID_CONTRACT");
+    expect(result.error?.code).toBe("ENGINE_INVALID_CONTRACT");
   });
 
   it("fails explicitly when the Codex runner throws", async () => {
@@ -404,6 +404,6 @@ describe("skill runner service", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("CODEX_EXECUTION_ERROR");
+    expect(result.error?.code).toBe("ENGINE_EXECUTION_ERROR");
   });
 });

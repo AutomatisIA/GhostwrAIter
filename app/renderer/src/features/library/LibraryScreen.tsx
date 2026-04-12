@@ -131,13 +131,18 @@ export function LibraryScreen() {
 
   async function handleSearch(nextQuery: string) {
     setQuery(nextQuery);
-    const result = await window.linkedinPoster.library.searchEntries({ query: nextQuery });
-    setEntries(result);
-    setStatus(
-      result.length > 0
-        ? "Resultats filtres localement."
-        : "Aucun draft ne correspond aux filtres."
-    );
+    try {
+      const result = await window.linkedinPoster.library.searchEntries({ query: nextQuery });
+      setEntries(result);
+      setStatus(
+        result.length > 0
+          ? "Resultats filtres localement."
+          : "Aucun draft ne correspond aux filtres."
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setStatus(`Erreur de recherche : ${message}`);
+    }
   }
 
   async function handleCreateDivergentVariant(draftId: string) {
