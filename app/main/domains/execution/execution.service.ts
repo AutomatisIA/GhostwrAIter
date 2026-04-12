@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { resolve } from "node:path";
 import { shell } from "electron";
 import type {
   ExecutionDiagnostics,
@@ -51,7 +52,8 @@ export class ExecutionService {
     private readonly db: Database.Database,
     private readonly codexAvailabilityCheck: () => boolean,
     private readonly skillRegistryService: SkillRegistryService,
-    private readonly skillRunnerService?: SkillRunnerService
+    private readonly skillRunnerService?: SkillRunnerService,
+    private readonly executionLogsDirectory?: string
   ) {}
 
   listRuns(): ExecutionRunEntry[] {
@@ -79,7 +81,7 @@ export class ExecutionService {
       createdAt: row.createdAt,
       errorCode: extractErrorCode(row.outputJson),
       errorMessage: row.errorMessage,
-      logPath: row.logPath
+      hasLog: row.logPath !== null
     }));
   }
 
@@ -108,6 +110,14 @@ export class ExecutionService {
     }
     if (!row.logPath) {
       throw new RunLogUnavailableError(runId);
+    }
+
+    if (this.executionLogsDirectory) {
+      const resolved = resolve(row.logPath);
+      const expectedPrefix = resolve(this.executionLogsDirectory);
+      if (!resolved.startsWith(expectedPrefix + "/") && resolved !== expectedPrefix) {
+        throw new RunLogUnavailableError(runId);
+      }
     }
 
     const failure = await shell.openPath(row.logPath);

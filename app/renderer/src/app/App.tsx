@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 import { CalendarScreen } from "../features/calendar/CalendarScreen";
 import { DashboardScreen } from "../features/dashboard/DashboardScreen";
@@ -154,6 +154,19 @@ function AppShell() {
     setIsDrawerOpen(false);
   }
 
+  useEffect(() => {
+    if (!isDrawerOpen) {
+      return;
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setIsDrawerOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isDrawerOpen]);
+
   return (
     <div className="shell">
       <button
@@ -174,11 +187,6 @@ function AppShell() {
         <div
           className="drawer-overlay"
           onClick={() => setIsDrawerOpen(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setIsDrawerOpen(false);
-            }
-          }}
           role="presentation"
         />
       ) : null}

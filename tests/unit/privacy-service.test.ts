@@ -22,8 +22,8 @@ describe("privacy service", () => {
     tempDirectories.push(root);
 
     mkdirSync(logsDir, { recursive: true });
-    writeFileSync(join(logsDir, "run-1.log"), "log content");
-    writeFileSync(join(logsDir, "run-2.log"), "log content");
+    writeFileSync(join(logsDir, "run-1.json"), "{}");
+    writeFileSync(join(logsDir, "run-2.json"), "{}");
 
     const service = new PrivacyService(logsDir);
     const result = service.purgeExecutionLogs();

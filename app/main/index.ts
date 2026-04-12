@@ -111,7 +111,8 @@ app.whenReady().then(() => {
       join(process.cwd(), "skills"),
       join(workspacePaths.rootDirectory, "skills")
     ]),
-    skillRunnerService
+    skillRunnerService,
+    join(workspacePaths.logsDirectory, "executions")
   );
   const settingsService = new SettingsRuntimeService(
     new ExportService(

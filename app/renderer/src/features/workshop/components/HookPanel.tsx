@@ -48,7 +48,7 @@ export function HookPanel({
         )}
       </div>
       <div className="form-actions">
-        <button className="secondary-button" onClick={onBack}>
+        <button type="button" className="secondary-button" onClick={onBack}>
           Retour
         </button>
         <button

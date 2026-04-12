@@ -153,9 +153,9 @@ export function ExecutionScreen() {
                   type="button"
                   className="secondary-button"
                   onClick={() => handleOpenLog(run.id)}
-                  disabled={run.logPath === null}
+                  disabled={!run.hasLog}
                   title={
-                    run.logPath === null
+                    !run.hasLog
                       ? "Aucun log technique n'a ete enregistre pour ce run."
                       : undefined
                   }

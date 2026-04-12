@@ -19,13 +19,15 @@ export class ExecutionRuntimeService {
     db: Database.Database,
     codexAvailabilityCheck: () => boolean,
     skillRegistryService: SkillRegistryService,
-    skillRunnerService?: SkillRunnerService
+    skillRunnerService?: SkillRunnerService,
+    executionLogsDirectory?: string
   ) {
     this.service = new ExecutionService(
       db,
       codexAvailabilityCheck,
       skillRegistryService,
-      skillRunnerService
+      skillRunnerService,
+      executionLogsDirectory
     );
   }
 

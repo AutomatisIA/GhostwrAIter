@@ -6,7 +6,7 @@ export type ExecutionRunEntry = {
   createdAt: string;
   errorCode: string | null;
   errorMessage: string | null;
-  logPath: string | null;
+  hasLog: boolean;
 };
 
 export type ExecutionDiagnostics = {

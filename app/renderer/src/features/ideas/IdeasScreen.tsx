@@ -251,7 +251,7 @@ export function IdeasScreen() {
         </article>
       </div>
 
-      <p className="form-status">{status}</p>
+      {status && !loading ? <p className="form-status">{status}</p> : null}
 
       {loading ? (
         <div className="list-grid" aria-label="Chargement des idees">
