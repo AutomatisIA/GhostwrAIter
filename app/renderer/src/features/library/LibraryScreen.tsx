@@ -335,29 +335,7 @@ export function LibraryScreen() {
 
           <div className="list-grid">
             {visibleEntries.map((entry) => (
-              <article key={entry.draftId} className="list-card">
-                <div className="status-label">
-                  {entry.pillarLabel} · {formatLibraryStatus(entry.status)}
-                  {scheduledDates.has(entry.draftId) && (
-                    <span
-                      style={{
-                        marginLeft: "8px",
-                        fontSize: "0.76rem",
-                        fontWeight: 600,
-                        color: "var(--color-accent-sky)",
-                        background: "var(--color-sky-bg)",
-                        border: "1px solid var(--color-sky-border)",
-                        borderRadius: "6px",
-                        padding: "2px 8px",
-                        textTransform: "none",
-                        letterSpacing: "normal",
-                      }}
-                    >
-                      Planifie le {scheduledDates.get(entry.draftId)}
-                    </span>
-                  )}
-                </div>
-
+              <article key={entry.draftId} className="lib-card">
                 {editingDraftId === entry.draftId ? (
                   <>
                     <input
@@ -373,117 +351,67 @@ export function LibraryScreen() {
                       rows={12}
                       aria-label="Corps du post"
                     />
-                    <div className="form-actions" style={{ marginTop: "0.75rem" }}>
-                      <button
-                        type="button"
-                        className="primary-button"
-                        onClick={() => void handleSaveEditing(entry.draftId)}
-                        disabled={busyDraftId !== null || !editHeadline.trim() || !editBody.trim()}
-                      >
+                    <div className="form-actions" style={{ marginTop: 8 }}>
+                      <button type="button" className="primary-button" style={{ padding: "8px 18px" }} onClick={() => void handleSaveEditing(entry.draftId)} disabled={busyDraftId !== null || !editHeadline.trim() || !editBody.trim()}>
                         Enregistrer
                       </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={handleCancelEditing}
-                        disabled={busyDraftId !== null}
-                      >
+                      <button type="button" className="secondary-button" style={{ padding: "8px 18px" }} onClick={handleCancelEditing} disabled={busyDraftId !== null}>
                         Annuler
                       </button>
                     </div>
                   </>
                 ) : (
                   <>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 20, alignItems: "start" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <strong style={{ fontSize: "1.05rem", lineHeight: 1.3, display: "block" }}>{entry.headline}</strong>
-                      <p style={{ color: "var(--color-text-secondary)", fontSize: "0.88rem", lineHeight: 1.55, margin: "6px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {entry.bodyPreview}
-                      </p>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                        {entry.tags.length > 0 && entry.tags.map((tag) => (
-                          <span key={tag} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "1px 7px", borderRadius: 5, background: "var(--color-sky-bg)", color: "var(--color-accent-sky)", border: "1px solid var(--color-sky-border)" }}>
-                            {tag}
+                    <div className="lib-card-body">
+                      <div className="lib-card-meta">
+                        <span className="lib-card-tag">{entry.pillarLabel}</span>
+                        <span className="lib-card-tag">{formatLibraryStatus(entry.status)}</span>
+                        {scheduledDates.has(entry.draftId) && (
+                          <span style={{ fontSize: "0.68rem", color: "var(--color-accent-sky)" }}>
+                            {scheduledDates.get(entry.draftId)}
                           </span>
+                        )}
+                        {entry.tags.map((tag) => (
+                          <span key={tag} style={{ fontSize: "0.65rem", color: "var(--color-text-secondary)" }}>{tag}</span>
                         ))}
-                        <span style={{ marginLeft: entry.tags.length > 0 ? "auto" : 0, display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", fontWeight: 600, color: "var(--color-text-secondary)" }}>
-                          <span style={{ display: "inline-block", width: 48, height: 5, borderRadius: 3, background: "var(--color-border-medium)", overflow: "hidden", verticalAlign: "middle" }}>
-                            <span style={{ display: "block", height: "100%", width: `${Math.round(entry.qualityScore * 100)}%`, borderRadius: 3, background: entry.qualityScore >= 0.8 ? "var(--color-accent-sky)" : "var(--color-accent)" }} />
-                          </span>
-                          {Math.round(entry.qualityScore * 100)}%
+                        <span className="lib-card-quality">
+                          <span className="lib-card-quality-dot" style={{ background: entry.qualityScore >= 0.8 ? "var(--color-accent-sky)" : entry.qualityScore >= 0.6 ? "var(--color-accent)" : "var(--color-warning-text)" }} />
+                          {Math.round(entry.qualityScore * 100)}
                         </span>
                       </div>
+                      <strong className="lib-card-headline">{entry.headline}</strong>
+                      <p className="lib-card-preview">{entry.bodyPreview}</p>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 5, width: 110 }}>
-                      <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10 }} onClick={() => handleStartEditing(entry)} disabled={busyDraftId !== null}>
+                    <div className="lib-card-actions">
+                      <button type="button" className="lib-card-action" onClick={() => handleStartEditing(entry)} disabled={busyDraftId !== null}>
                         Modifier
                       </button>
-                      <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10 }} disabled={busyDraftId !== null} onClick={() => void handleCreateDivergentVariant(entry.draftId)}>
+                      <span className="lib-card-action-separator" />
+                      <button type="button" className="lib-card-action" disabled={busyDraftId !== null} onClick={() => void handleCreateDivergentVariant(entry.draftId)}>
                         {busyDraftId === entry.draftId ? "En cours..." : "Variante"}
                       </button>
-                      <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10 }} disabled={busyDraftId !== null} onClick={() => { if (schedulingDraftId === entry.draftId) { setSchedulingDraftId(null); setSchedulingDate(""); } else { setSchedulingDraftId(entry.draftId); setSchedulingDate(""); } }}>
+                      <span className="lib-card-action-separator" />
+                      <button type="button" className="lib-card-action" disabled={busyDraftId !== null} onClick={() => { if (schedulingDraftId === entry.draftId) { setSchedulingDraftId(null); setSchedulingDate(""); } else { setSchedulingDraftId(entry.draftId); setSchedulingDate(""); } }}>
                         Planifier
                       </button>
+                      <span className="lib-card-action-separator" />
                       {deletingDraftId === entry.draftId ? (
-                        <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10, color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }} disabled={busyDraftId !== null} onClick={() => void handleDeleteEntry(entry.draftId)}>
-                          Confirmer
+                        <button type="button" className="lib-card-action lib-card-action--danger" disabled={busyDraftId !== null} onClick={() => void handleDeleteEntry(entry.draftId)}>
+                          Confirmer ?
                         </button>
                       ) : (
-                        <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10, color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }} disabled={busyDraftId !== null} onClick={() => { setDeletingDraftId(entry.draftId); }}>
+                        <button type="button" className="lib-card-action lib-card-action--danger" disabled={busyDraftId !== null} onClick={() => setDeletingDraftId(entry.draftId)}>
                           Supprimer
                         </button>
                       )}
                     </div>
-                  </div>
-
-                    {/* Inline scheduling form */}
                     {schedulingDraftId === entry.draftId && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          marginTop: "12px",
-                          padding: "12px 14px",
-                          borderRadius: "14px",
-                          background: "var(--color-bg-muted)",
-                          border: "1px solid var(--color-border)",
-                        }}
-                      >
-                        <input
-                          type="date"
-                          aria-label="Date de publication"
-                          value={schedulingDate}
-                          onChange={(e) => setSchedulingDate(e.target.value)}
-                          style={{
-                            border: "1px solid var(--color-border-medium)",
-                            borderRadius: "10px",
-                            padding: "8px 12px",
-                            background: "var(--color-bg-input)",
-                            font: "inherit",
-                            color: "inherit",
-                            fontSize: "0.9rem",
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="primary-button"
-                          style={{ padding: "8px 16px", fontSize: "0.88rem" }}
-                          disabled={!schedulingDate || busyDraftId !== null}
-                          onClick={() => void handleConfirmSchedule(entry.draftId)}
-                        >
-                          {busyDraftId === entry.draftId ? "Planification..." : "Confirmer"}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "8px 10px", borderRadius: 10, background: "var(--color-bg-muted)", border: "1px solid var(--color-border)" }}>
+                        <input type="date" aria-label="Date de publication" value={schedulingDate} onChange={(e) => setSchedulingDate(e.target.value)} style={{ border: "1px solid var(--color-border-medium)", borderRadius: 8, padding: "5px 10px", background: "var(--color-bg-input)", font: "inherit", color: "inherit", fontSize: "0.82rem" }} />
+                        <button type="button" className="lib-card-action" style={{ color: "var(--color-accent)", fontWeight: 700 }} disabled={!schedulingDate || busyDraftId !== null} onClick={() => void handleConfirmSchedule(entry.draftId)}>
+                          {busyDraftId === entry.draftId ? "..." : "OK"}
                         </button>
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          style={{ padding: "8px 16px", fontSize: "0.88rem" }}
-                          onClick={() => {
-                            setSchedulingDraftId(null);
-                            setSchedulingDate("");
-                          }}
-                          disabled={busyDraftId !== null}
-                        >
+                        <button type="button" className="lib-card-action" onClick={() => { setSchedulingDraftId(null); setSchedulingDate(""); }} disabled={busyDraftId !== null}>
                           Annuler
                         </button>
                       </div>

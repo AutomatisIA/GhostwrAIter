@@ -346,6 +346,128 @@ a {
   box-shadow: 0 8px 22px var(--color-shadow-card);
 }
 
+.lib-card {
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.lib-card:hover {
+  border-color: var(--color-accent-border);
+  box-shadow: 0 4px 16px var(--color-shadow-card);
+}
+
+.lib-card-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.lib-card-headline {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lib-card-preview {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+.lib-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.lib-card-tag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  letter-spacing: 0.02em;
+}
+
+.lib-card-quality {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.lib-card-quality-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.lib-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.lib-card-action {
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.lib-card-action:hover {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.lib-card-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lib-card-action--danger {
+  color: var(--color-error-text);
+}
+
+.lib-card-action--danger:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.lib-card-action-separator {
+  width: 1px;
+  height: 14px;
+  background: var(--color-border);
+  margin: 0 2px;
+}
+
 .inline-link {
   display: inline-block;
   margin-top: 12px;
