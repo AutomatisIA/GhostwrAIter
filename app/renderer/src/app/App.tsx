@@ -69,6 +69,7 @@ function AppShell() {
       <aside className={`sidebar ${isDrawerOpen ? "drawer-open" : ""}`}>
         <div className="brand panel">
           <h2>LinkedIn Poster</h2>
+          <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)", fontWeight: 600 }}>v{window.linkedinPoster.appVersion}</span>
         </div>
 
         <nav className="panel nav-panel" aria-label="Navigation principale">

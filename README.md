@@ -1,85 +1,139 @@
 # LinkedIn Poster
 
-A local-first Electron editorial cockpit for LinkedIn. LinkedIn Poster helps AI consultants and independent writers orchestrate the full production workflow of high-quality posts — from editorial strategy to hook engineering, drafting, and scheduling — through a library of specialized skills powered by OpenAI Codex. Every piece of content stays on your machine. No SaaS backend, no remote database, no vendor lock-in on your editorial IP.
+Produisez des posts LinkedIn de qualite professionnelle, en local, avec l'IA de votre choix.
 
-## Stack
+LinkedIn Poster est une application desktop qui guide la production editoriale de A a Z : strategie, ideation, redaction structuree, correction, capitalisation et planification. Le contenu reste sur votre machine. Pas de backend cloud, pas de compte a creer, pas de donnees qui sortent.
 
-- **Electron** 41 for the desktop shell
-- **TypeScript** 6 for the main, preload, and renderer processes
-- **React** 19 + **Vite** 7 for the renderer UI
-- **SQLite** (via `better-sqlite3`) for local workspace storage
-- **Codex CLI** as the external AI execution engine (each skill is a structured prompt contract)
+L'application utilise un assistant IA externe (ChatGPT, Claude ou Gemini) via votre propre abonnement pour generer les contenus. Vous gardez le controle editorial a chaque etape.
 
-The application is built with electron-vite, tested with Vitest, and packaged with electron-builder for macOS, Windows, and Linux.
+---
 
-## Prerequisites
+## Demarrage rapide
 
-- **Node.js 20** (the exact version targeted by every CI runner and the Electron runtime)
-- **Git** for cloning the repository
-- **Codex CLI** installed and authenticated on your machine (the application expects `codex` to be available on PATH or in a standard platform location — see `docs/exploitation.md` for the full detection logic)
-- A writable workspace directory where local data will live (typically `~/LinkedInPoster` on macOS and Linux, `%USERPROFILE%\LinkedInPoster` on Windows)
+### 1. Installer les prerequis
 
-## Installation
+| Outil | Pourquoi | Installation |
+|-------|----------|-------------|
+| **Node.js 20+** | Requis pour compiler et lancer l'app | [nodejs.org](https://nodejs.org/) |
+| **Git** | Cloner le depot | [git-scm.com](https://git-scm.com/) |
+| **Un CLI IA** | Generer les contenus (au choix) | Voir ci-dessous |
 
-### macOS
+### 2. Installer un moteur IA
+
+Choisissez le service correspondant a votre abonnement :
+
+**Codex** (ChatGPT Plus ou Team)
+```bash
+npm install -g @openai/codex
+codex login
+```
+
+**Claude Code** (Claude Pro ou Team)
+```bash
+npm install -g @anthropic-ai/claude-code
+claude login
+```
+
+**Gemini CLI** (Google AI Premium)
+```bash
+npm install -g @anthropic-ai/gemini-cli
+gemini login
+```
+
+L'application detecte automatiquement les CLI installes. Vous pouvez en installer plusieurs et basculer dans les parametres.
+
+### 3. Lancer l'application
 
 ```bash
 git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
 cd LinkedIn-Poster
 npm ci
-npm run rebuild:native:electron
 npm run dev
 ```
 
-For a packaged `.app` build, run `npm run package:mac`. See `docs/exploitation.md` for notarization and distribution details.
+L'application s'ouvre. C'est pret.
 
-### Windows
+### 4. Packager pour une utilisation quotidienne (optionnel)
 
 ```bash
-git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
-cd LinkedIn-Poster
-npm ci
-npm run rebuild:native:electron
-npm run dev
+# macOS (.app)
+npm run package:mac
+
+# Windows (.exe)
+npm run package:win
+
+# Linux (.AppImage)
+npm run package:linux
 ```
 
-For a packaged NSIS installer or portable executable, run `npm run package:win`.
+Les builds se trouvent dans le dossier `release/`.
 
-### Linux
+---
 
-```bash
-git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
-cd LinkedIn-Poster
-npm ci
-npm run rebuild:native:electron
-npm run dev
-```
+## Ce que fait l'application
 
-For a packaged AppImage or `.deb`, run `npm run package:linux`.
+| Ecran | Role |
+|-------|------|
+| **Cockpit** | Vue d'ensemble du pipeline editorial, prochaine action recommandee, metriques |
+| **Strategie** | Positionnement, offres, ICPs, piliers editoriaux, regles de voix |
+| **Creer** | Capturer une idee (manuelle, veille, generation) puis la transformer en post via un workflow en 4 etapes |
+| **Bibliotheque** | Retrouver les drafts, creer des variantes, planifier la publication |
+| **Parametres** | Theme clair/sombre, choix du moteur IA, diagnostics, export |
 
-For detailed operational guidance — diagnostics, log locations, Codex configuration, audit scripts, and known limitations — see [`docs/exploitation.md`](docs/exploitation.md).
+Le workflow de production suit 4 etapes guidees :
+1. **Cadrage** — choisir la typologie et l'objectif du post
+2. **Structure** — selectionner un schema narratif adapte
+3. **Accroche** — generer et choisir la premiere phrase
+4. **Redaction** — produire le post complet, corriger, iterer
+
+---
+
+## Architecture
+
+- **Electron** 41 — shell desktop multi-plateforme
+- **React** 19 + **Vite** 7 — interface utilisateur
+- **SQLite** — stockage local (zero serveur)
+- **8 skills IA** — chaque etape du workflow est un prompt specialise avec un contrat d'entree/sortie structure
+
+Les donnees sont stockees dans `~/LinkedInPoster/` (macOS/Linux) ou `%USERPROFILE%\LinkedInPoster\` (Windows).
+
+---
+
+## Commandes utiles
+
+| Commande | Description |
+|----------|-------------|
+| `npm run dev` | Lancer en mode developpement (HMR) |
+| `npm run test` | Executer les tests (374 tests, Vitest) |
+| `npm run typecheck` | Verification TypeScript |
+| `npm run lint` | Verification ESLint |
+| `npm run package:mac` | Build macOS |
+| `npm run package:win` | Build Windows |
+| `npm run package:linux` | Build Linux |
+
+---
 
 ## Documentation
 
-The full project documentation lives under `docs/`:
+| Document | Contenu |
+|----------|---------|
+| [Guide de decouverte](docs/guide-decouverte.md) | Presentation du produit |
+| [Fonctionnalites](docs/fonctionnalites.md) | Reference par ecran |
+| [Parcours utilisateur](docs/parcours-utilisateur.md) | Premier lancement pas a pas |
+| [Architecture](docs/architecture.md) | Architecture technique |
+| [Skills Codex](docs/skills-codex.md) | Contrats des 8 skills IA |
+| [Exploitation](docs/exploitation.md) | Diagnostics, logs, audits |
 
-- `docs/guide-decouverte.md` — product overview for new users
-- `docs/fonctionnalites.md` — page-by-page feature reference
-- `docs/parcours-utilisateur.md` — hands-on walkthrough of a first session
-- `docs/architecture.md` — technical architecture and data flow
-- `docs/skills-codex.md` — Codex skill contracts and failure modes
-- `docs/exploitation.md` — installation, diagnostics, real audits, known limits
+---
 
-## Contributing
+## Contribuer
 
-Contributions are welcome. Before opening a pull request, please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for the development workflow, commit convention, test-driven development expectations, and spec-kit authoring process.
+Les contributions sont bienvenues. Lisez [`CONTRIBUTING.md`](CONTRIBUTING.md) avant d'ouvrir une PR. Le projet suit un workflow TDD strict et utilise spec-kit pour la specification des features.
 
-By contributing you agree to abide by the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+Pour signaler une faille de securite, suivez le processus decrit dans [`SECURITY.md`](SECURITY.md).
 
-## Security
+---
 
-To report a security vulnerability, please follow the private disclosure process described in [`SECURITY.md`](SECURITY.md). Do not open a public issue for suspected vulnerabilities.
+## Licence
 
-## License
-
-LinkedIn Poster is released under the [MIT License](LICENSE). Copyright (c) 2026 Philippe Cohen.
+MIT — Copyright (c) 2026 Philippe Cohen ([AutomatisIA](https://automatisia.fr))

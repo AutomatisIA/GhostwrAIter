@@ -81,29 +81,30 @@ describe("README.md", () => {
     expect(content.split("\n")[0]).toBe("# LinkedIn Poster");
   });
 
-  it("mentions the project's local-first Electron nature", () => {
-    expect(content.toLowerCase()).toMatch(/local-first/);
+  it("mentions the project's local nature and Electron", () => {
+    expect(content.toLowerCase()).toMatch(/local/);
     expect(content).toMatch(/Electron/);
   });
 
-  it("lists the full stack", () => {
+  it("lists the core stack", () => {
     expect(content).toMatch(/Electron/);
-    expect(content).toMatch(/TypeScript/);
     expect(content).toMatch(/React/);
-    expect(content).toMatch(/Vite/);
     expect(content).toMatch(/SQLite/);
   });
 
-  it("has a Prerequisites section mentioning Node.js 20", () => {
-    expect(content).toMatch(/##\s+Prerequisites/);
+  it("has a quick start section mentioning Node.js 20", () => {
     expect(content).toMatch(/Node(\.js)?\s*20/);
   });
 
-  it("has an Installation section with per-OS subsections", () => {
-    expect(content).toMatch(/##\s+Installation/);
-    expect(content).toMatch(/###\s+macOS/);
-    expect(content).toMatch(/###\s+Windows/);
-    expect(content).toMatch(/###\s+Linux/);
+  it("has installation instructions with npm ci and npm run dev", () => {
+    expect(content).toMatch(/npm ci/);
+    expect(content).toMatch(/npm run dev/);
+  });
+
+  it("documents packaging for macOS, Windows and Linux", () => {
+    expect(content).toMatch(/package:mac/);
+    expect(content).toMatch(/package:win/);
+    expect(content).toMatch(/package:linux/);
   });
 
   it("links to docs/exploitation.md", () => {
@@ -111,7 +112,7 @@ describe("README.md", () => {
   });
 
   it("has a License section and references MIT", () => {
-    expect(content).toMatch(/##\s+License/);
+    expect(content).toMatch(/##\s+Licence/);
     expect(content).toMatch(/MIT/);
   });
 

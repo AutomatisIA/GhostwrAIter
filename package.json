@@ -1,6 +1,6 @@
 {
   "name": "linkedin-poster",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Local-first LinkedIn editorial cockpit powered by Codex skills.",
   "main": "dist-electron/main/index.js",
