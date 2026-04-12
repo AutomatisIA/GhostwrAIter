@@ -177,7 +177,7 @@ const settings: SettingsApi = {
 contextBridge.exposeInMainWorld("linkedinPoster", {
   platform: process.platform,
   appName: "GhostwrAIter",
-  appVersion: "1.1.2",
+  appVersion: "1.3.0",
   strategy,
   ideas,
   workshop,

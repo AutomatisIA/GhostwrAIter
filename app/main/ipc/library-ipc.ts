@@ -21,9 +21,10 @@ export class LibraryRuntimeService {
   constructor(
     db: Database.Database,
     skillRunnerService?: SkillRunnerService,
-    getActiveStrategy?: () => StrategyBundle | null
+    getActiveStrategy?: () => StrategyBundle | null,
+    getFoundationSummary?: () => string | null
   ) {
-    this.service = new LibraryService(db, skillRunnerService, getActiveStrategy);
+    this.service = new LibraryService(db, skillRunnerService, getActiveStrategy, getFoundationSummary);
   }
 
   listEntries() {

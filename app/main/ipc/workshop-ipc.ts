@@ -31,7 +31,8 @@ export class WorkshopRuntimeService {
     ideasRepository: IdeasRepository,
     getActiveStrategy?: () => StrategyBundle | null,
     executionLogsDirectory?: string,
-    skillRunnerService?: SkillRunnerService
+    skillRunnerService?: SkillRunnerService,
+    getFoundationSummary?: () => string | null
   ) {
     createWorkshopTables(db);
     this.service = new WorkshopService(
@@ -39,7 +40,8 @@ export class WorkshopRuntimeService {
       ideasRepository,
       getActiveStrategy,
       executionLogsDirectory,
-      skillRunnerService
+      skillRunnerService,
+      getFoundationSummary
     );
   }
 

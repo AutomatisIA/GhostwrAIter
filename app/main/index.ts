@@ -106,15 +106,20 @@ app.whenReady().then(() => {
       return null;
     }
   };
-  const ideasService = new IdeasService(db, skillRunnerService);
+  const getFoundationSummary = () => {
+    const pref = appSettingsService.getPreference("foundation_summary");
+    return pref.value;
+  };
+  const ideasService = new IdeasService(db, skillRunnerService, getFoundationSummary);
   const workshopService = new WorkshopRuntimeService(
     db,
     ideasService.getRepository(),
     getActiveStrategyBundle,
     join(workspacePaths.logsDirectory, "executions"),
-    skillRunnerService
+    skillRunnerService,
+    getFoundationSummary
   );
-  const libraryService = new LibraryRuntimeService(db, skillRunnerService, getActiveStrategyBundle);
+  const libraryService = new LibraryRuntimeService(db, skillRunnerService, getActiveStrategyBundle, getFoundationSummary);
   const calendarService = new CalendarRuntimeService(db);
   const executionService = new ExecutionRuntimeService(
     db,

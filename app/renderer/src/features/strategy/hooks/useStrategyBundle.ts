@@ -56,6 +56,7 @@ export function useStrategyBundle() {
   const [bundle, setBundle] = useState<StrategyBundleInput>(emptyBundle);
   const [status, setStatus] = useState("Chargement du socle strategique...");
   const [foundationSummary, setFoundationSummary] = useState("");
+  const [foundationOutdated, setFoundationOutdated] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -251,13 +252,15 @@ export function useStrategyBundle() {
       }))
     };
     await window.linkedinPoster.strategy.saveBundle(normalizedBundle);
-    setStatus("Strategie enregistree localement.");
+    if (foundationSummary) setFoundationOutdated(true);
+    setStatus("Stratégie enregistrée.");
   }
 
   async function generateFoundation() {
     try {
       const result = await window.linkedinPoster.strategy.generateFoundation();
       setFoundationSummary(result.summaryMarkdown);
+      setFoundationOutdated(false);
       await window.linkedinPoster.settings.setPreference("foundation_summary", result.summaryMarkdown);
       setStatus("Socle éditorial généré.");
     } catch (error) {
@@ -276,6 +279,7 @@ export function useStrategyBundle() {
     bundle,
     status,
     foundationSummary,
+    foundationOutdated,
     setFoundationSummary: updateFoundationSummary,
     updateProfileField,
     updateOfferField,

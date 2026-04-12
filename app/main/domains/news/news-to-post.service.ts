@@ -14,7 +14,8 @@ export class NewsToPostService {
     private readonly db: Database.Database,
     private readonly ideasRepository: IdeasRepository,
     private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService(),
-    private readonly getActiveStrategy?: () => StrategyBundle | null
+    private readonly getActiveStrategy?: () => StrategyBundle | null,
+    private readonly getFoundationSummary?: () => string | null
   ) {}
 
   createDraftFromSource(input: {
@@ -149,8 +150,11 @@ export class NewsToPostService {
       throw new Error("Strategy is missing an anti-style rule.");
     }
 
+    const foundation = this.getFoundationSummary?.() ?? null;
+
     return {
       profileId: strategy.profile.id,
+      foundationSummary: foundation,
       strategyProfileName: strategy.profile.name,
       strategyPositioning: strategy.profile.positioning,
       pillarLabel: "Veille",

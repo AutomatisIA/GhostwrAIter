@@ -26,6 +26,7 @@ export function StrategyScreen() {
     bundle,
     status,
     foundationSummary,
+    foundationOutdated,
     setFoundationSummary,
     updateProfileField,
     updateOfferField,
@@ -73,7 +74,8 @@ export function StrategyScreen() {
             onClick={() => setActiveTab(tab.key)}
           >
             {tab.label}
-            {tab.key === "socle" && foundationSummary ? " ✓" : ""}
+            {tab.key === "socle" && foundationSummary && !foundationOutdated ? " ✓" : ""}
+            {tab.key === "socle" && foundationOutdated ? " ⚠" : ""}
           </button>
         ))}
       </div>
@@ -159,9 +161,15 @@ export function StrategyScreen() {
             Vous pouvez le générer automatiquement depuis votre profil, offres, ICPs et piliers, ou l'écrire et le modifier à la main.
           </p>
 
+          {foundationOutdated && (
+            <div style={{ padding: "10px 14px", borderRadius: 10, background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)", fontSize: "0.88rem", marginBottom: 12 }}>
+              La stratégie a été modifiée depuis la dernière génération du socle. Regénérez-le pour que les prochains drafts utilisent les données à jour.
+            </div>
+          )}
+
           <div className="form-actions">
             <button type="button" className="primary-button" onClick={generateFoundation}>
-              {foundationSummary ? "Regénérer le socle" : "Générer le socle éditorial"}
+              {foundationOutdated ? "Regénérer le socle (recommandé)" : foundationSummary ? "Regénérer le socle" : "Générer le socle éditorial"}
             </button>
             {foundationSummary && !isEditingFoundation && (
               <button type="button" className="secondary-button" onClick={handleStartEditFoundation}>

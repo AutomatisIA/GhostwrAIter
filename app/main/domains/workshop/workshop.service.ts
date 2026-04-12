@@ -235,7 +235,8 @@ export class WorkshopService {
     private readonly ideasRepository: IdeasRepository,
     private readonly getActiveStrategy?: () => StrategyBundle | null,
     private readonly executionLogsDirectory?: string,
-    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService()
+    private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService(),
+    private readonly getFoundationSummary?: () => string | null
   ) {}
 
   generateDraftFromIdea(ideaId: string): WorkshopSession {
@@ -731,8 +732,11 @@ export class WorkshopService {
       throw new Error("Strategy is missing voice rules.");
     }
 
+    const foundation = this.getFoundationSummary?.() ?? null;
+
     return {
       profileId: strategy.profile.id,
+      foundationSummary: foundation,
       strategyProfileName: strategy.profile.name,
       strategyPositioning: strategy.profile.positioning,
       strategyBio: strategy.profile.bio,

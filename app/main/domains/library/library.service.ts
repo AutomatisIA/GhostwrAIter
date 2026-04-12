@@ -42,7 +42,8 @@ export class LibraryService {
   constructor(
     private readonly db: Database.Database,
     private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService(),
-    private readonly getActiveStrategy?: () => StrategyBundle | null
+    private readonly getActiveStrategy?: () => StrategyBundle | null,
+    private readonly getFoundationSummary?: () => string | null
   ) {}
 
   listEntries(): LibraryEntry[] {
@@ -329,8 +330,11 @@ export class LibraryService {
       throw new Error("Strategy profile is missing an id.");
     }
 
+    const foundation = this.getFoundationSummary?.() ?? null;
+
     return {
       profileId: strategy.profile.id,
+      foundationSummary: foundation,
       strategyProfileName: strategy.profile.name,
       strategyPositioning: strategy.profile.positioning,
       strategyBio: strategy.profile.bio,

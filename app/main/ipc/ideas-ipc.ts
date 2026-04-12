@@ -21,7 +21,7 @@ export class IdeasService {
   private readonly strategyRepository: StrategyRepository;
   private readonly skillRunnerService: SkillRunnerService;
 
-  constructor(db: Database.Database, skillRunnerService?: SkillRunnerService) {
+  constructor(db: Database.Database, skillRunnerService?: SkillRunnerService, getFoundationSummary?: () => string | null) {
     createIdeasTables(db);
     createStrategyTables(db);
     this.repository = new IdeasRepository(db);
@@ -30,7 +30,8 @@ export class IdeasService {
       db,
       this.repository,
       this.skillRunnerService,
-      () => this.strategyRepository.getActiveStrategyBundle()
+      () => this.strategyRepository.getActiveStrategyBundle(),
+      getFoundationSummary
     );
     this.strategyRepository = new StrategyRepository(db);
   }
