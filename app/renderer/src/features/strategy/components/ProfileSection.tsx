@@ -1,11 +1,20 @@
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { CompletenessIndicator } from "./CompletenessIndicator";
 
 type ProfileSectionProps = {
   profile: StrategyBundleInput["profile"];
   onUpdate: (field: keyof StrategyBundleInput["profile"], value: string) => void;
 };
 
+function isFilled(value: string | undefined): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 export function ProfileSection({ profile, onUpdate }: ProfileSectionProps) {
+  const fields = [profile.name, profile.positioning, profile.bio, profile.expertiseSummary];
+  const filled = fields.filter(isFilled).length;
+  const critical = !isFilled(profile.name) || !isFilled(profile.positioning);
+
   return (
     <section className="editor-section">
       <div className="section-heading">
@@ -14,6 +23,13 @@ export function ProfileSection({ profile, onUpdate }: ProfileSectionProps) {
           <p>Le minimum pour comprendre ton metier, ta promesse et ton angle editorial.</p>
         </div>
       </div>
+
+      <CompletenessIndicator
+        filled={filled}
+        total={fields.length}
+        critical={critical}
+        impactedSkill="post-writer"
+      />
 
       <label className="field">
         <span>Nom</span>

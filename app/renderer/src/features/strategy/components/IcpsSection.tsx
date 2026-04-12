@@ -1,4 +1,5 @@
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { CompletenessIndicator } from "./CompletenessIndicator";
 
 type IcpsSectionProps = {
   icps: StrategyBundleInput["icps"];
@@ -26,6 +27,13 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
           Ajouter un ICP
         </button>
       </div>
+
+      <CompletenessIndicator
+        filled={Math.min(icps.length, 5)}
+        total={5}
+        critical={icps.length === 0}
+        impactedSkill="hook-engine"
+      />
 
       {icps.map((icp, index) => (
         <article key={`icp-${index}`} className="editor-card">

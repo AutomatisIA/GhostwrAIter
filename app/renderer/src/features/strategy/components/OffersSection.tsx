@@ -1,4 +1,5 @@
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { CompletenessIndicator } from "./CompletenessIndicator";
 
 type OffersSectionProps = {
   offers: StrategyBundleInput["offers"];
@@ -23,6 +24,13 @@ export function OffersSection({ offers, onAdd, onRemove, onUpdate }: OffersSecti
           Ajouter une offre
         </button>
       </div>
+
+      <CompletenessIndicator
+        filled={Math.min(offers.length, 5)}
+        total={5}
+        critical={offers.length === 0}
+        impactedSkill="post-writer"
+      />
 
       {offers.length === 0 ? (
         <p className="empty-state">

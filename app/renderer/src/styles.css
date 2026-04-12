@@ -649,6 +649,113 @@ a {
   margin: 8px 0 0;
 }
 
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #991b1b;
+}
+
+.error-banner-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.error-banner-code {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.78rem;
+  color: #7f1d1d;
+  background: rgba(239, 68, 68, 0.12);
+  padding: 2px 6px;
+  border-radius: 6px;
+  align-self: flex-start;
+}
+
+.spinner-inline {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spinner-rotate 0.9s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-detail {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.error-detail .error-code,
+code.error-code {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.78rem;
+  color: #7f1d1d;
+  background: rgba(239, 68, 68, 0.12);
+  padding: 2px 6px;
+  border-radius: 6px;
+  align-self: flex-start;
+}
+
+.completeness-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 18px;
+}
+
+.completeness-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  height: 8px;
+}
+
+.completeness-segment {
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.1);
+  transition: background 200ms ease-out;
+}
+
+.completeness-segment.lit {
+  background: #0ea5e9;
+}
+
+.completeness-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(249, 115, 22, 0.12);
+  color: #9a3412;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  font-size: 0.82rem;
+  align-self: flex-start;
+}
+
 @media (max-width: 1100px) {
   .shell {
     grid-template-columns: 1fr;

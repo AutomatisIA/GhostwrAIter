@@ -1,4 +1,5 @@
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { CompletenessIndicator } from "./CompletenessIndicator";
 
 type PillarsSectionProps = {
   pillars: StrategyBundleInput["pillars"];
@@ -28,6 +29,13 @@ export function PillarsSection({
           Ajouter un pilier
         </button>
       </div>
+
+      <CompletenessIndicator
+        filled={Math.min(pillars.length, 5)}
+        total={5}
+        critical={pillars.length === 0}
+        impactedSkill="topic-generator"
+      />
 
       {pillars.map((pillar, index) => (
         <article key={`pillar-${index}`} className="editor-card">
