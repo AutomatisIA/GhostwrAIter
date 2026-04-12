@@ -559,21 +559,24 @@ export class WorkshopService {
     }
 
     const correctedBody = editorResult.data.draft.bodyMarkdown;
-    const currentHeadline =
-      (this.db.prepare("SELECT headline FROM drafts WHERE id = ?").get(draftId) as
-        | { headline: string }
-        | undefined)?.headline ?? idea.title;
+    const correctedHeadline = editorResult.data.draft.headline ?? draft.headline;
     const correctedQualityScore = this.computeDraftQualityScore(
       editorResult,
-      currentHeadline,
+      correctedHeadline,
       correctedBody
     );
 
-    this.db
-      .prepare("UPDATE drafts SET body_markdown = ?, quality_score = ? WHERE id = ?")
-      .run(correctedBody, correctedQualityScore, draftId);
-
     this.recordExecutionRun(editorInvocation, editorResult, draft.ideaId, draftId, correctedAt);
+
+    if (correctedQualityScore <= draft.qualityScore) {
+      this.recordDraftVersion(draftId, draft.bodyMarkdown, draft.qualityScore, "correction", correctedAt);
+      return this.getSessionByDraftId(draftId);
+    }
+
+    this.db
+      .prepare("UPDATE drafts SET headline = ?, body_markdown = ?, quality_score = ? WHERE id = ?")
+      .run(correctedHeadline, correctedBody, correctedQualityScore, draftId);
+
     this.recordDraftVersion(draftId, correctedBody, correctedQualityScore, "correction", correctedAt);
 
     return this.getSessionByDraftId(draftId);

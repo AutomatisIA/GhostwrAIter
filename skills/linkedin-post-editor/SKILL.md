@@ -35,10 +35,14 @@ BEFORE rewriting, diagnose what is weak. Check each of these against the provide
 THEN rewrite. The rewrite must:
 - Fix every diagnosed weakness
 - Preserve the core idea and the chosen hook
-- Tighten the argument (cut filler, merge redundant paragraphs)
-- Add at least one concrete operational detail if the original is too abstract
+- TIGHTEN, never expand. The rewrite must be equal or shorter than the original. Cut filler, merge redundant paragraphs, collapse verbose lists
+- Stay within 120-220 words. If the original exceeds this range, the correction MUST bring it back within range
+- Never split a working sentence into multiple shorter lines just for "rhythm" — only split when it genuinely improves readability
+- Add concrete operational detail ONLY if the original is too abstract AND you can do it without increasing word count
 - Make the conclusion actionable when the objective is "conversion"
 - Aim for a qualityScore strictly above the currentQualityScore
+
+CRITICAL: If you cannot improve the qualityScore, return the original draft unchanged with the same qualitySignals. A correction that makes the post longer, weaker, or less focused is worse than no correction. When in doubt, return unchanged.
 
 Do not append editorial commentary, correction notes, or meta-writing language.
 Do not add "Version revue" or "Ce post part d'un constat" type phrases.
