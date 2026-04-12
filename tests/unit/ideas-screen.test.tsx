@@ -25,7 +25,13 @@ describe("IdeasScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
-        getActiveBundle: vi.fn(),
+        getActiveBundle: vi.fn().mockResolvedValue({
+          profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
+          offers: [],
+          icps: [],
+          pillars: [{ label: "Adoption IA", description: "", isDefault: true }],
+          voiceRules: []
+        }),
         saveBundle: vi.fn(),
         generateFoundation: vi.fn()
       },
@@ -78,7 +84,13 @@ describe("IdeasScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
-        getActiveBundle: vi.fn(),
+        getActiveBundle: vi.fn().mockResolvedValue({
+          profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
+          offers: [],
+          icps: [],
+          pillars: [{ label: "Adoption IA", description: "", isDefault: true }],
+          voiceRules: []
+        }),
         saveBundle: vi.fn(),
         generateFoundation: vi.fn()
       },
@@ -156,7 +168,13 @@ describe("IdeasScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
-        getActiveBundle: vi.fn(),
+        getActiveBundle: vi.fn().mockResolvedValue({
+          profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
+          offers: [],
+          icps: [],
+          pillars: [{ label: "Adoption IA", description: "", isDefault: true }],
+          voiceRules: []
+        }),
         saveBundle: vi.fn(),
         generateFoundation: vi.fn()
       },
@@ -200,7 +218,13 @@ describe("IdeasScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
-        getActiveBundle: vi.fn(),
+        getActiveBundle: vi.fn().mockResolvedValue({
+          profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
+          offers: [],
+          icps: [],
+          pillars: [{ label: "Adoption IA", description: "", isDefault: true }],
+          voiceRules: []
+        }),
         saveBundle: vi.fn(),
         generateFoundation: vi.fn()
       },
@@ -260,7 +284,13 @@ describe("IdeasScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
-        getActiveBundle: vi.fn(),
+        getActiveBundle: vi.fn().mockResolvedValue({
+          profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
+          offers: [],
+          icps: [],
+          pillars: [{ label: "Adoption IA", description: "", isDefault: true }],
+          voiceRules: []
+        }),
         saveBundle: vi.fn(),
         generateFoundation: vi.fn()
       },
@@ -300,7 +330,13 @@ describe("IdeasScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
-        getActiveBundle: vi.fn(),
+        getActiveBundle: vi.fn().mockResolvedValue({
+          profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
+          offers: [],
+          icps: [],
+          pillars: [{ label: "Adoption IA", description: "", isDefault: true }],
+          voiceRules: []
+        }),
         saveBundle: vi.fn(),
         generateFoundation: vi.fn()
       },
@@ -335,7 +371,13 @@ describe("IdeasScreen", () => {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
-        getActiveBundle: vi.fn(),
+        getActiveBundle: vi.fn().mockResolvedValue({
+          profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
+          offers: [],
+          icps: [],
+          pillars: [{ label: "Adoption IA", description: "", isDefault: true }],
+          voiceRules: []
+        }),
         saveBundle: vi.fn(),
         generateFoundation: vi.fn()
       },

@@ -133,7 +133,7 @@ describe("codex cli runner", () => {
 
     const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
     expect(prompt).toContain('Do not use "partial". If the contract cannot be fully satisfied, return "failed".');
-    expect(prompt).toContain('"data": { "structure": { "key": "..."');
+    expect(prompt).toContain('"data": { "structures": [');
     expect(prompt).toContain('"qualitySignals": { "clarity": 0.0, "specificity": 0.0, "antiHypeAlignment": 0.0 }');
   });
 

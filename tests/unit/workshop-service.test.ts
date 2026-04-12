@@ -191,11 +191,17 @@ describe("workshop service", () => {
       strategyBio: "J aide les PME a deployer l IA sans theatre ni promesse vide.",
       strategyExpertiseSummary: "Adoption IA, cadrage, ROI, gouvernance et execution terrain.",
       pillarLabel: "ROI",
-      pillarDescription: "Comment arbitrer entre promesse, cout, risque et impact operationnel.",
-      voiceGuardrail: "Pas de hype, pas de jargon, pas de formule creuse."
+      pillarDescription: "Comment arbitrer entre promesse, cout, risque et impact operationnel."
     });
     expect(writerContext?.strategyOffersSummary).toContain("Audit IA PME");
     expect(writerContext?.strategyIcpSummary).toContain("Dirigeants de PME");
+    expect(writerContext?.voiceRules).toEqual([
+      {
+        category: "Anti-style",
+        ruleType: "anti_style",
+        ruleText: "Pas de hype, pas de jargon, pas de formule creuse."
+      }
+    ]);
   });
 });
 

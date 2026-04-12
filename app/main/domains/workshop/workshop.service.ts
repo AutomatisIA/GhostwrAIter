@@ -275,19 +275,31 @@ export class WorkshopService {
     };
     const result = this.executeSkill(invocation);
 
-    if (result.status !== "succeeded" || !result.data?.structure) {
+    if (result.status !== "succeeded") {
       throw new Error(result.error?.message ?? result.summary);
     }
 
     this.recordExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
 
-    return [
-      {
-        key: result.data.structure.key,
-        label: result.data.structure.label,
-        rationale: result.data.structure.rationale
-      }
-    ];
+    if (result.data?.structures && result.data.structures.length > 0) {
+      return result.data.structures.map((s) => ({
+        key: s.key,
+        label: s.label,
+        rationale: s.rationale
+      }));
+    }
+
+    if (result.data?.structure) {
+      return [
+        {
+          key: result.data.structure.key,
+          label: result.data.structure.label,
+          rationale: result.data.structure.rationale
+        }
+      ];
+    }
+
+    throw new Error(result.summary);
   }
 
   generateHooks(ideaId: string, typology: PostTypology, structureKey: string): HookOption[] {
@@ -643,11 +655,6 @@ export class WorkshopService {
 
   private buildContextUsed(pillarLabel: string): WorkshopSession["contextUsed"] {
     const strategy = this.requireActiveStrategy();
-    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
-
-    if (!antiStyleRule) {
-      throw new Error("Strategy is missing an anti-style rule.");
-    }
 
     return {
       pillarLabel,
@@ -659,7 +666,7 @@ export class WorkshopService {
       strategyIcpSummary: this.summarizeIcps(strategy),
       pillarDescription:
         strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
-      voiceGuardrail: antiStyleRule,
+      voiceGuardrail: strategy.voiceRules.map((r) => `[${r.ruleType}] ${r.ruleText}`).join(" | "),
       activeSkills: [
         "linkedin-structure-selector",
         "linkedin-hook-engine",
@@ -675,14 +682,13 @@ export class WorkshopService {
 
   private buildRunnerContext(pillarLabel: string) {
     const strategy = this.requireActiveStrategy();
-    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
 
     if (!strategy.profile.id) {
       throw new Error("Strategy profile is missing an id.");
     }
 
-    if (!antiStyleRule) {
-      throw new Error("Strategy is missing an anti-style rule.");
+    if (strategy.voiceRules.length === 0) {
+      throw new Error("Strategy is missing voice rules.");
     }
 
     return {
@@ -696,7 +702,11 @@ export class WorkshopService {
       pillarLabel,
       pillarDescription:
         strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
-      voiceGuardrail: antiStyleRule
+      voiceRules: strategy.voiceRules.map((rule) => ({
+        category: rule.category,
+        ruleType: rule.ruleType,
+        ruleText: rule.ruleText
+      }))
     };
   }
 

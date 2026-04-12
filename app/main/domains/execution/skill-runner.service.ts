@@ -30,6 +30,11 @@ export type SkillRunnerResult = {
       label: string;
       rationale: string;
     };
+    structures?: Array<{
+      key: string;
+      label: string;
+      rationale: string;
+    }>;
     variants: Array<{
       variantType: string;
       bodyMarkdown: string;

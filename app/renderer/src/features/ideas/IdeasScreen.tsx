@@ -24,6 +24,7 @@ export function IdeasScreen() {
   const [isGeneratingFromStrategy, setIsGeneratingFromStrategy] = useState(false);
   const [query, setQuery] = useState("");
   const [pillarFilter, setPillarFilter] = useState("all");
+  const [strategyPillars, setStrategyPillars] = useState<string[]>([]);
 
   async function loadIdeas() {
     const result = await window.linkedinPoster.ideas.listIdeas();
@@ -32,7 +33,22 @@ export function IdeasScreen() {
   }
 
   useEffect(() => {
-    loadIdeas().catch(() => {
+    Promise.all([
+      window.linkedinPoster.ideas.listIdeas(),
+      window.linkedinPoster.strategy.getActiveBundle().catch(() => null)
+    ]).then(([loadedIdeas, bundle]) => {
+      setIdeas(loadedIdeas);
+      setStatus(loadedIdeas.length > 0 ? "Backlog charge." : "Aucune idee pour le moment.");
+      if (bundle) {
+        const labels = bundle.pillars.map((p) => p.label).filter(Boolean);
+        setStrategyPillars(labels);
+        if (labels.length > 0) {
+          setForm((current) =>
+            current.pillarLabel ? current : { ...current, pillarLabel: labels[0] ?? "" }
+          );
+        }
+      }
+    }).catch(() => {
       setStatus("Impossible de charger les idees.");
     }).finally(() => {
       setLoading(false);
@@ -165,13 +181,28 @@ export function IdeasScreen() {
             </label>
             <label className="field">
               <span>Pilier editorial</span>
-              <input
-                aria-label="Pilier editorial"
-                value={form.pillarLabel}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, pillarLabel: event.target.value }))
-                }
-              />
+              {strategyPillars.length > 0 ? (
+                <select
+                  aria-label="Pilier editorial"
+                  value={form.pillarLabel}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, pillarLabel: event.target.value }))
+                  }
+                >
+                  {strategyPillars.map((label) => (
+                    <option key={label} value={label}>{label}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  aria-label="Pilier editorial"
+                  value={form.pillarLabel}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, pillarLabel: event.target.value }))
+                  }
+                  placeholder="Aucun pilier defini — remplis la strategie d'abord"
+                />
+              )}
             </label>
             <div className="form-actions">
               <button type="submit" className="primary-button" disabled={isCreatingIdea}>
