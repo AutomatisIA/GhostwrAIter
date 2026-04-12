@@ -122,13 +122,20 @@ export class SkillRunnerService {
       Number.isFinite(result.data.qualitySignals.antiHypeAlignment);
 
     switch (skillName) {
-      case "linkedin-structure-selector":
-        return Boolean(
-          hasFiniteQualitySignals &&
-            result.data?.structure?.key &&
+      case "linkedin-structure-selector": {
+        const hasStructures =
+          Array.isArray(result.data?.structures) &&
+          result.data.structures.length > 0 &&
+          result.data.structures.every(
+            (s) => typeof s.key === "string" && typeof s.label === "string" && typeof s.rationale === "string"
+          );
+        const hasSingleStructure = Boolean(
+          result.data?.structure?.key &&
             result.data.structure.label &&
             result.data.structure.rationale
         );
+        return Boolean(hasFiniteQualitySignals && (hasStructures || hasSingleStructure));
+      }
       case "linkedin-hook-engine":
         return Boolean(
           hasFiniteQualitySignals &&
