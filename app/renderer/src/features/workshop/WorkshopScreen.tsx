@@ -5,6 +5,7 @@ import { CadragePanel } from "./components/CadragePanel";
 import { StructurePanel } from "./components/StructurePanel";
 import { HookPanel } from "./components/HookPanel";
 import { DraftPanel } from "./components/DraftPanel";
+import { WorkshopErrorBanner } from "./components/WorkshopErrorBanner";
 
 export function WorkshopScreen() {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,12 @@ export function WorkshopScreen() {
     step,
     setStep,
     status,
+    error,
+    clearError,
+    isLoadingStructures,
+    isLoadingHooks,
+    isLoadingDraft,
+    isLoadingCorrection,
     typology,
     setTypology,
     objective,
@@ -55,6 +62,8 @@ export function WorkshopScreen() {
         et pilotable, et pas un simple bloc de texte opaque.
       </p>
 
+      {error ? <WorkshopErrorBanner error={error} onDismiss={clearError} /> : null}
+
       <div className="workshop-frame">
         <WorkshopGuide
           step={step}
@@ -73,6 +82,7 @@ export function WorkshopScreen() {
               objective={objective}
               onObjectiveChange={setObjective}
               onNext={nextToStep2}
+              isLoading={isLoadingStructures}
             />
           )}
 
@@ -83,6 +93,8 @@ export function WorkshopScreen() {
               onSelect={setSelectedStructureKey}
               onBack={() => setStep(1)}
               onNext={nextToStep3}
+              isLoading={isLoadingStructures}
+              isLoadingNext={isLoadingHooks}
             />
           )}
 
@@ -93,6 +105,8 @@ export function WorkshopScreen() {
               onSelect={setSelectedHookId}
               onBack={() => setStep(2)}
               onNext={nextToStep4}
+              isLoading={isLoadingHooks}
+              isLoadingNext={isLoadingDraft}
             />
           )}
 
@@ -108,6 +122,7 @@ export function WorkshopScreen() {
               onReopenStructureSelection={reopenStructureSelection}
               onReopenHookSelection={reopenHookSelection}
               onCorrect={correct}
+              isLoadingCorrection={isLoadingCorrection}
             />
           )}
         </div>

@@ -4,6 +4,9 @@ export type ExecutionRunEntry = {
   status: "succeeded" | "failed" | "partial";
   summary: string;
   createdAt: string;
+  errorCode: string | null;
+  errorMessage: string | null;
+  logPath: string | null;
 };
 
 export type ExecutionDiagnostics = {
@@ -13,7 +16,12 @@ export type ExecutionDiagnostics = {
   availableSkills: string[];
 };
 
+export type OpenRunLogResult = {
+  opened: boolean;
+};
+
 export type ExecutionApi = {
   listRuns: () => Promise<ExecutionRunEntry[]>;
   getDiagnostics: () => Promise<ExecutionDiagnostics>;
+  openRunLog: (runId: string) => Promise<OpenRunLogResult>;
 };

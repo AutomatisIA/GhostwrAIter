@@ -1,4 +1,5 @@
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { CompletenessIndicator } from "./CompletenessIndicator";
 
 type VoiceRulesSectionProps = {
   voiceRules: StrategyBundleInput["voiceRules"];
@@ -28,6 +29,13 @@ export function VoiceRulesSection({
           Ajouter une regle de voix
         </button>
       </div>
+
+      <CompletenessIndicator
+        filled={Math.min(voiceRules.length, 5)}
+        total={5}
+        critical={voiceRules.length === 0}
+        impactedSkill="post-writer"
+      />
 
       {voiceRules.map((rule, index) => (
         <article key={`voice-rule-${index}`} className="editor-card">

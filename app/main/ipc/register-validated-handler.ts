@@ -54,10 +54,22 @@ export type ValidatedIpcTupleHandler<
  * See specs/003-ipc-validation/contracts/error-code-taxonomy.md for the
  * current taxonomy and the rules for adding new passthrough entries.
  */
-export const KNOWN_ERROR_CODE_MAP: ReadonlyMap<string, string> = new Map([
+const knownErrorCodeMap: Map<string, string> = new Map([
   ["WorkspaceConfigurationError", "WORKSPACE_CONFIGURATION_INVALID"],
   ["WorkspacePathEscapeError", "WORKSPACE_PATH_ESCAPE"]
 ]);
+
+export const KNOWN_ERROR_CODE_MAP: ReadonlyMap<string, string> = knownErrorCodeMap;
+
+/**
+ * Register a typed error passthrough so throws whose `.name` matches
+ * `errorName` surface as an envelope with `code === envelopeCode` instead of
+ * collapsing into `IPC_HANDLER_ERROR`. Callable at module load time from any
+ * IPC handler file that introduces new typed errors.
+ */
+export function registerKnownErrorCode(errorName: string, envelopeCode: string): void {
+  knownErrorCodeMap.set(errorName, envelopeCode);
+}
 
 const LOG_MESSAGE_MAX_LENGTH = 80;
 
@@ -95,7 +107,7 @@ function envelopeFromZodError(zodError: ZodError): IpcResult<never> {
 
 function classifyThrown(err: unknown): IpcResult<never> {
   if (err instanceof Error) {
-    const mapped = KNOWN_ERROR_CODE_MAP.get(err.name);
+    const mapped = knownErrorCodeMap.get(err.name);
     if (mapped !== undefined) {
       return {
         ok: false,

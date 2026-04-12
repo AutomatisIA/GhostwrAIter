@@ -18,6 +18,7 @@ type DraftPanelProps = {
   onReopenStructureSelection: () => void;
   onReopenHookSelection: () => void;
   onCorrect: () => void;
+  isLoadingCorrection: boolean;
 };
 
 export function DraftPanel({
@@ -30,7 +31,8 @@ export function DraftPanel({
   onReopenCadrage,
   onReopenStructureSelection,
   onReopenHookSelection,
-  onCorrect
+  onCorrect,
+  isLoadingCorrection
 }: DraftPanelProps) {
   const qualityFeedback = getQualityFeedback(session.draft.qualityScore);
 
@@ -81,8 +83,19 @@ export function DraftPanel({
           </button>
         </div>
 
-        <button className="secondary-button full-width" onClick={onCorrect}>
-          Lancer la correction premium
+        <button
+          className="secondary-button full-width"
+          onClick={onCorrect}
+          disabled={isLoadingCorrection}
+        >
+          {isLoadingCorrection ? (
+            <>
+              <span className="spinner-inline" aria-hidden="true" />
+              Generation en cours...
+            </>
+          ) : (
+            "Lancer la correction premium"
+          )}
         </button>
       </div>
 

@@ -6,6 +6,8 @@ type StructurePanelProps = {
   onSelect: (key: string) => void;
   onBack: () => void;
   onNext: () => void;
+  isLoading: boolean;
+  isLoadingNext: boolean;
 };
 
 export function StructurePanel({
@@ -13,7 +15,9 @@ export function StructurePanel({
   selectedStructureKey,
   onSelect,
   onBack,
-  onNext
+  onNext,
+  isLoading,
+  isLoadingNext
 }: StructurePanelProps) {
   return (
     <div className="workshop-step">
@@ -23,23 +27,42 @@ export function StructurePanel({
         sert le mieux l'idee et l'objectif retenu.
       </p>
       <div className="grid-selection">
-        {structures.map((s) => (
-          <article
-            key={s.key}
-            className={`selection-card ${selectedStructureKey === s.key ? "selected" : ""}`}
-            onClick={() => onSelect(s.key)}
-          >
-            <strong>{s.label}</strong>
-            <p>{s.rationale}</p>
-          </article>
-        ))}
+        {isLoading ? (
+          <>
+            <article className="selection-card skeleton-card" aria-busy="true" />
+            <article className="selection-card skeleton-card" aria-busy="true" />
+            <article className="selection-card skeleton-card" aria-busy="true" />
+          </>
+        ) : (
+          structures.map((s) => (
+            <article
+              key={s.key}
+              className={`selection-card ${selectedStructureKey === s.key ? "selected" : ""}`}
+              onClick={() => onSelect(s.key)}
+            >
+              <strong>{s.label}</strong>
+              <p>{s.rationale}</p>
+            </article>
+          ))
+        )}
       </div>
       <div className="form-actions">
         <button className="secondary-button" onClick={onBack}>
           Retour
         </button>
-        <button className="primary-button" onClick={onNext}>
-          Suivant : Accroche
+        <button
+          className="primary-button"
+          onClick={onNext}
+          disabled={isLoading || isLoadingNext || structures.length === 0}
+        >
+          {isLoadingNext ? (
+            <>
+              <span className="spinner-inline" aria-hidden="true" />
+              Generation en cours...
+            </>
+          ) : (
+            "Suivant : Accroche"
+          )}
         </button>
       </div>
     </div>

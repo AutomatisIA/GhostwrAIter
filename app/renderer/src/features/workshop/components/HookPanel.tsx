@@ -6,9 +6,19 @@ type HookPanelProps = {
   onSelect: (id: string) => void;
   onBack: () => void;
   onNext: () => void;
+  isLoading: boolean;
+  isLoadingNext: boolean;
 };
 
-export function HookPanel({ hooks, selectedHookId, onSelect, onBack, onNext }: HookPanelProps) {
+export function HookPanel({
+  hooks,
+  selectedHookId,
+  onSelect,
+  onBack,
+  onNext,
+  isLoading,
+  isLoadingNext
+}: HookPanelProps) {
   return (
     <div className="workshop-step">
       <h3>Choisis ton accroche (Hook)</h3>
@@ -17,24 +27,43 @@ export function HookPanel({ hooks, selectedHookId, onSelect, onBack, onNext }: H
         donne un signal de potentiel, pas une verite absolue.
       </p>
       <div className="list-selection">
-        {hooks.map((h) => (
-          <article
-            key={h.id}
-            className={`selection-card list-card ${selectedHookId === h.id ? "selected" : ""}`}
-            onClick={() => onSelect(h.id)}
-          >
-            <div className="status-label">{h.family}</div>
-            <p>{h.text}</p>
-            <div className="score-badge">{Math.round(h.score * 100)}%</div>
-          </article>
-        ))}
+        {isLoading ? (
+          <>
+            <article className="selection-card list-card skeleton-card" aria-busy="true" />
+            <article className="selection-card list-card skeleton-card" aria-busy="true" />
+            <article className="selection-card list-card skeleton-card" aria-busy="true" />
+          </>
+        ) : (
+          hooks.map((h) => (
+            <article
+              key={h.id}
+              className={`selection-card list-card ${selectedHookId === h.id ? "selected" : ""}`}
+              onClick={() => onSelect(h.id)}
+            >
+              <div className="status-label">{h.family}</div>
+              <p>{h.text}</p>
+              <div className="score-badge">{Math.round(h.score * 100)}%</div>
+            </article>
+          ))
+        )}
       </div>
       <div className="form-actions">
         <button className="secondary-button" onClick={onBack}>
           Retour
         </button>
-        <button className="primary-button" onClick={onNext}>
-          Generer le draft final
+        <button
+          className="primary-button"
+          onClick={onNext}
+          disabled={isLoading || isLoadingNext || hooks.length === 0}
+        >
+          {isLoadingNext ? (
+            <>
+              <span className="spinner-inline" aria-hidden="true" />
+              Generation en cours...
+            </>
+          ) : (
+            "Generer le draft final"
+          )}
         </button>
       </div>
     </div>
