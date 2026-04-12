@@ -108,7 +108,7 @@ app.whenReady().then(() => {
     db,
     () => new CodexCliRunner().isAvailable(),
     new SkillRegistryService([
-      join(process.cwd(), "skills"),
+      join(app.getAppPath(), "skills"),
       join(workspacePaths.rootDirectory, "skills")
     ]),
     skillRunnerService,
