@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import type { LibraryEntry } from "@shared/types/library";
 import type { CalendarItem } from "@shared/types/calendar";
 
