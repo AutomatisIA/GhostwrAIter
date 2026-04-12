@@ -8,17 +8,37 @@ L'application utilise un assistant IA externe (ChatGPT, Claude ou Gemini) via vo
 
 ---
 
-## Demarrage rapide
+## Installation
 
-### 1. Installer les prerequis
+### Option A — Installeur (recommande)
 
-| Outil | Pourquoi | Installation |
-|-------|----------|-------------|
-| **Node.js 20+** | Requis pour compiler et lancer l'app | [nodejs.org](https://nodejs.org/) |
-| **Git** | Cloner le depot | [git-scm.com](https://git-scm.com/) |
-| **Un CLI IA** | Generer les contenus (au choix) | Voir ci-dessous |
+Telechargez la derniere version depuis les [Releases GitHub](https://github.com/AutomatisIA/LinkedIn-Poster/releases) :
 
-### 2. Installer un moteur IA
+| Plateforme | Fichier |
+|------------|---------|
+| **macOS (Apple Silicon)** | `LinkedIn Poster-x.x.x-arm64.dmg` |
+| **macOS (Intel)** | `LinkedIn Poster-x.x.x-x64.dmg` |
+| **Windows** | `LinkedIn Poster-x.x.x-setup.exe` |
+| **Linux** | `LinkedIn Poster-x.x.x.AppImage` |
+
+Ouvrez le `.dmg`, glissez l'application dans le dossier Applications, et lancez-la depuis le Dock ou Spotlight.
+
+### Option B — Depuis les sources (developpeurs)
+
+Prerequis : [Node.js 20+](https://nodejs.org/) et [Git](https://git-scm.com/).
+
+```bash
+git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
+cd LinkedIn-Poster
+npm ci
+npm run dev
+```
+
+---
+
+## Configurer un moteur IA
+
+L'application a besoin d'un assistant IA pour generer les contenus. Installez celui qui correspond a votre abonnement :
 
 Choisissez le service correspondant a votre abonnement :
 
@@ -40,33 +60,9 @@ npm install -g @anthropic-ai/gemini-cli
 gemini login
 ```
 
-L'application detecte automatiquement les CLI installes. Vous pouvez en installer plusieurs et basculer dans les parametres.
+L'application detecte automatiquement les CLI installes. Vous pouvez en installer plusieurs et basculer dans Parametres > Moteur.
 
-### 3. Lancer l'application
-
-```bash
-git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
-cd LinkedIn-Poster
-npm ci
-npm run dev
-```
-
-L'application s'ouvre. C'est pret.
-
-### 4. Packager pour une utilisation quotidienne (optionnel)
-
-```bash
-# macOS (.app)
-npm run package:mac
-
-# Windows (.exe)
-npm run package:win
-
-# Linux (.AppImage)
-npm run package:linux
-```
-
-Les builds se trouvent dans le dossier `release/`.
+> **Pas encore d'abonnement ?** L'application fonctionne avec un compte gratuit sur certains services, mais les limites de generation seront plus basses. Un abonnement payant est recommande pour un usage editorial regulier.
 
 ---
 
@@ -99,17 +95,17 @@ Les donnees sont stockees dans `~/LinkedInPoster/` (macOS/Linux) ou `%USERPROFIL
 
 ---
 
-## Commandes utiles
+## Commandes utiles (developpeurs)
 
 | Commande | Description |
 |----------|-------------|
 | `npm run dev` | Lancer en mode developpement (HMR) |
-| `npm run test` | Executer les tests (374 tests, Vitest) |
+| `npm run test` | Executer les tests (Vitest) |
 | `npm run typecheck` | Verification TypeScript |
 | `npm run lint` | Verification ESLint |
-| `npm run package:mac` | Build macOS |
-| `npm run package:win` | Build Windows |
-| `npm run package:linux` | Build Linux |
+| `npm run package:mac` | Build macOS (.dmg + .app) |
+| `npm run package:win` | Build Windows (.exe) |
+| `npm run package:linux` | Build Linux (.AppImage) |
 
 ---
 
