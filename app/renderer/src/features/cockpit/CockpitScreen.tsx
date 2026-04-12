@@ -361,7 +361,7 @@ export function CockpitScreen() {
                         color: "var(--color-text-secondary)"
                       }}
                     >
-                      Score : {draft.qualityScore}/100
+                      Qualité : {Math.round(draft.qualityScore * 100)}%
                     </span>
                     <span className="inline-link">Ouvrir</span>
                   </div>

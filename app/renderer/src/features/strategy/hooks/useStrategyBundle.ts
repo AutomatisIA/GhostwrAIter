@@ -262,6 +262,7 @@ export function useStrategyBundle() {
     bundle,
     status,
     foundationSummary,
+    setFoundationSummary,
     updateProfileField,
     updateOfferField,
     updateIcpField,

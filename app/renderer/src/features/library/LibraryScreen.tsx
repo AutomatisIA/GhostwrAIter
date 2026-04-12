@@ -48,6 +48,7 @@ export function LibraryScreen() {
   const [loading, setLoading] = useState(true);
   const [busyDraftId, setBusyDraftId] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+  const [confirmingVariantId, setConfirmingVariantId] = useState<string | null>(null);
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editHeadline, setEditHeadline] = useState("");
   const [editBody, setEditBody] = useState("");
@@ -374,9 +375,15 @@ export function LibraryScreen() {
                     <div className="lib-card-actions">
                       <button type="button" className="lib-card-action" onClick={() => handleStartEditing(entry)} disabled={busyDraftId !== null}>Modifier</button>
                       <span className="lib-card-action-separator" />
-                      <button type="button" className="lib-card-action" disabled={busyDraftId !== null} onClick={() => void handleCreateDivergentVariant(entry.draftId)}>
-                        {busyDraftId === entry.draftId ? "En cours..." : "Variante"}
-                      </button>
+                      {confirmingVariantId === entry.draftId ? (
+                        <button type="button" className="lib-card-action" style={{ color: "var(--color-accent)", fontWeight: 700 }} disabled={busyDraftId !== null} onClick={() => { setConfirmingVariantId(null); void handleCreateDivergentVariant(entry.draftId); }}>
+                          {busyDraftId === entry.draftId ? "En cours..." : "Confirmer ?"}
+                        </button>
+                      ) : (
+                        <button type="button" className="lib-card-action" disabled={busyDraftId !== null} onClick={() => setConfirmingVariantId(entry.draftId)}>
+                          Variante
+                        </button>
+                      )}
                       <span className="lib-card-action-separator" />
                       <button type="button" className="lib-card-action" onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}>Retravailler</button>
                       <span className="lib-card-action-separator" />

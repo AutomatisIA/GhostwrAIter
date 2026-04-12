@@ -151,7 +151,7 @@ describe("LibraryScreen", () => {
 
     const variantButton = screen.getByRole("button", { name: "Variante" });
     await user.click(variantButton);
-    expect(await screen.findByText("En cours...")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Confirmer ?" })).toBeTruthy();
 
     resolveVariant?.();
   });
