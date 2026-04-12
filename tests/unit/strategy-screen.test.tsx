@@ -62,6 +62,17 @@ function mockStrategy(overrides: Record<string, unknown> = {}) {
       saveBundle: vi.fn().mockImplementation(async (p: unknown) => p),
       generateFoundation: vi.fn(),
       ...overrides
+    },
+    settings: {
+      getPreference: vi.fn().mockResolvedValue({ key: "foundation_summary", value: null }),
+      setPreference: vi.fn().mockResolvedValue({ key: "foundation_summary", value: "", updated_at: "" }),
+      getAllPreferences: vi.fn().mockResolvedValue({}),
+      exportWorkspace: vi.fn(),
+      countExecutionLogs: vi.fn(),
+      purgeExecutionLogs: vi.fn(),
+      detectEngines: vi.fn().mockResolvedValue({ engines: [] }),
+      getActiveEngine: vi.fn().mockResolvedValue({ engine: "codex", status: {} }),
+      setActiveEngine: vi.fn()
     }
   };
 }

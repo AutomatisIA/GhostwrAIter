@@ -60,6 +60,14 @@ export function useStrategyBundle() {
   useEffect(() => {
     let isMounted = true;
 
+    window.linkedinPoster.settings
+      .getPreference("foundation_summary")
+      .then((pref) => {
+        if (!isMounted) return;
+        if (pref.value) setFoundationSummary(pref.value);
+      })
+      .catch(() => {});
+
     window.linkedinPoster.strategy
       .getActiveBundle()
       .then((result) => {
@@ -250,19 +258,25 @@ export function useStrategyBundle() {
     try {
       const result = await window.linkedinPoster.strategy.generateFoundation();
       setFoundationSummary(result.summaryMarkdown);
-      setStatus("Socle editorial genere.");
+      await window.linkedinPoster.settings.setPreference("foundation_summary", result.summaryMarkdown);
+      setStatus("Socle éditorial généré.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
       setFoundationSummary("");
-      setStatus(`Erreur lors de la generation du socle editorial : ${message}`);
+      setStatus(`Erreur lors de la génération du socle éditorial : ${message}`);
     }
+  }
+
+  function updateFoundationSummary(value: string) {
+    setFoundationSummary(value);
+    window.linkedinPoster.settings.setPreference("foundation_summary", value).catch(() => {});
   }
 
   return {
     bundle,
     status,
     foundationSummary,
-    setFoundationSummary,
+    setFoundationSummary: updateFoundationSummary,
     updateProfileField,
     updateOfferField,
     updateIcpField,
