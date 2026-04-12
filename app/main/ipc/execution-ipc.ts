@@ -2,11 +2,15 @@ import Database from "better-sqlite3";
 import { ExecutionService } from "../domains/execution/execution.service";
 import { SkillRegistryService } from "../domains/execution/skill-registry.service";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
-import { emptyInputSchema } from "../../shared/schemas/execution";
 import {
+  registerKnownErrorCode,
   registerValidatedHandler,
   type IpcRegistrar
 } from "./register-validated-handler";
+import { emptyInputSchema, openRunLogInputSchema } from "../../shared/schemas/execution";
+
+registerKnownErrorCode("RUN_NOT_FOUND", "RUN_NOT_FOUND");
+registerKnownErrorCode("RUN_LOG_UNAVAILABLE", "RUN_LOG_UNAVAILABLE");
 
 export class ExecutionRuntimeService {
   private readonly service: ExecutionService;
@@ -32,6 +36,10 @@ export class ExecutionRuntimeService {
   getDiagnostics() {
     return this.service.getDiagnostics();
   }
+
+  openRunLog(runId: string) {
+    return this.service.openRunLog(runId);
+  }
 }
 
 export function registerExecutionIpcHandlers(
@@ -49,5 +57,11 @@ export function registerExecutionIpcHandlers(
     "execution:get-diagnostics",
     emptyInputSchema,
     () => executionService.getDiagnostics()
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "execution:open-run-log",
+    openRunLogInputSchema,
+    (runId: string) => executionService.openRunLog(runId)
   );
 }

@@ -135,7 +135,9 @@ const calendar: CalendarApi = {
 
 const execution: ExecutionApi = {
   listRuns: () => unwrap("execution:list-runs", ipcRenderer.invoke("execution:list-runs")),
-  getDiagnostics: () => unwrap("execution:get-diagnostics", ipcRenderer.invoke("execution:get-diagnostics"))
+  getDiagnostics: () => unwrap("execution:get-diagnostics", ipcRenderer.invoke("execution:get-diagnostics")),
+  openRunLog: (runId) =>
+    unwrap("execution:open-run-log", ipcRenderer.invoke("execution:open-run-log", runId))
 };
 
 const settings: SettingsApi = {

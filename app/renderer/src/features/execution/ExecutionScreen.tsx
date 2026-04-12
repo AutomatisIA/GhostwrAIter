@@ -34,6 +34,7 @@ function formatRunStatus(status: ExecutionRunEntry["status"]) {
 export function ExecutionScreen() {
   const [diagnostics, setDiagnostics] = useState<ExecutionDiagnostics | null>(null);
   const [runs, setRuns] = useState<ExecutionRunEntry[]>([]);
+  const [openLogError, setOpenLogError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -44,6 +45,19 @@ export function ExecutionScreen() {
       setRuns(loadedRuns);
     });
   }, []);
+
+  async function handleOpenLog(runId: string) {
+    setOpenLogError(null);
+    try {
+      await window.linkedinPoster.execution.openRunLog(runId);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Impossible d'ouvrir le log technique.";
+      setOpenLogError(message);
+    }
+  }
 
   return (
     <section className="panel page-panel">
@@ -94,6 +108,21 @@ export function ExecutionScreen() {
         </>
       ) : null}
 
+      {openLogError ? (
+        <article className="error-banner" role="alert">
+          <div className="error-banner-body">
+            <strong>{openLogError}</strong>
+          </div>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setOpenLogError(null)}
+          >
+            Fermer
+          </button>
+        </article>
+      ) : null}
+
       <div className="list-grid">
         {runs.map((run) => (
           <article key={run.id} className="list-card">
@@ -111,6 +140,30 @@ export function ExecutionScreen() {
                     : "Cette etape a produit une sortie partielle ou degradee."}
               </p>
             </div>
+            {run.status === "failed" && (run.errorCode || run.errorMessage) ? (
+              <div className="error-detail">
+                <span className="status-label">Detail technique</span>
+                {run.errorCode ? <code className="error-code">{run.errorCode}</code> : null}
+                {run.errorMessage ? <p>{run.errorMessage}</p> : null}
+              </div>
+            ) : null}
+            {run.status === "failed" ? (
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => handleOpenLog(run.id)}
+                  disabled={run.logPath === null}
+                  title={
+                    run.logPath === null
+                      ? "Aucun log technique n'a ete enregistre pour ce run."
+                      : undefined
+                  }
+                >
+                  Ouvrir le log technique
+                </button>
+              </div>
+            ) : null}
           </article>
         ))}
       </div>
