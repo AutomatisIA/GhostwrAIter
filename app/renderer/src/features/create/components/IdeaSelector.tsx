@@ -287,7 +287,8 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
             <p>{idea.angle}</p>
             <button
               type="button"
-              className="inline-link"
+              className="secondary-button"
+              style={{ padding: "8px 16px", fontSize: "0.85rem", marginTop: 10 }}
               onClick={() => onSelect(idea.id)}
             >
               Selectionner

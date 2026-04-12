@@ -101,7 +101,7 @@ describe("CockpitScreen", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Cockpit" })).toBeTruthy();
-    expect(await screen.findByText("1 idée")).toBeTruthy();
-    expect(await screen.findByText("1 draft")).toBeTruthy();
+    expect(await screen.findByText("idee dans le backlog")).toBeTruthy();
+    expect(await screen.findByText("draft en bibliotheque")).toBeTruthy();
   });
 });

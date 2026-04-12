@@ -4,11 +4,11 @@ import type { CliEngineStatus, CliEngineName } from "@shared/types/settings";
 function statusBadge(installState: CliEngineStatus["installState"]) {
   switch (installState) {
     case "authenticated":
-      return <span className="engine-badge engine-badge--ok">Connecte</span>;
+      return <span className="engine-badge engine-badge--ok">{"\u2705"} Connecte</span>;
     case "installed":
-      return <span className="engine-badge engine-badge--warn">Installe</span>;
+      return <span className="engine-badge engine-badge--warn">{"\u26A0\uFE0F"} Installe</span>;
     case "not-installed":
-      return <span className="engine-badge engine-badge--off">Non installe</span>;
+      return <span className="engine-badge engine-badge--off">{"\u274C"} Non installe</span>;
   }
 }
 
@@ -80,13 +80,20 @@ export function EnginePanel() {
   }
 
   if (loading) {
-    return <p>Chargement...</p>;
+    return (
+      <div className="ideas-modes">
+        <article className="idea-card skeleton-card" aria-busy="true" />
+        <article className="idea-card skeleton-card" aria-busy="true" />
+        <article className="idea-card skeleton-card" aria-busy="true" />
+      </div>
+    );
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <p style={{ color: "var(--color-text-secondary)", margin: 0 }}>
-        LinkedIn Poster utilise un assistant IA pour generer vos contenus via votre abonnement existant.
+      <p style={{ color: "var(--color-text-secondary)", margin: 0, fontSize: "0.95rem", lineHeight: 1.5 }}>
+        LinkedIn Poster utilise un assistant IA local (Claude, GPT ou Gemini) pour generer vos contenus.
+        Chaque moteur fonctionne via son CLI officiel — installez-le, connectez-vous, puis selectionnez-le ci-dessous.
       </p>
 
       <div className="ideas-modes">
@@ -115,25 +122,24 @@ export function EnginePanel() {
                 {engine.subscriptionLabel}
               </span>
 
-              {engine.installState === "not-installed" && (
-                <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <code className="engine-command">{engine.installCommand}</code>
-                    <CopyButton text={engine.installCommand} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <code className="engine-command">{engine.loginCommand}</code>
-                    <CopyButton text={engine.loginCommand} />
-                  </div>
+              <div
+                style={{
+                  marginTop: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                  opacity: engine.installState === "authenticated" ? 0.5 : 1
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <code className="engine-command">{engine.installCommand}</code>
+                  <CopyButton text={engine.installCommand} />
                 </div>
-              )}
-
-              {engine.installState === "installed" && (
-                <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <code className="engine-command">{engine.loginCommand}</code>
                   <CopyButton text={engine.loginCommand} />
                 </div>
-              )}
+              </div>
             </button>
           );
         })}
