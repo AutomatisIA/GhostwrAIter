@@ -347,8 +347,8 @@ a {
 }
 
 .lib-card {
-  padding: 14px 18px;
-  border-radius: 14px;
+  padding: 18px 22px;
+  border-radius: 16px;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   transition: border-color 120ms ease, box-shadow 120ms ease;
@@ -361,56 +361,69 @@ a {
 
 .lib-card-body {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
 }
 
 .lib-card-headline {
-  font-size: 0.95rem;
+  font-size: 1.02rem;
   font-weight: 700;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  line-height: 1.35;
+  grid-column: 1;
 }
 
 .lib-card-preview {
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  line-height: 1.55;
   color: var(--color-text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin: 0;
+  grid-column: 1;
 }
 
 .lib-card-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: 2px;
+  grid-column: 1;
 }
 
 .lib-card-tag {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 5px;
   background: var(--color-accent-bg);
   color: var(--color-accent);
   letter-spacing: 0.02em;
 }
 
 .lib-card-quality {
-  display: inline-flex;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  margin-left: auto;
-  font-size: 0.72rem;
-  font-weight: 700;
+  min-width: 52px;
+}
+
+.lib-card-quality-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.lib-card-quality-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-text-secondary);
 }
 
@@ -418,14 +431,15 @@ a {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  display: none;
 }
 
 .lib-card-actions {
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-top: 6px;
-  padding-top: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--color-border);
 }
 
@@ -434,9 +448,9 @@ a {
   background: none;
   color: var(--color-text-secondary);
   font: inherit;
-  font-size: 0.76rem;
+  font-size: 0.84rem;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 100ms ease, color 100ms ease;
@@ -463,7 +477,7 @@ a {
 
 .lib-card-action-separator {
   width: 1px;
-  height: 14px;
+  height: 16px;
   background: var(--color-border);
   margin: 0 2px;
 }

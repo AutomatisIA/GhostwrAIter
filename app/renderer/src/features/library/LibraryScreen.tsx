@@ -375,8 +375,10 @@ export function LibraryScreen() {
                           <span key={tag} style={{ fontSize: "0.65rem", color: "var(--color-text-secondary)" }}>{tag}</span>
                         ))}
                         <span className="lib-card-quality">
-                          <span className="lib-card-quality-dot" style={{ background: entry.qualityScore >= 0.8 ? "var(--color-accent-sky)" : entry.qualityScore >= 0.6 ? "var(--color-accent)" : "var(--color-warning-text)" }} />
-                          {Math.round(entry.qualityScore * 100)}
+                          <span className="lib-card-quality-value" style={{ color: entry.qualityScore >= 0.8 ? "var(--color-accent-sky)" : entry.qualityScore >= 0.6 ? "var(--color-accent)" : "var(--color-warning-text)" }}>
+                            {Math.round(entry.qualityScore * 100)}
+                          </span>
+                          <span className="lib-card-quality-label">qualité</span>
                         </span>
                       </div>
                       <strong className="lib-card-headline">{entry.headline}</strong>
