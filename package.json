@@ -2,6 +2,10 @@
   "name": "ghostwraiter",
   "version": "1.1.0",
   "private": true,
+  "author": {
+    "name": "Philippe Cohen",
+    "email": "contact@AutomatisIA.fr"
+  },
   "description": "Local-first desktop app for producing professional LinkedIn posts with AI.",
   "main": "dist-electron/main/index.js",
   "type": "module",
