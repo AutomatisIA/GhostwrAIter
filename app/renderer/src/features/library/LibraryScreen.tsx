@@ -394,88 +394,42 @@ export function LibraryScreen() {
                   </>
                 ) : (
                   <>
-                  <div style={{ display: "flex", gap: 16 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <strong style={{ fontSize: "1.05rem" }}>{entry.headline}</strong>
-                      <p style={{ color: "var(--color-text-secondary)", fontSize: "0.92rem", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden", margin: "6px 0" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 20, alignItems: "start" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ fontSize: "1.05rem", lineHeight: 1.3, display: "block" }}>{entry.headline}</strong>
+                      <p style={{ color: "var(--color-text-secondary)", fontSize: "0.88rem", lineHeight: 1.55, margin: "6px 0 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                         {entry.bodyPreview}
                       </p>
-                      {entry.tags.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                          {entry.tags.map((tag) => (
-                            <span key={tag} style={{ fontSize: "0.72rem", fontWeight: 600, padding: "2px 8px", borderRadius: 6, background: "var(--color-sky-bg)", color: "var(--color-accent-sky)", border: "1px solid var(--color-sky-border)" }}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
-                        <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--color-border-medium)", overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${Math.round(entry.qualityScore * 100)}%`, borderRadius: 3, background: entry.qualityScore >= 0.8 ? "var(--color-accent-sky)" : "var(--color-accent)" }} />
-                        </div>
-                        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--color-text-secondary)", minWidth: 36, textAlign: "right" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                        {entry.tags.length > 0 && entry.tags.map((tag) => (
+                          <span key={tag} style={{ fontSize: "0.7rem", fontWeight: 600, padding: "1px 7px", borderRadius: 5, background: "var(--color-sky-bg)", color: "var(--color-accent-sky)", border: "1px solid var(--color-sky-border)" }}>
+                            {tag}
+                          </span>
+                        ))}
+                        <span style={{ marginLeft: entry.tags.length > 0 ? "auto" : 0, display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.78rem", fontWeight: 600, color: "var(--color-text-secondary)" }}>
+                          <span style={{ display: "inline-block", width: 48, height: 5, borderRadius: 3, background: "var(--color-border-medium)", overflow: "hidden", verticalAlign: "middle" }}>
+                            <span style={{ display: "block", height: "100%", width: `${Math.round(entry.qualityScore * 100)}%`, borderRadius: 3, background: entry.qualityScore >= 0.8 ? "var(--color-accent-sky)" : "var(--color-accent)" }} />
+                          </span>
                           {Math.round(entry.qualityScore * 100)}%
                         </span>
                       </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 130 }}>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%" }}
-                        onClick={() => handleStartEditing(entry)}
-                        disabled={busyDraftId !== null}
-                      >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5, width: 110 }}>
+                      <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10 }} onClick={() => handleStartEditing(entry)} disabled={busyDraftId !== null}>
                         Modifier
                       </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%" }}
-                        disabled={busyDraftId !== null}
-                        onClick={() => void handleCreateDivergentVariant(entry.draftId)}
-                      >
-                        {busyDraftId === entry.draftId
-                          ? "En cours..."
-                          : "Variante"}
+                      <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10 }} disabled={busyDraftId !== null} onClick={() => void handleCreateDivergentVariant(entry.draftId)}>
+                        {busyDraftId === entry.draftId ? "En cours..." : "Variante"}
                       </button>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%" }}
-                        disabled={busyDraftId !== null}
-                        onClick={() => {
-                          if (schedulingDraftId === entry.draftId) {
-                            setSchedulingDraftId(null);
-                            setSchedulingDate("");
-                          } else {
-                            setSchedulingDraftId(entry.draftId);
-                            setSchedulingDate("");
-                          }
-                        }}
-                      >
+                      <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10 }} disabled={busyDraftId !== null} onClick={() => { if (schedulingDraftId === entry.draftId) { setSchedulingDraftId(null); setSchedulingDate(""); } else { setSchedulingDraftId(entry.draftId); setSchedulingDate(""); } }}>
                         Planifier
                       </button>
                       {deletingDraftId === entry.draftId ? (
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%", color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }}
-                          disabled={busyDraftId !== null}
-                          onClick={() => void handleDeleteEntry(entry.draftId)}
-                        >
+                        <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10, color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }} disabled={busyDraftId !== null} onClick={() => void handleDeleteEntry(entry.draftId)}>
                           Confirmer
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          style={{ padding: "8px 12px", fontSize: "0.82rem", width: "100%", color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }}
-                          disabled={busyDraftId !== null}
-                          onClick={() => {
-                            setDeletingDraftId(entry.draftId);
-                          }}
-                        >
+                        <button type="button" className="secondary-button" style={{ padding: "6px 0", fontSize: "0.78rem", width: "100%", borderRadius: 10, color: "var(--color-error-text)", borderColor: "var(--color-error-border)" }} disabled={busyDraftId !== null} onClick={() => { setDeletingDraftId(entry.draftId); }}>
                           Supprimer
                         </button>
                       )}
