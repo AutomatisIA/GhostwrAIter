@@ -9,33 +9,33 @@ import {
 
 describe.skipIf(process.platform === "win32")("mac launcher helpers", () => {
   it("builds stable launcher paths inside the repository", () => {
-    const repoRoot = "/tmp/linkedin-poster";
+    const repoRoot = "/tmp/ghostwraiter";
     const paths = getMacLauncherPaths(repoRoot);
 
-    expect(paths.launcherOutputDir).toBe("/tmp/linkedin-poster/dist-launcher");
-    expect(paths.launchScriptPath).toBe("/tmp/linkedin-poster/scripts/open-mac-latest.sh");
+    expect(paths.launcherOutputDir).toBe("/tmp/ghostwraiter/dist-launcher");
+    expect(paths.launchScriptPath).toBe("/tmp/ghostwraiter/scripts/open-mac-latest.sh");
     expect(paths.launcherAppPath).toBe(
-      "/tmp/linkedin-poster/dist-launcher/LinkedIn Poster Launcher.app"
+      "/tmp/ghostwraiter/dist-launcher/GhostwrAIter Launcher.app"
     );
     expect(paths.packagedIconPath).toBe(
-      "/tmp/linkedin-poster/dist-app/mac-arm64/LinkedIn Poster.app/Contents/Resources/electron.icns"
+      "/tmp/ghostwraiter/dist-app/mac-arm64/GhostwrAIter.app/Contents/Resources/electron.icns"
     );
     expect(paths.launcherIconPath).toBe(
-      "/tmp/linkedin-poster/dist-launcher/LinkedIn Poster Launcher.app/Contents/Resources/applet.icns"
+      "/tmp/ghostwraiter/dist-launcher/GhostwrAIter Launcher.app/Contents/Resources/applet.icns"
     );
   });
 
   it("builds an AppleScript launcher that targets the latest local build flow", () => {
-    const repoRoot = "/tmp/linkedin-poster";
+    const repoRoot = "/tmp/ghostwraiter";
     const shellCommand = buildMacLauncherShellCommand(repoRoot);
     const appleScript = buildMacLauncherAppleScript(repoRoot);
 
     expect(shellCommand).toContain(
-      '"/tmp/linkedin-poster/scripts/open-mac-latest.sh" >> "/tmp/linkedin-poster/dist-launcher/launcher.log" 2>&1 &'
+      '"/tmp/ghostwraiter/scripts/open-mac-latest.sh" >> "/tmp/ghostwraiter/dist-launcher/launcher.log" 2>&1 &'
     );
     expect(appleScript).toContain("do shell script");
     expect(appleScript).toContain(path.join(repoRoot, "scripts", "open-mac-latest.sh"));
-    expect(appleScript).toContain("LinkedIn Poster Latest");
+    expect(appleScript).toContain("GhostwrAIter Latest");
   });
 });
 

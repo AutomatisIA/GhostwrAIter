@@ -113,7 +113,7 @@
 
 ## Packaging macOS
 
-- Finaliser le lanceur `LinkedIn Poster` pour usage quotidien:
+- Finaliser le lanceur `GhostwrAIter` pour usage quotidien:
   - icone definitive
   - emplacement clair
   - doc de mise a jour

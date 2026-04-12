@@ -183,7 +183,7 @@ export function createWorkspaceService(rootDirectory: string) {
       dataDirectory: join(rootDirectory, "data"),
       logsDirectory: join(rootDirectory, "logs"),
       skillsDirectory: join(rootDirectory, "skills"),
-      databasePath: join(rootDirectory, "data", "linkedin-poster.db")
+      databasePath: join(rootDirectory, "data", "ghostwraiter.db")
     };
   }
 

@@ -31,7 +31,7 @@ assignees: ""
 ## Logs
 
 <!--
-Paste relevant log excerpts. On macOS and Linux, logs are typically under ~/Library/Logs/LinkedIn Poster or ~/.config/LinkedIn Poster/logs. On Windows, check %APPDATA%\LinkedIn Poster\logs. Sanitize any sensitive content before pasting.
+Paste relevant log excerpts. On macOS and Linux, logs are typically under ~/Library/Logs/GhostwrAIter or ~/.config/GhostwrAIter/logs. On Windows, check %APPDATA%\GhostwrAIter\logs. Sanitize any sensitive content before pasting.
 -->
 
 ```text

@@ -15,7 +15,7 @@ describe("CalendarScreen", () => {
   it("lists existing calendar items", async () => {
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: { getActiveBundle: vi.fn(), saveBundle: vi.fn() },
       ideas: { listIdeas: vi.fn(), createIdea: vi.fn() },
       workshop: {
@@ -77,7 +77,7 @@ describe("CalendarScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: { getActiveBundle: vi.fn(), saveBundle: vi.fn() },
       ideas: { listIdeas: vi.fn(), createIdea: vi.fn() },
       workshop: {
@@ -131,7 +131,7 @@ describe("CalendarScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: { getActiveBundle: vi.fn(), saveBundle: vi.fn() },
       ideas: { listIdeas: vi.fn(), createIdea: vi.fn() },
       workshop: {

@@ -17,7 +17,7 @@ describe("skill registry service", () => {
   });
 
   it("lists installed skill slugs from the local skills directory", () => {
-    const root = mkdtempSync(join(tmpdir(), "linkedin-poster-skills-"));
+    const root = mkdtempSync(join(tmpdir(), "ghostwraiter-skills-"));
     const skillsDirectory = join(root, "skills");
     tempDirectories.push(root);
 

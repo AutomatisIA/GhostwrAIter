@@ -220,7 +220,7 @@ describe("package.yml", () => {
       (s) => s.uses?.startsWith("actions/upload-artifact@v4") ?? false
     );
     const name = String(upload.with?.name ?? "");
-    expect(name).toContain("linkedin-poster");
+    expect(name).toContain("ghostwraiter");
     expect(name).toContain("${{ github.ref_name }}");
     expect(name).toContain("${{ matrix.os }}");
     expect(upload.with?.["if-no-files-found"]).toBe("error");

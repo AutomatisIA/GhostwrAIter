@@ -24,7 +24,7 @@ describe("workspace service", () => {
   });
 
   it("creates the expected local-first workspace tree", () => {
-    const root = mkdtempSync(join(tmpdir(), "linkedin-poster-workspace-"));
+    const root = mkdtempSync(join(tmpdir(), "ghostwraiter-workspace-"));
     tempDirectories.push(root);
 
     const service = createWorkspaceService(root);
@@ -33,12 +33,12 @@ describe("workspace service", () => {
     expect(paths.dataDirectory).toBe(join(root, "data"));
     expect(paths.contentDirectory).toBe(join(root, "content"));
     expect(paths.logsDirectory).toBe(join(root, "logs"));
-    expect(paths.databasePath).toBe(join(root, "data", "linkedin-poster.db"));
+    expect(paths.databasePath).toBe(join(root, "data", "ghostwraiter.db"));
     expect(service.workspaceExists()).toBe(true);
   });
 
   it("returns stable paths across repeated initialization", () => {
-    const root = mkdtempSync(join(tmpdir(), "linkedin-poster-workspace-"));
+    const root = mkdtempSync(join(tmpdir(), "ghostwraiter-workspace-"));
     tempDirectories.push(root);
 
     const service = createWorkspaceService(root);
@@ -49,9 +49,9 @@ describe("workspace service", () => {
   });
 
   it("supports overriding the workspace root from the environment", () => {
-    const userDataRoot = mkdtempSync(join(tmpdir(), "linkedin-poster-userdata-"));
+    const userDataRoot = mkdtempSync(join(tmpdir(), "ghostwraiter-userdata-"));
     tempDirectories.push(userDataRoot);
-    const overrideParent = mkdtempSync(join(tmpdir(), "linkedin-poster-override-"));
+    const overrideParent = mkdtempSync(join(tmpdir(), "ghostwraiter-override-"));
     tempDirectories.push(overrideParent);
     const overrideRoot = join(overrideParent, "workspace");
 
@@ -69,7 +69,7 @@ describe("resolveWorkspaceRoot — validation (FR-012, FR-013)", () => {
   let userDataRoot: string;
 
   beforeEach(() => {
-    userDataRoot = mkdtempSync(join(tmpdir(), "linkedin-poster-validation-userdata-"));
+    userDataRoot = mkdtempSync(join(tmpdir(), "ghostwraiter-validation-userdata-"));
     tempDirectories.push(userDataRoot);
   });
 
@@ -126,7 +126,7 @@ describe("resolveWorkspaceRoot — validation (FR-012, FR-013)", () => {
   });
 
   it("accepts a valid absolute path under a writable existing parent", () => {
-    const parent = mkdtempSync(join(tmpdir(), "linkedin-poster-parent-ok-"));
+    const parent = mkdtempSync(join(tmpdir(), "ghostwraiter-parent-ok-"));
     tempDirectories.push(parent);
     const candidate = join(parent, "workspace");
 
@@ -149,7 +149,7 @@ describe("resolveWorkspaceRoot — validation (FR-012, FR-013)", () => {
       // root can write to any directory, skip this case
       return;
     }
-    const readOnlyParent = mkdtempSync(join(tmpdir(), "linkedin-poster-readonly-"));
+    const readOnlyParent = mkdtempSync(join(tmpdir(), "ghostwraiter-readonly-"));
     tempDirectories.push(readOnlyParent);
     chmodSync(readOnlyParent, 0o500);
     const candidate = join(readOnlyParent, "workspace");
@@ -169,7 +169,7 @@ describe("assertUnderRoot — path-traversal defense helper", () => {
   let root: string;
 
   beforeEach(() => {
-    root = mkdtempSync(join(tmpdir(), "linkedin-poster-assert-"));
+    root = mkdtempSync(join(tmpdir(), "ghostwraiter-assert-"));
     tempDirectories.push(root);
     mkdirSync(join(root, "subdir"), { recursive: true });
   });

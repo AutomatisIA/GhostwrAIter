@@ -28,26 +28,26 @@ function escapeAppleScriptString(value) {
 
 export function getMacLauncherPaths(repoRoot) {
   const launcherOutputDir = path.join(repoRoot, "dist-launcher");
-  const packagedAppPath = path.join(repoRoot, "dist-app", "mac-arm64", "LinkedIn Poster.app");
+  const packagedAppPath = path.join(repoRoot, "dist-app", "mac-arm64", "GhostwrAIter.app");
 
   return {
     launcherOutputDir,
     launcherLogPath: path.join(launcherOutputDir, "launcher.log"),
-    launcherSourcePath: path.join(launcherOutputDir, "LinkedIn Poster Latest.applescript"),
-    launcherAppPath: path.join(launcherOutputDir, "LinkedIn Poster Launcher.app"),
+    launcherSourcePath: path.join(launcherOutputDir, "GhostwrAIter Latest.applescript"),
+    launcherAppPath: path.join(launcherOutputDir, "GhostwrAIter Launcher.app"),
     launchScriptPath: path.join(repoRoot, "scripts", "open-mac-latest.sh"),
     packagedAppPath,
     packagedIconPath: path.join(packagedAppPath, "Contents", "Resources", "electron.icns"),
     launcherIconPath: path.join(
       launcherOutputDir,
-      "LinkedIn Poster Launcher.app",
+      "GhostwrAIter Launcher.app",
       "Contents",
       "Resources",
       "applet.icns"
     ),
     launcherPlistPath: path.join(
       launcherOutputDir,
-      "LinkedIn Poster Launcher.app",
+      "GhostwrAIter Launcher.app",
       "Contents",
       "Info.plist"
     )
@@ -65,7 +65,7 @@ export function buildMacLauncherAppleScript(repoRoot) {
 
   return `on run
   do shell script "${escapeAppleScriptString(shellCommand)}"
-  display notification "Construction de la derniere version locale..." with title "LinkedIn Poster Latest"
+  display notification "Construction de la derniere version locale..." with title "GhostwrAIter Latest"
 end run
 `;
 }

@@ -250,7 +250,7 @@ async function main() {
   const codexVersion = captureCodexVersion();
   const runStartedAt = new Date().toISOString();
   const runStartedMs = Date.now();
-  const benchmarkHome = mkdtempSync(join(tmpdir(), "linkedin-poster-eval-"));
+  const benchmarkHome = mkdtempSync(join(tmpdir(), "ghostwraiter-eval-"));
 
   const app = await electron.launch({
     args: ["dist-electron/main/index.js"],

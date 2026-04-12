@@ -82,7 +82,7 @@ function defaultExecutor(args: string[], input: string) {
 
 function defaultFilesystem(): CodexCliFilesystem {
   return {
-    makeTempDir: () => mkdtempSync(join(tmpdir(), "linkedin-poster-codex-")),
+    makeTempDir: () => mkdtempSync(join(tmpdir(), "ghostwraiter-codex-")),
     readFile: (path) => readFileSync(path, "utf8"),
     removeDir: (path) => rmSync(path, { recursive: true, force: true })
   };

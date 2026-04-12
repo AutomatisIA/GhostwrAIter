@@ -32,9 +32,9 @@ async function main() {
 
   await execFileAsync("osacompile", ["-o", launcherAppPath, launcherSourcePath]);
   await fs.copyFile(packagedIconPath, launcherIconPath);
-  await execFileAsync("plutil", ["-replace", "CFBundleName", "-string", "LinkedIn Poster", launcherPlistPath]);
-  await execFileAsync("plutil", ["-replace", "CFBundleDisplayName", "-string", "LinkedIn Poster", launcherPlistPath]);
-  await execFileAsync("plutil", ["-replace", "CFBundleIdentifier", "-string", "com.philippe.linkedin-poster.launcher", launcherPlistPath]);
+  await execFileAsync("plutil", ["-replace", "CFBundleName", "-string", "GhostwrAIter", launcherPlistPath]);
+  await execFileAsync("plutil", ["-replace", "CFBundleDisplayName", "-string", "GhostwrAIter", launcherPlistPath]);
+  await execFileAsync("plutil", ["-replace", "CFBundleIdentifier", "-string", "fr.automatisia.ghostwraiter.launcher", launcherPlistPath]);
   await execFileAsync("plutil", ["-replace", "CFBundleIconFile", "-string", "applet.icns", launcherPlistPath]);
   await execFileAsync("plutil", ["-replace", "CFBundleIconName", "-string", "applet", launcherPlistPath]);
 

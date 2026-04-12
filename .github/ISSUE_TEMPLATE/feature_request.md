@@ -12,7 +12,7 @@ assignees: ""
 
 ## Proposed solution
 
-<!-- How would you like LinkedIn Poster to behave? Be as specific as you can — screens, fields, commands, user flows. -->
+<!-- How would you like GhostwrAIter to behave? Be as specific as you can — screens, fields, commands, user flows. -->
 
 ## Alternatives considered
 

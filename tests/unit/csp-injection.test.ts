@@ -11,7 +11,7 @@ const sampleHtml = `<!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <title>LinkedIn Poster</title>
+    <title>GhostwrAIter</title>
   </head>
   <body>
     <div id="root"></div>
@@ -75,7 +75,7 @@ describe("injectCspMetaTag — production", () => {
   it("preserves the existing HTML content", () => {
     expect(injected).toContain('<div id="root"></div>');
     expect(injected).toContain('<script type="module" src="/src/main.tsx"></script>');
-    expect(injected).toContain("<title>LinkedIn Poster</title>");
+    expect(injected).toContain("<title>GhostwrAIter</title>");
   });
 });
 

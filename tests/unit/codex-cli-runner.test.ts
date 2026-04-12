@@ -433,7 +433,7 @@ describe("codex cli runner — SKILL.md integration (feature 006)", () => {
   });
 
   it("respects edited SKILL.md content on the next invocation (no cache)", () => {
-    const tmpRoot = mkdtempSync(join(tmpdir(), "linkedin-poster-runner-edit-"));
+    const tmpRoot = mkdtempSync(join(tmpdir(), "ghostwraiter-runner-edit-"));
     try {
       mkdirSync(join(tmpRoot, "linkedin-post-writer"), { recursive: true });
       const skillFile = join(tmpRoot, "linkedin-post-writer", "SKILL.md");

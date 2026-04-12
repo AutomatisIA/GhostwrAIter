@@ -1,8 +1,8 @@
 # Guide de Decouverte
 
-## Ce qu'est LinkedIn Poster
+## Ce qu'est GhostwrAIter
 
-LinkedIn Poster est un cockpit editorial local pour produire, corriger, reutiliser et planifier des contenus LinkedIn.
+GhostwrAIter est un cockpit editorial local pour produire, corriger, reutiliser et planifier des contenus LinkedIn.
 
 Ce n'est pas un simple generateur de texte.
 
@@ -27,7 +27,7 @@ Le probleme que l'outil cherche a resoudre est simple:
 - les bons brouillons se perdent
 - la production manque de cadence et de capitalisation
 
-LinkedIn Poster sert donc a garder la strategie, le backlog, les drafts et le calendrier dans un seul flux local.
+GhostwrAIter sert donc a garder la strategie, le backlog, les drafts et le calendrier dans un seul flux local.
 
 ## Pour qui
 

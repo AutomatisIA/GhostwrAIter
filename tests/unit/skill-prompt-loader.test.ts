@@ -30,7 +30,7 @@ describe("SkillPromptLoader — synthetic filesystem", () => {
   let tmpRoot: string;
 
   beforeEach(() => {
-    tmpRoot = mkdtempSync(join(tmpdir(), "linkedin-poster-loader-test-"));
+    tmpRoot = mkdtempSync(join(tmpdir(), "ghostwraiter-loader-test-"));
   });
 
   afterEach(() => {

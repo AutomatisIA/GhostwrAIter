@@ -135,7 +135,7 @@ report(
 
 console.log("\n== Checks 1, 2, 4: runtime verification via Playwright ==");
 
-const auditHome = mkdtempSync(join(tmpdir(), "linkedin-poster-verify-"));
+const auditHome = mkdtempSync(join(tmpdir(), "ghostwraiter-verify-"));
 
 const app = await electron.launch({
   args: [mainBundle],

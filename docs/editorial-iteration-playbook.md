@@ -1,6 +1,6 @@
 # Editorial Iteration Playbook
 
-This playbook is the daily working document for iterating on the LinkedIn Poster editorial prompts. Read it once end to end before your first iteration session, then keep it open as a reference.
+This playbook is the daily working document for iterating on the GhostwrAIter editorial prompts. Read it once end to end before your first iteration session, then keep it open as a reference.
 
 The playbook assumes you have already cloned the repository, run `npm ci`, run `npm run rebuild:native:electron`, run `npm run build`, and authenticated the Codex CLI on your local machine. None of those one-time setup steps repeat between iterations.
 

@@ -65,7 +65,7 @@ for (const file of placeholderFiles) {
   }
 }
 
-const dbPath = join(root, "data", "linkedin-poster.db");
+const dbPath = join(root, "data", "ghostwraiter.db");
 const db = new Database(dbPath);
 
 db.exec(`
@@ -87,7 +87,7 @@ if (!existsSync(readmePath)) {
   writeFileSync(
     readmePath,
     [
-      "# LinkedIn Poster Skills",
+      "# GhostwrAIter Skills",
       "",
       "Les skills du MVP seront implementees ici avec leur `SKILL.md`, schemas et templates."
     ].join("\n")

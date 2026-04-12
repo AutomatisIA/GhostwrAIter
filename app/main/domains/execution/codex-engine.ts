@@ -57,7 +57,7 @@ export class CodexEngine implements CliEngine {
     const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const command = resolveCommand();
 
-    const tempDirectory = mkdtempSync(join(tmpdir(), "linkedin-poster-codex-"));
+    const tempDirectory = mkdtempSync(join(tmpdir(), "ghostwraiter-codex-"));
     const outputPath = join(tempDirectory, "last-message.json");
 
     try {

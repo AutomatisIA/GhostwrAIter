@@ -24,7 +24,7 @@ describe("export service", () => {
   });
 
   it("creates a workspace snapshot file including execution log metadata", () => {
-    const root = mkdtempSync(join(tmpdir(), "linkedin-poster-export-"));
+    const root = mkdtempSync(join(tmpdir(), "ghostwraiter-export-"));
     const exportsDir = join(root, "content", "exports");
     const strategyDir = join(root, "content", "strategy");
     const executionLogsDir = join(root, "logs", "executions");

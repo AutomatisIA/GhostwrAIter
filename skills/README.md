@@ -1,4 +1,4 @@
-# LinkedIn Poster Skills
+# GhostwrAIter Skills
 
 Ce dossier contient les 8 skills V1 prevues par le cahier des charges.
 

@@ -37,7 +37,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: linkedin-poster-${{ github.event.inputs.tag }}-*
+          pattern: ghostwraiter-${{ github.event.inputs.tag }}-*
           merge-multiple: false
 
       - name: Create draft GitHub release

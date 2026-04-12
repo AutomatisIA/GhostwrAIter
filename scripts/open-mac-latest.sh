@@ -16,7 +16,7 @@ fi
 
 SCRIPT_DIR=${0:A:h}
 REPO_ROOT=${SCRIPT_DIR:h}
-APP_PATH="$REPO_ROOT/dist-app/mac-arm64/LinkedIn Poster.app"
+APP_PATH="$REPO_ROOT/dist-app/mac-arm64/GhostwrAIter.app"
 
 mkdir -p "$REPO_ROOT/dist-launcher"
 
@@ -27,7 +27,7 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
-osascript -e 'tell application id "com.philippe.linkedin-poster" to quit' >/dev/null 2>&1 || true
+osascript -e 'tell application id "fr.automatisia.ghostwraiter" to quit' >/dev/null 2>&1 || true
 
 cd "$REPO_ROOT"
 npm run package:mac

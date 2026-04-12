@@ -78,7 +78,7 @@ describe("README.md", () => {
   const content = readFile("README.md");
 
   it("starts with the canonical project name heading", () => {
-    expect(content.split("\n")[0]).toBe("# LinkedIn Poster");
+    expect(content.split("\n")[0]).toBe("# GhostwrAIter");
   });
 
   it("mentions the project's local nature and Electron", () => {

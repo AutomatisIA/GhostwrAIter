@@ -1,8 +1,8 @@
 {
-  "name": "linkedin-poster",
+  "name": "ghostwraiter",
   "version": "1.0.0",
   "private": true,
-  "description": "Local-first LinkedIn editorial cockpit powered by Codex skills.",
+  "description": "Local-first desktop app for producing professional LinkedIn posts with AI.",
   "main": "dist-electron/main/index.js",
   "type": "module",
   "scripts": {
@@ -26,8 +26,8 @@
     "eval:editorial": "node scripts/eval-editorial-quality.mjs"
   },
   "build": {
-    "appId": "com.philippe.linkedin-poster",
-    "productName": "LinkedIn Poster",
+    "appId": "fr.automatisia.ghostwraiter",
+    "productName": "GhostwrAIter",
     "directories": {
       "output": "dist-app"
     },
@@ -48,7 +48,7 @@
       "icon": "resources/icons/icon.png"
     },
     "dmg": {
-      "title": "LinkedIn Poster",
+      "title": "GhostwrAIter",
       "contents": [
         { "x": 130, "y": 220 },
         { "x": 410, "y": 220, "type": "link", "path": "/Applications" }

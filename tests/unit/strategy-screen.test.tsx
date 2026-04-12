@@ -65,7 +65,7 @@ describe("StrategyScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle,
         saveBundle,
@@ -101,7 +101,7 @@ describe("StrategyScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle,
         saveBundle: vi.fn(),
@@ -129,7 +129,7 @@ describe("StrategyScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle,
         saveBundle,
@@ -167,7 +167,7 @@ describe("StrategyScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle,
         saveBundle,
@@ -233,7 +233,7 @@ describe("StrategyScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle,
         saveBundle: vi.fn(),
@@ -265,7 +265,7 @@ describe("StrategyScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle,
         saveBundle,
@@ -289,7 +289,7 @@ describe("StrategyScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue(baseBundle),
         saveBundle: vi.fn(),

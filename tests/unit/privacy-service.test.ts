@@ -17,7 +17,7 @@ describe("privacy service", () => {
   });
 
   it("purges local execution logs while preserving the directory", () => {
-    const root = mkdtempSync(join(tmpdir(), "linkedin-poster-privacy-"));
+    const root = mkdtempSync(join(tmpdir(), "ghostwraiter-privacy-"));
     const logsDir = join(root, "logs", "executions");
     tempDirectories.push(root);
 

@@ -1,14 +1,14 @@
-# Contributing to LinkedIn Poster
+# Contributing to GhostwrAIter
 
-Thank you for considering a contribution to LinkedIn Poster. This document describes the development workflow, the quality expectations, and the spec-kit authoring process used by the project.
+Thank you for considering a contribution to GhostwrAIter. This document describes the development workflow, the quality expectations, and the spec-kit authoring process used by the project.
 
 ## Getting started
 
 ### Clone and install
 
 ```bash
-git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
-cd LinkedIn-Poster
+git clone https://github.com/AutomatisIA/GhostwrAIter.git
+cd GhostwrAIter
 npm ci
 npm run rebuild:native:electron
 ```
@@ -44,7 +44,7 @@ The full gate is automated in GitHub Actions across macOS, Ubuntu, and Windows f
 
 ## Commit convention
 
-LinkedIn Poster uses [Conventional Commits](https://www.conventionalcommits.org/) for every commit message. The format is:
+GhostwrAIter uses [Conventional Commits](https://www.conventionalcommits.org/) for every commit message. The format is:
 
 ```
 <type>(<scope>): <short summary>
@@ -80,7 +80,7 @@ Prompt-iteration work — improving the eight Codex skill prompts that power the
 
 ## Spec-kit workflow
 
-LinkedIn Poster uses a structured spec-first workflow for non-trivial features. Every feature lives in a numbered directory under [`specs/`](specs/) and follows this sequence:
+GhostwrAIter uses a structured spec-first workflow for non-trivial features. Every feature lives in a numbered directory under [`specs/`](specs/) and follows this sequence:
 
 1. **Specify** — capture user stories, requirements, and acceptance criteria in `spec.md`.
 2. **Clarify** — resolve ambiguities through a short question-and-answer loop recorded in the spec.

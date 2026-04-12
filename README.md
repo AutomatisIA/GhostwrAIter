@@ -1,8 +1,8 @@
-# LinkedIn Poster
+# GhostwrAIter
 
 Produisez des posts LinkedIn de qualite professionnelle, en local, avec l'IA de votre choix.
 
-LinkedIn Poster est une application desktop qui guide la production editoriale de A a Z : strategie, ideation, redaction structuree, correction, capitalisation et planification. Le contenu reste sur votre machine. Pas de backend cloud, pas de compte a creer, pas de donnees qui sortent.
+GhostwrAIter est une application desktop qui guide la production editoriale de A a Z : strategie, ideation, redaction structuree, correction, capitalisation et planification. Le contenu reste sur votre machine. Pas de backend cloud, pas de compte a creer, pas de donnees qui sortent.
 
 L'application utilise un assistant IA externe (ChatGPT, Claude ou Gemini) via votre propre abonnement pour generer les contenus. Vous gardez le controle editorial a chaque etape.
 
@@ -12,14 +12,14 @@ L'application utilise un assistant IA externe (ChatGPT, Claude ou Gemini) via vo
 
 ### Option A — Installeur (recommande)
 
-Telechargez la derniere version depuis les [Releases GitHub](https://github.com/AutomatisIA/LinkedIn-Poster/releases) :
+Telechargez la derniere version depuis les [Releases GitHub](https://github.com/AutomatisIA/GhostwrAIter/releases) :
 
 | Plateforme | Fichier |
 |------------|---------|
-| **macOS (Apple Silicon)** | `LinkedIn Poster-x.x.x-arm64.dmg` |
-| **macOS (Intel)** | `LinkedIn Poster-x.x.x-x64.dmg` |
-| **Windows** | `LinkedIn Poster-x.x.x-setup.exe` |
-| **Linux** | `LinkedIn Poster-x.x.x.AppImage` |
+| **macOS (Apple Silicon)** | `GhostwrAIter-x.x.x-arm64.dmg` |
+| **macOS (Intel)** | `GhostwrAIter-x.x.x-x64.dmg` |
+| **Windows** | `GhostwrAIter-x.x.x-setup.exe` |
+| **Linux** | `GhostwrAIter-x.x.x.AppImage` |
 
 Ouvrez le `.dmg`, glissez l'application dans le dossier Applications, et lancez-la depuis le Dock ou Spotlight.
 
@@ -28,8 +28,8 @@ Ouvrez le `.dmg`, glissez l'application dans le dossier Applications, et lancez-
 Prerequis : [Node.js 20+](https://nodejs.org/) et [Git](https://git-scm.com/).
 
 ```bash
-git clone https://github.com/AutomatisIA/LinkedIn-Poster.git
-cd LinkedIn-Poster
+git clone https://github.com/AutomatisIA/GhostwrAIter.git
+cd GhostwrAIter
 npm ci
 npm run dev
 ```
@@ -39,8 +39,6 @@ npm run dev
 ## Configurer un moteur IA
 
 L'application a besoin d'un assistant IA pour generer les contenus. Installez celui qui correspond a votre abonnement :
-
-Choisissez le service correspondant a votre abonnement :
 
 **Codex** (ChatGPT Plus ou Team)
 ```bash
@@ -91,7 +89,7 @@ Le workflow de production suit 4 etapes guidees :
 - **SQLite** — stockage local (zero serveur)
 - **8 skills IA** — chaque etape du workflow est un prompt specialise avec un contrat d'entree/sortie structure
 
-Les donnees sont stockees dans `~/LinkedInPoster/` (macOS/Linux) ou `%USERPROFILE%\LinkedInPoster\` (Windows).
+Les donnees sont stockees dans `~/GhostwrAIter/` (macOS/Linux) ou `%USERPROFILE%\GhostwrAIter\` (Windows).
 
 ---
 

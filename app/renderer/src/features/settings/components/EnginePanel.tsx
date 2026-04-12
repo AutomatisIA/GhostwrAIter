@@ -92,7 +92,7 @@ export function EnginePanel() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       <p style={{ color: "var(--color-text-secondary)", margin: 0, fontSize: "0.95rem", lineHeight: 1.5 }}>
-        LinkedIn Poster utilise un assistant IA local (Claude, GPT ou Gemini) pour generer vos contenus.
+        GhostwrAIter utilise un assistant IA local (Claude, GPT ou Gemini) pour generer vos contenus.
         Chaque moteur fonctionne via son CLI officiel — installez-le, connectez-vous, puis selectionnez-le ci-dessous.
       </p>
 

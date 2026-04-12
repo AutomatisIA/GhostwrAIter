@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-LinkedIn Poster est une application Electron local-first organisee en 3 couches:
+GhostwrAIter est une application Electron local-first organisee en 3 couches:
 
 - `main`: backend Electron, base SQLite, services metier, IPC, execution Codex
 - `preload`: pont securise entre Electron et le renderer
@@ -72,7 +72,7 @@ Structure creee:
 
 Base SQLite:
 
-- `data/linkedin-poster.db`
+- `data/ghostwraiter.db`
 
 Le chemin peut etre force via `LINKEDIN_POSTER_WORKSPACE_ROOT`.
 

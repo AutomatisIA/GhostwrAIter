@@ -43,7 +43,7 @@ function createWindow() {
     height: 960,
     minWidth: 1120,
     minHeight: 760,
-    title: "LinkedIn Poster",
+    title: "GhostwrAIter",
     backgroundColor: "#f4efe6",
     webPreferences: buildHardenedWebPreferences(preloadPath)
   });

@@ -31,7 +31,7 @@ describe("execution service", () => {
     createIdeasTables(db);
     createWorkshopTables(db);
     ideasRepository = new IdeasRepository(db);
-    executionLogsDirectory = mkdtempSync(join(tmpdir(), "linkedin-poster-execution-"));
+    executionLogsDirectory = mkdtempSync(join(tmpdir(), "ghostwraiter-execution-"));
     skillsDirectory = join(process.cwd(), "skills");
     const skillRunnerService = createStrictSkillRunnerService();
     workshopService = new WorkshopService(

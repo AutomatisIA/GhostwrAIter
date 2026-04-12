@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-We as members, contributors, and leaders of the LinkedIn Poster project pledge to make participation in our community a welcoming and respectful experience for everyone, regardless of background, identity, or experience level.
+We as members, contributors, and leaders of the GhostwrAIter project pledge to make participation in our community a welcoming and respectful experience for everyone, regardless of background, identity, or experience level.
 
 We commit to acting in ways that contribute to an open, collaborative, and inclusive community.
 

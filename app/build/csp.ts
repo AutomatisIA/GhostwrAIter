@@ -1,5 +1,5 @@
 /**
- * Content Security Policy for the LinkedIn Poster renderer.
+ * Content Security Policy for the GhostwrAIter renderer.
  *
  * Two environment-aware policies:
  * - production: strict, forbids external scripts, inline scripts, eval, and

@@ -23,7 +23,7 @@ describe("IdeasScreen", () => {
   it("loads existing ideas on mount", async () => {
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
@@ -82,7 +82,7 @@ describe("IdeasScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
@@ -166,7 +166,7 @@ describe("IdeasScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
@@ -216,7 +216,7 @@ describe("IdeasScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
@@ -282,7 +282,7 @@ describe("IdeasScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
@@ -328,7 +328,7 @@ describe("IdeasScreen", () => {
 
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },
@@ -369,7 +369,7 @@ describe("IdeasScreen", () => {
     const user = userEvent.setup();
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { name: "", positioning: "", bio: "", expertiseSummary: "" },

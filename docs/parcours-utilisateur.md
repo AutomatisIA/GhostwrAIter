@@ -6,7 +6,7 @@ Expliquer comment utiliser l'application sans connaitre le projet, ni Electron, 
 
 ## Ce que l'outil fait vraiment
 
-LinkedIn Poster ne sert pas a "demander un post a une IA".
+GhostwrAIter ne sert pas a "demander un post a une IA".
 
 Il sert a piloter un systeme editorial local:
 

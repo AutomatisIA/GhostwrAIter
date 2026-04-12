@@ -30,7 +30,7 @@ describe("CockpitScreen", () => {
   it("displays pipeline, next action, and metrics for an active workspace", async () => {
     window.linkedinPoster = {
       platform: "darwin",
-      appName: "LinkedIn Poster",
+      appName: "GhostwrAIter",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
           profile: { id: "p1", name: "Philippe", positioning: "Consultant IA", bio: "", expertiseSummary: "" },

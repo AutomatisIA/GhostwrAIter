@@ -1,10 +1,10 @@
-# LinkedIn Poster Development Guidelines
+# GhostwrAIter Development Guidelines
 
 Auto-generated from active specifications. Last updated: 2026-04-10
 
 ## Active Technologies
 - TypeScript 5.9+ compiled by Vite and electron-vite. Node runtime is the one bundled with the target Electron version. (002-security-hardening)
-- local SQLite database at `${workspace}/data/linkedin-poster.db`, accessed through `better-sqlite3`. Unchanged by this feature except for the workspace-path validation that gates every write under the workspace root. (002-security-hardening)
+- local SQLite database at `${workspace}/data/ghostwraiter.db`, accessed through `better-sqlite3`. Unchanged by this feature except for the workspace-path validation that gates every write under the workspace root. (002-security-hardening)
 - TypeScript 6.0.2 compiled by Vite 7.3.2 + electron-vite 5. Same toolchain as feature 002. (003-ipc-validation)
 - no change. SQLite via better-sqlite3. (003-ipc-validation)
 - TypeScript 6.0.2 + Vite 7.3.2 + electron-vite 5.0.0 + Electron 41.2.0. Same toolchain as feature 003. (004-cross-platform-portability)
@@ -15,7 +15,7 @@ Auto-generated from active specifications. Last updated: 2026-04-10
 - TypeScript 6.0.2 (no version change). React 19.2.5 (no version change). Electron 41.2.0 (no version change). Node 20 runtime (no version change). + No new runtime dependencies. The only devDep change is `eslint-plugin-react-hooks` 6.1.1 → 7.x with possible transitive bumps of `eslint` core or `typescript-eslint` per Clarification Q1 (conditional descope policy). (007-code-quality-refactor)
 - No schema change to SQLite. The `execution_runs` table receives the same column set with the same types, only via a single shared write helper instead of three inline copies. No migration. No new index. (007-code-quality-refactor)
 - TypeScript 6.0.2 + React 19.2.5, React Router DOM 7.14, Electron 41.2.0, electron-vite 5, Vite 7.3.2 (009-ux-overhaul)
-- SQLite via better-sqlite3 (local, `${workspace}/data/linkedin-poster.db`) (009-ux-overhaul)
+- SQLite via better-sqlite3 (local, `${workspace}/data/ghostwraiter.db`) (009-ux-overhaul)
 
 - To be confirmed during `/speckit.plan`
 

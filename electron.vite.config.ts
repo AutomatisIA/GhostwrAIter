@@ -5,7 +5,7 @@ import { injectCspMetaTag, type CspMode } from "./app/build/csp";
 
 function cspInjectionPlugin() {
   return {
-    name: "linkedin-poster-csp-injection",
+    name: "ghostwraiter-csp-injection",
     transformIndexHtml: {
       order: "pre" as const,
       handler(html: string) {

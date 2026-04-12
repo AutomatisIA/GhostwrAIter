@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { _electron as electron } from "playwright";
 
 function createAuditHome() {
-  return process.env.AUDIT_HOME || mkdtempSync(join(tmpdir(), "linkedin-poster-audit-"));
+  return process.env.AUDIT_HOME || mkdtempSync(join(tmpdir(), "ghostwraiter-audit-"));
 }
 
 function logStep(step, data) {
