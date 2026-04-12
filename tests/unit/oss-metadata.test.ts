@@ -141,13 +141,8 @@ describe("CONTRIBUTING.md", () => {
     expect(content.toLowerCase()).toMatch(/conventional commits/);
   });
 
-  it("mentions TDD and Constitution IV", () => {
+  it("mentions TDD", () => {
     expect(content).toMatch(/test-driven|TDD/i);
-    expect(content).toMatch(/Constitution IV/);
-  });
-
-  it("points at the specs/ directory", () => {
-    expect(content).toMatch(/specs\//);
   });
 });
 

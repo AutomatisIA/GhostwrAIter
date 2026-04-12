@@ -56,7 +56,7 @@ Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`. Scopes a
 
 ## Test-driven development (Constitution IV)
 
-TDD is a **non-negotiable** expectation for any testable business logic in this project. The rule — codified as Constitution IV in `.specify/memory/constitution.md` — is:
+TDD is a **non-negotiable** expectation for any testable business logic in this project. The rule is:
 
 1. Write the test first.
 2. Observe it fail for the right reason.
@@ -67,30 +67,20 @@ A pull request that adds production code without a preceding failing test will b
 
 ## Editorial iteration
 
-Prompt-iteration work — improving the eight Codex skill prompts that power the editorial workflow — happens through a dedicated loop, separate from regular feature development. The full procedure is documented in [`docs/editorial-iteration-playbook.md`](docs/editorial-iteration-playbook.md): how to run the local benchmark, how to read the report, how to edit a `SKILL.md` without recompiling Electron, how to filter the bench to a single fixture, how to add a new fixture, the human "litmus test" that decides when a prompt is production-ready, and the explicit limits of automated grading. Read it before opening a pull request that touches `skills/linkedin-*/SKILL.md` or `scripts/eval-editorial-*.mjs`.
+Prompt-iteration work — improving the eight skill prompts that power the editorial workflow — happens through a dedicated loop, separate from regular feature development. Run `npm run eval:editorial` to benchmark prompt quality locally. Read the generated report before opening a pull request that touches `skills/linkedin-*/SKILL.md` or `scripts/eval-editorial-*.mjs`.
 
 ## Pull request process
 
-1. Fork the repository and create a branch from `main`. Branch names follow the pattern `NNN-short-description` where `NNN` is the feature number from the `specs/` directory when applicable.
+1. Fork the repository and create a branch from `main`. Branch names follow the pattern `NNN-short-description` (e.g., `010-add-export-pdf`).
 2. Make your changes on the branch, committing along the way with conventional commit messages.
 3. Ensure all local gates pass (`npm test`, `npm run typecheck`, `npm run lint`, `npm run build`).
 4. Open a pull request targeting `main`. Fill in the pull request template completely — it asks for the linked user story, tests added, screenshots for UI changes, and confirmation of no regression on macOS.
 5. GitHub Actions runs the full gate on macOS, Ubuntu, and Windows. Every matrix cell must be green before the pull request is eligible for merge.
 6. A maintainer reviews the change. If everything checks out, they will merge.
 
-## Spec-kit workflow
+## Feature workflow
 
-GhostwrAIter uses a structured spec-first workflow for non-trivial features. Every feature lives in a numbered directory under [`specs/`](specs/) and follows this sequence:
-
-1. **Specify** — capture user stories, requirements, and acceptance criteria in `spec.md`.
-2. **Clarify** — resolve ambiguities through a short question-and-answer loop recorded in the spec.
-3. **Plan** — produce a technical plan (`plan.md`) with architecture decisions and constitution compliance check.
-4. **Research** — document technical decisions and alternatives in `research.md`.
-5. **Tasks** — break the plan into actionable, test-first tasks in `tasks.md`.
-6. **Analyze** — cross-artifact consistency check before implementation.
-7. **Implement** — execute the tasks following TDD.
-
-Browse `specs/` to see prior features. If your change is non-trivial (new IPC handler, new screen, new schema migration, new workflow), please author a spec before writing code. For small fixes and documentation updates, a spec is not required.
+For non-trivial changes (new screen, new IPC handler, new schema migration), please open an issue describing the feature before writing code. Include user stories, acceptance criteria, and any architectural considerations. For small fixes and documentation updates, a direct pull request is fine.
 
 ## Reporting issues
 

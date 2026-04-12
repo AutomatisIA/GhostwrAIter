@@ -22,5 +22,15 @@ electron.vite.config.*.mjs
 .DS_Store
 *.tsbuildinfo
 
+# Local dev tooling — not published
+CLAUDE.md
+AGENTS.md
+TODO.md
+.specify/
+specs/
+docs/audit-pages-*.md
+docs/editorial-doctrine.md
+docs/editorial-iteration-playbook.md
+
 # Strategic editorial source documents — local-only, never published
 *.docx
