@@ -196,13 +196,13 @@ describe("package.yml", () => {
   it("runs the per-OS packaging commands guarded by matrix.os", () => {
     const steps = getOnlyJob(doc).steps ?? [];
     const mac = steps.find(
-      (s) => typeof s.run === "string" && s.run.includes("npm run package:mac")
+      (s) => typeof s.run === "string" && s.run.includes("--mac")
     );
     const linux = steps.find(
-      (s) => typeof s.run === "string" && s.run.includes("npm run package:linux")
+      (s) => typeof s.run === "string" && s.run.includes("--linux")
     );
     const win = steps.find(
-      (s) => typeof s.run === "string" && s.run.includes("npm run package:win")
+      (s) => typeof s.run === "string" && s.run.includes("--win")
     );
 
     expect(mac).toBeDefined();

@@ -402,13 +402,26 @@ export function LibraryScreen() {
 
       {activeTab === "planning" && (
         <>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.9rem", margin: "16px 0 0", lineHeight: 1.55 }}>
+            Le planning est votre calendrier éditorial personnel. Il ne publie rien automatiquement —
+            quand la date arrive, ouvrez le post, copiez-le et collez-le sur LinkedIn.
+          </p>
+
           <div className="insight-strip">
             <article className="insight-card">
-              <span className="status-label">Publications</span>
+              <span className="status-label">À venir</span>
               <strong>
                 {planningLoading
                   ? "..."
-                  : `${visibleCalendarItems.length} planifiee${visibleCalendarItems.length > 1 ? "s" : ""}`}
+                  : `${visibleCalendarItems.filter((i) => i.status !== "published").length} post${visibleCalendarItems.filter((i) => i.status !== "published").length > 1 ? "s" : ""}`}
+              </strong>
+            </article>
+            <article className="insight-card">
+              <span className="status-label">Publiés</span>
+              <strong>
+                {planningLoading
+                  ? "..."
+                  : `${visibleCalendarItems.filter((i) => i.status === "published").length}`}
               </strong>
             </article>
           </div>
@@ -424,14 +437,14 @@ export function LibraryScreen() {
                 }
               >
                 <option value="all">Tous les statuts</option>
-                <option value="planned">Planifie</option>
-                <option value="ready">Pret</option>
-                <option value="published">Publie</option>
-                <option value="missed">Manque</option>
+                <option value="planned">Planifié</option>
+                <option value="ready">Prêt</option>
+                <option value="published">Publié</option>
+                <option value="missed">Manqué</option>
               </select>
             </label>
           </div>
-          <div className="form-status">{planningStatus}</div>
+          {planningStatus && <div className="form-status">{planningStatus}</div>}
 
           {planningLoading ? (
             <div className="list-grid" aria-label="Chargement du planning">
@@ -441,15 +454,76 @@ export function LibraryScreen() {
           ) : null}
 
           <div className="list-grid">
-            {visibleCalendarItems.map((item) => (
-              <article key={item.id} className="list-card">
-                <div className="status-label">
-                  {item.pillarLabel} · {formatCalendarStatus(item.status)}
-                </div>
-                <strong>{item.plannedDate}</strong>
-                <p>{item.draftHeadline}</p>
-              </article>
-            ))}
+            {visibleCalendarItems.map((item) => {
+              const draft = entries.find((e) => e.draftId === item.draftId);
+              return (
+                <article key={item.id} className="lib-card">
+                  <div className="lib-card-meta">
+                    <span className="lib-card-tag">{item.pillarLabel}</span>
+                    <span className="lib-card-tag">{formatCalendarStatus(item.status)}</span>
+                    <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--color-text-secondary)", marginLeft: "auto" }}>
+                      {item.plannedDate}
+                    </span>
+                  </div>
+                  <strong className="lib-card-headline">{item.draftHeadline}</strong>
+                  {draft && (
+                    <p className="lib-card-preview" style={{ WebkitLineClamp: 3 }}>
+                      {draft.bodyPreview}
+                    </p>
+                  )}
+                  <div className="lib-card-actions">
+                    {draft && (
+                      <>
+                        <button
+                          type="button"
+                          className="lib-card-action"
+                          style={{ color: "var(--color-accent)", fontWeight: 700 }}
+                          onClick={() => {
+                            const text = draft.headline + "\n\n" + draft.bodyMarkdown;
+                            navigator.clipboard.writeText(text).then(() => {
+                              setPlanningStatus("Post copié dans le presse-papier — collez-le sur LinkedIn.");
+                              if (item.status === "planned") {
+                                window.linkedinPoster.calendar
+                                  .scheduleDraft({ draftId: item.draftId, plannedDate: item.plannedDate, status: "published" })
+                                  .then(() => {
+                                    setCalendarItems((prev) =>
+                                      prev.map((ci) => ci.id === item.id ? { ...ci, status: "published" as const } : ci)
+                                    );
+                                  })
+                                  .catch(() => {});
+                              }
+                            });
+                          }}
+                        >
+                          Copier et marquer publié
+                        </button>
+                        <span className="lib-card-action-separator" />
+                        <button
+                          type="button"
+                          className="lib-card-action"
+                          onClick={() => {
+                            navigator.clipboard.writeText(draft.headline + "\n\n" + draft.bodyMarkdown);
+                            setPlanningStatus("Post copié.");
+                          }}
+                        >
+                          Copier
+                        </button>
+                        <span className="lib-card-action-separator" />
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      className="lib-card-action"
+                      onClick={() => {
+                        switchTab("drafts");
+                      }}
+                    >
+                      Voir dans les drafts
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </>
       )}
