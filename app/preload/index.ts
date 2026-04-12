@@ -140,6 +140,8 @@ const execution: ExecutionApi = {
 
 const settings: SettingsApi = {
   exportWorkspace: () => unwrap("settings:export-workspace", ipcRenderer.invoke("settings:export-workspace")),
+  countExecutionLogs: () =>
+    unwrap("settings:count-execution-logs", ipcRenderer.invoke("settings:count-execution-logs")),
   purgeExecutionLogs: () =>
     unwrap("settings:purge-execution-logs", ipcRenderer.invoke("settings:purge-execution-logs"))
 };

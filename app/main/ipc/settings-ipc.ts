@@ -16,6 +16,10 @@ export class SettingsRuntimeService {
     return this.exportService.exportWorkspace();
   }
 
+  countExecutionLogs() {
+    return this.privacyService.countExecutionLogs();
+  }
+
   purgeExecutionLogs() {
     return this.privacyService.purgeExecutionLogs();
   }
@@ -30,6 +34,12 @@ export function registerSettingsIpcHandlers(
     "settings:export-workspace",
     emptyInputSchema,
     () => settingsService.exportWorkspace()
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "settings:count-execution-logs",
+    emptyInputSchema,
+    () => settingsService.countExecutionLogs()
   );
   registerValidatedHandler(
     ipcRegistrar,
