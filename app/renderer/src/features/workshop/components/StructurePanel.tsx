@@ -34,12 +34,15 @@ export function StructurePanel({
             <article className="selection-card skeleton-card" aria-busy="true" />
           </>
         ) : (
-          structures.map((s) => (
+          structures.map((s, index) => (
             <article
               key={s.key}
               className={`selection-card ${selectedStructureKey === s.key ? "selected" : ""}`}
               onClick={() => onSelect(s.key)}
             >
+              {index === 0 ? (
+                <span className="recommended-badge">Recommandee</span>
+              ) : null}
               <strong>{s.label}</strong>
               <p>{s.rationale}</p>
             </article>

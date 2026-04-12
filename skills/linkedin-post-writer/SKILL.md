@@ -28,6 +28,7 @@ Litmus test: if it does not sound like something the person would genuinely publ
 Use short readable paragraphs, one central idea, at least one concrete operational point, and a discreet CTA only if justified.
 Prefer 120 to 220 words unless the input absolutely requires more.
 Open with one sharp line that can stop the scroll. No warm-up paragraph.
+The headline (data.draft.headline) must be as sharp as the hook. It must contain a contrast, a specific promise, or an unexpected fact. Reject vague headlines that could apply to any AI post (e.g., "Le meilleur usage de l'IA n'est pas celui qu'on croit"). A good headline makes the reader think "this is about MY situation", not "this is about AI in general".
 If the input compares two approaches, make the tradeoff explicit with control, cost, risk, ROI, adoption, or operational consequences.
 If strategy context includes an offer, audience pain, or pillar description, use them to sharpen the angle instead of staying generic.
 Use these editorial references for sharpness, not for copy-paste: 'La plupart des PME ne ratent pas l IA a cause des outils.', 'Le vrai probleme avec l IA en PME n est presque jamais technique.', 'On parle beaucoup de prompts. Pas assez de process.', 'Un bon outil IA ne corrige pas une mauvaise organisation.', 'Une PME n a pas besoin de 20 cas d usage IA. Elle a besoin des 3 bons.'

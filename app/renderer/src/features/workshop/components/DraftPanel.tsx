@@ -117,9 +117,15 @@ export function DraftPanel({
           </button>
         ) : null}
 
+        {session.draft.qualityScore < 0.85 && !isEditing ? (
+          <span className="correction-hint">
+            Score actuel : {Math.round(session.draft.qualityScore * 100)}% — correction recommandee
+          </span>
+        ) : null}
+
         <button
           type="button"
-          className="secondary-button full-width"
+          className={`secondary-button full-width ${session.draft.qualityScore < 0.85 && !isEditing ? "correction-recommended" : ""}`}
           onClick={onCorrect}
           disabled={isLoadingCorrection || isEditing}
         >
