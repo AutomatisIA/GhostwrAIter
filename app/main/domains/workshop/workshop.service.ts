@@ -512,8 +512,19 @@ export class WorkshopService {
 
   correctDraft(draftId: string): WorkshopSession {
     const draft = this.db
-      .prepare("SELECT id, idea_id AS ideaId, body_markdown AS bodyMarkdown FROM drafts WHERE id = ?")
-      .get(draftId) as { id: string; ideaId: string; bodyMarkdown: string } | undefined;
+      .prepare(`
+        SELECT id, idea_id AS ideaId, headline, body_markdown AS bodyMarkdown,
+               quality_score AS qualityScore, typology, objective,
+               structure_key AS structureKey, structure_label AS structureLabel,
+               selected_hook_text AS selectedHookText
+        FROM drafts WHERE id = ?
+      `)
+      .get(draftId) as {
+        id: string; ideaId: string; headline: string; bodyMarkdown: string;
+        qualityScore: number; typology: string | null; objective: string | null;
+        structureKey: string | null; structureLabel: string | null;
+        selectedHookText: string | null;
+      } | undefined;
 
     if (!draft) {
       throw new Error(`Draft not found: ${draftId}`);
@@ -528,10 +539,16 @@ export class WorkshopService {
       context: this.buildRunnerContext(idea.pillarLabel),
       payload: {
         draftId,
-        headline: this.db
-          .prepare("SELECT headline FROM drafts WHERE id = ?")
-          .get(draftId)?.headline ?? idea.title,
-        bodyMarkdown: draft.bodyMarkdown
+        headline: draft.headline ?? idea.title,
+        bodyMarkdown: draft.bodyMarkdown,
+        currentQualityScore: draft.qualityScore,
+        ideaTitle: idea.title,
+        ideaAngle: idea.angle,
+        typology: draft.typology,
+        objective: draft.objective,
+        structureKey: draft.structureKey,
+        structureLabel: draft.structureLabel,
+        selectedHookText: draft.selectedHookText
       },
       attachments: []
     };
