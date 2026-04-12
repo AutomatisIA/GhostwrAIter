@@ -649,6 +649,41 @@ a {
   margin: 8px 0 0;
 }
 
+.first-run-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 22px 24px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(14, 165, 233, 0.02));
+  border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
+.first-run-card strong {
+  font-size: 1.05rem;
+}
+
+.first-run-cta {
+  align-self: flex-start;
+  margin-top: 8px;
+  text-decoration: none;
+}
+
+.metric-card-link {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+  cursor: pointer;
+}
+
+.metric-card-link:hover,
+.metric-card-link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+  outline: none;
+}
+
 .ideas-modes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

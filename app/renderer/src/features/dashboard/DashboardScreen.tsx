@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 type DashboardState = {
   strategyReady: boolean;
@@ -64,6 +65,9 @@ export function DashboardScreen() {
     };
   }, []);
 
+  const isFirstRun =
+    !loading && !state.strategyReady && state.ideasCount === 0 && state.draftsCount === 0;
+
   return (
     <section className="page-panel dashboard-page">
       <div className="hero-card panel">
@@ -82,27 +86,53 @@ export function DashboardScreen() {
         </div>
       </div>
 
+      {isFirstRun ? (
+        <article className="panel first-run-card">
+          <div className="eyebrow">Premier demarrage</div>
+          <strong>Rien n'est encore configure — on commence par le socle.</strong>
+          <p>
+            Remplis ta strategie (positionnement, offres, piliers, voix) et
+            l'application saura guider les generations. Sans ce socle, tous les
+            ecrans suivants restent en mode degrade.
+          </p>
+          <Link to="/strategie" className="primary-button first-run-cta">
+            Commencer ici : Strategie
+          </Link>
+        </article>
+      ) : null}
+
       <div className="dashboard-grid">
-        <article className="panel metric-card">
-          <span className="status-label">Strategie</span>
-          <strong>{loading ? "..." : state.strategyReady ? "Strategie: OK" : "Strategie incomplete"}</strong>
-          <p>Le socle editorial doit etre suffisamment rempli pour guider les generations.</p>
-        </article>
-        <article className="panel metric-card">
-          <span className="status-label">Backlog</span>
-          <strong>{loading ? "..." : formatCount(state.ideasCount, "idee", "idees")}</strong>
-          <p>Les idees sont le point d'entree le plus rapide pour lancer un premier test realiste.</p>
-        </article>
-        <article className="panel metric-card">
-          <span className="status-label">Bibliotheque</span>
-          <strong>{loading ? "..." : formatCount(state.draftsCount, "draft", "drafts")}</strong>
-          <p>La bibliotheque montre ce qui est deja reutilisable sans repartir d'une page blanche.</p>
-        </article>
-        <article className="panel metric-card">
-          <span className="status-label">Calendrier</span>
-          <strong>{loading ? "..." : formatCount(state.plannedCount, "contenu planifie", "contenus planifies")}</strong>
-          <p>Un draft planifie est un draft qui a plus de chances d'etre publie.</p>
-        </article>
+        {loading ? (
+          <>
+            <article className="panel metric-card skeleton-card" aria-busy="true" />
+            <article className="panel metric-card skeleton-card" aria-busy="true" />
+            <article className="panel metric-card skeleton-card" aria-busy="true" />
+            <article className="panel metric-card skeleton-card" aria-busy="true" />
+          </>
+        ) : (
+          <>
+            <Link to="/strategie" className="panel metric-card metric-card-link">
+              <span className="status-label">Strategie</span>
+              <strong>{state.strategyReady ? "Strategie: OK" : "Strategie incomplete"}</strong>
+              <p>Le socle editorial doit etre suffisamment rempli pour guider les generations.</p>
+            </Link>
+            <Link to="/idees" className="panel metric-card metric-card-link">
+              <span className="status-label">Backlog</span>
+              <strong>{formatCount(state.ideasCount, "idee", "idees")}</strong>
+              <p>Les idees sont le point d'entree le plus rapide pour lancer un premier test realiste.</p>
+            </Link>
+            <Link to="/bibliotheque" className="panel metric-card metric-card-link">
+              <span className="status-label">Bibliotheque</span>
+              <strong>{formatCount(state.draftsCount, "draft", "drafts")}</strong>
+              <p>La bibliotheque montre ce qui est deja reutilisable sans repartir d'une page blanche.</p>
+            </Link>
+            <Link to="/calendrier" className="panel metric-card metric-card-link">
+              <span className="status-label">Calendrier</span>
+              <strong>{formatCount(state.plannedCount, "contenu planifie", "contenus planifies")}</strong>
+              <p>Un draft planifie est un draft qui a plus de chances d'etre publie.</p>
+            </Link>
+          </>
+        )}
       </div>
 
       <div className="dashboard-grid dashboard-grid-secondary">
