@@ -53,5 +53,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ghostwraiter-${{ github.ref_name }}-${{ matrix.os }}
-          path: dist-app/
+          path: |
+            dist-app/*.dmg
+            dist-app/*.exe
+            dist-app/*.AppImage
+            dist-app/*.deb
+            dist-app/*.yml
+            dist-app/*.blockmap
           if-no-files-found: error

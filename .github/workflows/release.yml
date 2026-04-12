@@ -31,6 +31,7 @@ jobs:
           path: artifacts
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          merge-multiple: true
 
       - name: Download artifacts for the supplied tag
         if: github.event_name == 'workflow_dispatch'
@@ -38,12 +39,16 @@ jobs:
         with:
           path: artifacts
           pattern: ghostwraiter-${{ github.event.inputs.tag }}-*
-          merge-multiple: false
+          merge-multiple: true
 
       - name: Create draft GitHub release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           tag_name: ${{ github.event.inputs.tag || github.event.workflow_run.head_branch }}
-          files: artifacts/**/*
+          files: |
+            artifacts/*.dmg
+            artifacts/*.exe
+            artifacts/*.AppImage
+            artifacts/*.deb
           token: ${{ secrets.GITHUB_TOKEN }}
