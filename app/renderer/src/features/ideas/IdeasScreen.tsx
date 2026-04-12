@@ -133,91 +133,125 @@ export function IdeasScreen() {
         </label>
       </div>
 
-      <form className="strategy-form" onSubmit={handleSubmit}>
-        <label className="field">
-          <span>Titre du sujet</span>
-          <input
-            aria-label="Titre du sujet"
-            value={form.title}
-            onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-          />
-        </label>
-        <label className="field">
-          <span>Angle</span>
-          <textarea
-            aria-label="Angle"
-            rows={3}
-            value={form.angle}
-            onChange={(event) => setForm((current) => ({ ...current, angle: event.target.value }))}
-          />
-        </label>
-        <label className="field">
-          <span>Pilier editorial</span>
-          <input
-            aria-label="Pilier editorial"
-            value={form.pillarLabel}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, pillarLabel: event.target.value }))
-            }
-          />
-        </label>
-        <div className="form-actions">
-          <button type="submit" className="primary-button" disabled={isCreatingIdea}>
-            Ajouter l'idee
-          </button>
-          <span className="form-status">{status}</span>
-        </div>
-      </form>
+      <div className="ideas-modes">
+        <article className="ideas-mode-card">
+          <div className="ideas-mode-icon" aria-hidden="true">Idee</div>
+          <h2>Saisir une idee</h2>
+          <p className="ideas-mode-description">
+            Quand tu as deja un sujet en tete. Remplis le titre, l'angle et
+            le pilier editorial pour l'envoyer dans le backlog.
+          </p>
+          <form className="strategy-form" onSubmit={handleSubmit}>
+            <label className="field">
+              <span>Titre du sujet</span>
+              <input
+                aria-label="Titre du sujet"
+                value={form.title}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, title: event.target.value }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Angle</span>
+              <textarea
+                aria-label="Angle"
+                rows={3}
+                value={form.angle}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, angle: event.target.value }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Pilier editorial</span>
+              <input
+                aria-label="Pilier editorial"
+                value={form.pillarLabel}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, pillarLabel: event.target.value }))
+                }
+              />
+            </label>
+            <div className="form-actions">
+              <button type="submit" className="primary-button" disabled={isCreatingIdea}>
+                Ajouter l'idee
+              </button>
+            </div>
+          </form>
+        </article>
 
-      <form className="strategy-form" onSubmit={handleNewsSubmit}>
-        <label className="field">
-          <span>Titre source</span>
-          <input
-            aria-label="Titre source"
-            value={newsSource.sourceTitle}
-            onChange={(event) =>
-              setNewsSource((current) => ({ ...current, sourceTitle: event.target.value }))
-            }
-          />
-        </label>
-        <label className="field">
-          <span>Resume source</span>
-          <textarea
-            aria-label="Resume source"
-            rows={3}
-            value={newsSource.sourceSummary}
-            onChange={(event) =>
-              setNewsSource((current) => ({ ...current, sourceSummary: event.target.value }))
-            }
-          />
-        </label>
-        <div className="form-actions">
-          <button type="submit" className="secondary-button" disabled={isCreatingFromNews}>
-            Transformer la veille en draft
-          </button>
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={isGeneratingFromStrategy}
-            onClick={async () => {
-              setIsGeneratingFromStrategy(true);
-              setStatus("Generation des sujets en cours...");
-              try {
-                await window.linkedinPoster.ideas.generateFromStrategy();
-                await loadIdeas();
-                setStatus("Sujets generes depuis la strategie.");
-              } catch (error) {
-                const message = error instanceof Error ? error.message : "Erreur inconnue";
-                setStatus(`Erreur lors de la generation des sujets : ${message}`);
-              } finally {
-                setIsGeneratingFromStrategy(false);
-              }
-            }}
-          >
-            Generer des sujets depuis la strategie
-          </button>
-        </div>
-      </form>
+        <article className="ideas-mode-card">
+          <div className="ideas-mode-icon" aria-hidden="true">Veille</div>
+          <h2>Transformer une veille</h2>
+          <p className="ideas-mode-description">
+            Quand tu veux reagir a un article externe. Colle le titre et le
+            resume de la source pour obtenir un draft initial.
+          </p>
+          <form className="strategy-form" onSubmit={handleNewsSubmit}>
+            <label className="field">
+              <span>Titre source</span>
+              <input
+                aria-label="Titre source"
+                value={newsSource.sourceTitle}
+                onChange={(event) =>
+                  setNewsSource((current) => ({ ...current, sourceTitle: event.target.value }))
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Resume source</span>
+              <textarea
+                aria-label="Resume source"
+                rows={3}
+                value={newsSource.sourceSummary}
+                onChange={(event) =>
+                  setNewsSource((current) => ({ ...current, sourceSummary: event.target.value }))
+                }
+              />
+            </label>
+            <div className="form-actions">
+              <button type="submit" className="secondary-button" disabled={isCreatingFromNews}>
+                Transformer la veille en draft
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <article className="ideas-mode-card">
+          <div className="ideas-mode-icon" aria-hidden="true">Strategie</div>
+          <h2>Generer depuis la strategie</h2>
+          <p className="ideas-mode-description">
+            Quand tu veux que l'app propose des sujets a partir des piliers
+            editoriaux, des ICPs et des offres de ta strategie active.
+          </p>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={isGeneratingFromStrategy}
+              onClick={async () => {
+                setIsGeneratingFromStrategy(true);
+                setStatus("Generation des sujets en cours...");
+                try {
+                  await window.linkedinPoster.ideas.generateFromStrategy();
+                  await loadIdeas();
+                  setStatus("Sujets generes depuis la strategie.");
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : "Erreur inconnue";
+                  setStatus(`Erreur lors de la generation des sujets : ${message}`);
+                } finally {
+                  setIsGeneratingFromStrategy(false);
+                }
+              }}
+            >
+              Generer des sujets depuis la strategie
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <p className="form-status">{status}</p>
 
       {loading ? (
         <div className="list-grid" aria-label="Chargement des idees">
