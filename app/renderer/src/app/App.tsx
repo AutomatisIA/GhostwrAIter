@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 import { CalendarScreen } from "../features/calendar/CalendarScreen";
 import { DashboardScreen } from "../features/dashboard/DashboardScreen";
@@ -147,53 +148,92 @@ function renderSection(path: string, eyebrow: string, title: string, description
   return <SectionPage eyebrow={eyebrow} title={title} description={description} />;
 }
 
+function AppShell() {
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  function closeDrawer() {
+    setIsDrawerOpen(false);
+  }
+
+  return (
+    <div className="shell">
+      <button
+        type="button"
+        className="hamburger-button"
+        onClick={() => setIsDrawerOpen(true)}
+        aria-expanded={isDrawerOpen}
+        aria-label="Ouvrir la navigation"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
+      {isDrawerOpen ? (
+        <div
+          className="drawer-overlay"
+          onClick={() => setIsDrawerOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setIsDrawerOpen(false);
+            }
+          }}
+          role="presentation"
+        />
+      ) : null}
+
+      <aside className={`sidebar ${isDrawerOpen ? "drawer-open" : ""}`}>
+        <div className="brand panel">
+          <div className="eyebrow">LinkedIn Poster</div>
+          <h2>Machine editoriale</h2>
+          <p>
+            Un cockpit local pour passer d'une idee brute a un post credibile,
+            structuré et reutilisable.
+          </p>
+        </div>
+
+        <nav className="panel nav-panel" aria-label="Navigation principale">
+          {sections.map((section) => (
+            <NavLink
+              key={section.path}
+              to={section.path}
+              end={section.path === "/"}
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+              onClick={closeDrawer}
+            >
+              <span>{section.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="content">
+        <Routes>
+          {sections.map((section) => (
+            <Route
+              key={section.path}
+              path={section.path}
+              element={renderSection(
+                section.path,
+                section.eyebrow,
+                section.title,
+                section.description
+              )}
+            />
+          ))}
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <BrowserRouter>
-      <div className="shell">
-        <aside className="sidebar">
-          <div className="brand panel">
-            <div className="eyebrow">LinkedIn Poster</div>
-            <h2>Machine editoriale</h2>
-            <p>
-              Un cockpit local pour passer d'une idee brute a un post credibile,
-              structuré et reutilisable.
-            </p>
-          </div>
-
-          <nav className="panel nav-panel" aria-label="Navigation principale">
-            {sections.map((section) => (
-              <NavLink
-                key={section.path}
-                to={section.path}
-                end={section.path === "/"}
-                className={({ isActive }) =>
-                  isActive ? "nav-link active" : "nav-link"
-                }
-              >
-                <span>{section.label}</span>
-              </NavLink>
-            ))}
-          </nav>
-        </aside>
-
-        <main className="content">
-          <Routes>
-            {sections.map((section) => (
-              <Route
-                key={section.path}
-                path={section.path}
-                element={renderSection(
-                  section.path,
-                  section.eyebrow,
-                  section.title,
-                  section.description
-                )}
-              />
-            ))}
-          </Routes>
-        </main>
-      </div>
+      <AppShell />
     </BrowserRouter>
   );
 }
