@@ -1,4 +1,5 @@
 import { CodexCliRunner } from "./codex-cli-runner";
+import type { EngineRegistry } from "./engine-registry";
 
 export type SkillRunnerInvocation = {
   runId: string;
@@ -58,13 +59,16 @@ export type SkillRunnerResult = {
 
 type SkillRunnerOptions = {
   codexCliRunner?: Pick<CodexCliRunner, "isAvailable" | "execute">;
+  engineRegistry?: EngineRegistry;
 };
 
 export class SkillRunnerService {
   private readonly codexCliRunner?: Pick<CodexCliRunner, "isAvailable" | "execute">;
+  private readonly engineRegistry?: EngineRegistry;
 
   constructor(options?: SkillRunnerOptions) {
     this.codexCliRunner = options?.codexCliRunner;
+    this.engineRegistry = options?.engineRegistry;
   }
 
   execute(invocation: SkillRunnerInvocation): SkillRunnerResult {
@@ -112,6 +116,10 @@ export class SkillRunnerService {
 
   getRunnerMode(): "codex" | "unavailable" {
     return this.codexCliRunner?.isAvailable() ? "codex" : "unavailable";
+  }
+
+  getEngineRegistry(): EngineRegistry | undefined {
+    return this.engineRegistry;
   }
 
   private isResultUsableForSkill(skillName: string, result: SkillRunnerResult) {

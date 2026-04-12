@@ -55,7 +55,10 @@ describe("LibraryScreen", () => {
         correctDraft: vi.fn(),
         getSessionByIdeaId: vi.fn()
       },
-      library: mockLibrary({ searchEntries })
+      library: mockLibrary({ searchEntries }),
+      calendar: { listItems: vi.fn().mockResolvedValue([]), scheduleDraft: vi.fn() },
+      execution: { listRuns: vi.fn().mockResolvedValue([]), getDiagnostics: vi.fn().mockResolvedValue({ activeEngine: "codex", engines: [], availableSkills: [], message: "" }), openRunLog: vi.fn() },
+      settings: { exportWorkspace: vi.fn(), countExecutionLogs: vi.fn(), purgeExecutionLogs: vi.fn(), getPreference: vi.fn().mockResolvedValue({ key: "theme", value: null }), setPreference: vi.fn(), getAllPreferences: vi.fn(), detectEngines: vi.fn(), getActiveEngine: vi.fn(), setActiveEngine: vi.fn() }
     };
 
     render(
@@ -129,7 +132,10 @@ describe("LibraryScreen", () => {
             resolveVariant = resolve;
           })
         )
-      })
+      }),
+      calendar: { listItems: vi.fn().mockResolvedValue([]), scheduleDraft: vi.fn() },
+      execution: { listRuns: vi.fn().mockResolvedValue([]), getDiagnostics: vi.fn().mockResolvedValue({ activeEngine: "codex", engines: [], availableSkills: [], message: "" }), openRunLog: vi.fn() },
+      settings: { exportWorkspace: vi.fn(), countExecutionLogs: vi.fn(), purgeExecutionLogs: vi.fn(), getPreference: vi.fn().mockResolvedValue({ key: "theme", value: null }), setPreference: vi.fn(), getAllPreferences: vi.fn(), detectEngines: vi.fn(), getActiveEngine: vi.fn(), setActiveEngine: vi.fn() }
     };
 
     render(

@@ -9,11 +9,13 @@ export type ExecutionRunEntry = {
   hasLog: boolean;
 };
 
+import type { CliEngineStatus } from "./settings";
+
 export type ExecutionDiagnostics = {
-  runnerMode: "unavailable" | "codex";
-  codexAvailable: boolean;
-  message: string;
+  activeEngine: string;
+  engines: CliEngineStatus[];
   availableSkills: string[];
+  message: string;
 };
 
 export type OpenRunLogResult = {

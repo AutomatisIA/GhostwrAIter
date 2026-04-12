@@ -109,12 +109,7 @@ export function CalendarScreen() {
 
   return (
     <section className="panel page-panel">
-      <div className="eyebrow">Planification</div>
       <h1>Calendrier editorial</h1>
-      <p>
-        Le calendrier sert a donner une date a un draft deja pret. Son role est
-        simple: rendre visible ce qui doit sortir et a quel moment.
-      </p>
 
       <div className="insight-strip">
         <article className="insight-card">

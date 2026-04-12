@@ -11,12 +11,17 @@ import {
 import { CalendarRuntimeService, registerCalendarIpcHandlers } from "./ipc/calendar-ipc";
 import { createAppDatabase } from "./db/database";
 import { CodexCliRunner } from "./domains/execution/codex-cli-runner";
+import { CodexEngine } from "./domains/execution/codex-engine";
+import { ClaudeEngine } from "./domains/execution/claude-engine";
+import { GeminiEngine } from "./domains/execution/gemini-engine";
+import { EngineRegistry } from "./domains/execution/engine-registry";
 import { SkillRunnerService } from "./domains/execution/skill-runner.service";
 import { ExecutionRuntimeService, registerExecutionIpcHandlers } from "./ipc/execution-ipc";
 import { SkillRegistryService } from "./domains/execution/skill-registry.service";
 import { IdeasService, registerIdeasIpcHandlers } from "./ipc/ideas-ipc";
 import { LibraryRuntimeService, registerLibraryIpcHandlers } from "./ipc/library-ipc";
 import { SettingsRuntimeService, registerSettingsIpcHandlers } from "./ipc/settings-ipc";
+import { SettingsService } from "./domains/settings/settings.service";
 import { registerStrategyIpcHandlers, StrategyService } from "./ipc/strategy-ipc";
 import { registerWorkshopIpcHandlers, WorkshopRuntimeService } from "./ipc/workshop-ipc";
 import {
@@ -83,8 +88,15 @@ app.whenReady().then(() => {
   const workspaceService = createWorkspaceService(workspaceRoot);
   const workspacePaths = workspaceService.ensureWorkspace();
   const db = createAppDatabase(workspacePaths.databasePath);
+  const appSettingsService = new SettingsService(db);
+  const engineRegistry = new EngineRegistry(appSettingsService, [
+    new CodexEngine(),
+    new ClaudeEngine(),
+    new GeminiEngine()
+  ]);
   const skillRunnerService = new SkillRunnerService({
-    codexCliRunner: new CodexCliRunner()
+    codexCliRunner: new CodexCliRunner(),
+    engineRegistry
   });
   const strategyService = new StrategyService(db, skillRunnerService);
   const getActiveStrategyBundle = () => {
@@ -112,7 +124,8 @@ app.whenReady().then(() => {
       join(workspacePaths.rootDirectory, "skills")
     ]),
     skillRunnerService,
-    join(workspacePaths.logsDirectory, "executions")
+    join(workspacePaths.logsDirectory, "executions"),
+    engineRegistry
   );
   const settingsService = new SettingsRuntimeService(
     new ExportService(
@@ -121,7 +134,9 @@ app.whenReady().then(() => {
       join(workspacePaths.contentDirectory, "strategy"),
       join(workspacePaths.logsDirectory, "executions")
     ),
-    new PrivacyService(join(workspacePaths.logsDirectory, "executions"))
+    new PrivacyService(join(workspacePaths.logsDirectory, "executions")),
+    appSettingsService,
+    engineRegistry
   );
 
   registerStrategyIpcHandlers(ipcMain, strategyService);

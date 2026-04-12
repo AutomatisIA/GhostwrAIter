@@ -71,13 +71,7 @@ export function DashboardScreen() {
   return (
     <section className="page-panel dashboard-page">
       <div className="hero-card panel">
-        <div className="eyebrow">Commencer</div>
         <h1>Commencer sans se perdre</h1>
-        <p>
-          LinkedIn Poster te guide du socle editorial jusqu'au calendrier. Si tu
-          arrives pour la premiere fois, remplis d'abord la strategie, ajoute une
-          idee simple, puis passe dans l'atelier.
-        </p>
         <div className="hero-actions">
           <div className="hero-chip">1. Strategie</div>
           <div className="hero-chip">2. Idees</div>
@@ -88,7 +82,6 @@ export function DashboardScreen() {
 
       {isFirstRun ? (
         <article className="panel first-run-card">
-          <div className="eyebrow">Premier demarrage</div>
           <strong>Rien n'est encore configure — on commence par le socle.</strong>
           <p>
             Remplis ta strategie (positionnement, offres, piliers, voix) et

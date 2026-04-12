@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { SettingsScreen } from "../../app/renderer/src/features/settings/SettingsScreen";
 
 function mockLinkedinPoster(overrides: {
@@ -23,11 +24,19 @@ function mockLinkedinPoster(overrides: {
     library: { listEntries: vi.fn() },
     calendar: { listItems: vi.fn(), scheduleDraft: vi.fn() },
     execution: {
-      listRuns: vi.fn(),
-      getDiagnostics: vi.fn(),
+      listRuns: vi.fn().mockResolvedValue([]),
+      getDiagnostics: vi.fn().mockResolvedValue({ activeEngine: "codex", engines: [], availableSkills: [], message: "" }),
       openRunLog: vi.fn()
     },
-    settings: overrides
+    settings: {
+      ...overrides,
+      getPreference: vi.fn().mockResolvedValue({ key: "theme", value: null }),
+      setPreference: vi.fn().mockResolvedValue({ key: "theme", value: "system", updated_at: "" }),
+      getAllPreferences: vi.fn().mockResolvedValue({}),
+      detectEngines: vi.fn().mockResolvedValue({ engines: [] }),
+      getActiveEngine: vi.fn().mockResolvedValue({ engine: "codex", status: {} }),
+      setActiveEngine: vi.fn().mockResolvedValue({ engine: "codex", status: {} })
+    }
   };
 }
 
@@ -49,7 +58,7 @@ describe("SettingsScreen", () => {
       purgeExecutionLogs: vi.fn()
     });
 
-    render(<SettingsScreen />);
+    render(<MemoryRouter><SettingsScreen /></MemoryRouter>);
 
     await user.click(screen.getByRole("button", { name: "Exporter le workspace" }));
 
@@ -71,7 +80,7 @@ describe("SettingsScreen", () => {
       purgeExecutionLogs
     });
 
-    render(<SettingsScreen />);
+    render(<MemoryRouter><SettingsScreen /></MemoryRouter>);
 
     await user.click(screen.getByRole("button", { name: "Purger les logs" }));
 
@@ -108,7 +117,7 @@ describe("SettingsScreen", () => {
       purgeExecutionLogs
     });
 
-    render(<SettingsScreen />);
+    render(<MemoryRouter><SettingsScreen /></MemoryRouter>);
 
     await user.click(screen.getByRole("button", { name: "Purger les logs" }));
 

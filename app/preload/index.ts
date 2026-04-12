@@ -157,7 +157,19 @@ const settings: SettingsApi = {
   countExecutionLogs: () =>
     unwrap("settings:count-execution-logs", ipcRenderer.invoke("settings:count-execution-logs")),
   purgeExecutionLogs: () =>
-    unwrap("settings:purge-execution-logs", ipcRenderer.invoke("settings:purge-execution-logs"))
+    unwrap("settings:purge-execution-logs", ipcRenderer.invoke("settings:purge-execution-logs")),
+  getPreference: (key) =>
+    unwrap("settings:get-preference", ipcRenderer.invoke("settings:get-preference", { key })),
+  setPreference: (key, value) =>
+    unwrap("settings:set-preference", ipcRenderer.invoke("settings:set-preference", { key, value })),
+  getAllPreferences: () =>
+    unwrap("settings:get-all-preferences", ipcRenderer.invoke("settings:get-all-preferences")),
+  detectEngines: () =>
+    unwrap("settings:detect-engines", ipcRenderer.invoke("settings:detect-engines")),
+  getActiveEngine: () =>
+    unwrap("settings:get-active-engine", ipcRenderer.invoke("settings:get-active-engine")),
+  setActiveEngine: (engine) =>
+    unwrap("settings:set-active-engine", ipcRenderer.invoke("settings:set-active-engine", { engine }))
 };
 
 contextBridge.exposeInMainWorld("linkedinPoster", {

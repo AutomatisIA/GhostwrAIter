@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ThemeSelector } from "./components/ThemeSelector";
+import { EnginePanel } from "./components/EnginePanel";
+import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 
 type PurgeState =
   | { stage: "idle" }
@@ -6,22 +10,37 @@ type PurgeState =
   | { stage: "done"; deletedCount: number };
 
 export function SettingsScreen() {
+  const [searchParams] = useSearchParams();
   const [exportPath, setExportPath] = useState("");
   const [purgeState, setPurgeState] = useState<PurgeState>({ stage: "idle" });
 
+  const autoExpandDiagnostics = searchParams.get("section") === "diagnostics";
+
   async function handleExport() {
-    const result = await window.linkedinPoster.settings.exportWorkspace();
-    setExportPath(result.exportPath);
+    try {
+      const result = await window.linkedinPoster.settings.exportWorkspace();
+      setExportPath(result.exportPath);
+    } catch {
+      setExportPath("Erreur lors de l'export.");
+    }
   }
 
   async function handleAskConfirm() {
-    const result = await window.linkedinPoster.settings.countExecutionLogs();
-    setPurgeState({ stage: "confirming", count: result.count });
+    try {
+      const result = await window.linkedinPoster.settings.countExecutionLogs();
+      setPurgeState({ stage: "confirming", count: result.count });
+    } catch {
+      // silent
+    }
   }
 
   async function handleConfirmPurge() {
-    const result = await window.linkedinPoster.settings.purgeExecutionLogs();
-    setPurgeState({ stage: "done", deletedCount: result.deletedCount });
+    try {
+      const result = await window.linkedinPoster.settings.purgeExecutionLogs();
+      setPurgeState({ stage: "done", deletedCount: result.deletedCount });
+    } catch {
+      // silent
+    }
   }
 
   function handleCancelPurge() {
@@ -30,45 +49,63 @@ export function SettingsScreen() {
 
   return (
     <section className="panel page-panel">
-      <div className="eyebrow">Parametres</div>
-      <h1>Maintenance locale</h1>
-      <p>
-        Cette page regroupe les actions de maintenance. Tu peux exporter ton
-        workspace pour le sauvegarder ou purger les logs si tu veux nettoyer les
-        traces d'execution locales.
-      </p>
+      <h1>Parametres</h1>
 
-      <div className="form-actions">
-        <button type="button" className="primary-button" onClick={handleExport}>
-          Exporter le workspace
-        </button>
+      <div className="strategy-form" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        {/* Apparence */}
+        <article className="list-card">
+          <span className="status-label">Apparence</span>
+          <ThemeSelector />
+        </article>
 
-        {purgeState.stage === "idle" || purgeState.stage === "done" ? (
-          <button type="button" className="secondary-button" onClick={handleAskConfirm}>
-            Purger les logs
-          </button>
-        ) : null}
+        {/* Moteur d'execution */}
+        <article className="list-card">
+          <span className="status-label">Moteur d'execution</span>
+          <EnginePanel />
+        </article>
 
-        {purgeState.stage === "confirming" ? (
-          <>
-            <button
-              type="button"
-              className="secondary-button danger-button"
-              onClick={handleConfirmPurge}
-            >
-              Confirmer la suppression des {purgeState.count} logs
+        {/* Diagnostics */}
+        <article className="list-card">
+          <span className="status-label">Diagnostics</span>
+          <DiagnosticsPanel defaultExpanded={autoExpandDiagnostics} />
+        </article>
+
+        {/* Donnees */}
+        <article className="list-card">
+          <span className="status-label">Donnees</span>
+          <div className="form-actions">
+            <button type="button" className="primary-button" onClick={handleExport}>
+              Exporter le workspace
             </button>
-            <button type="button" className="secondary-button" onClick={handleCancelPurge}>
-              Annuler
-            </button>
-          </>
-        ) : null}
+
+            {purgeState.stage === "idle" || purgeState.stage === "done" ? (
+              <button type="button" className="secondary-button" onClick={handleAskConfirm}>
+                Purger les logs
+              </button>
+            ) : null}
+
+            {purgeState.stage === "confirming" ? (
+              <>
+                <button
+                  type="button"
+                  className="secondary-button danger-button"
+                  onClick={handleConfirmPurge}
+                >
+                  Confirmer la suppression des {purgeState.count} logs
+                </button>
+                <button type="button" className="secondary-button" onClick={handleCancelPurge}>
+                  Annuler
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          {exportPath ? <p>{exportPath}</p> : null}
+          {purgeState.stage === "done" ? (
+            <p>{purgeState.deletedCount} logs supprimes localement.</p>
+          ) : null}
+        </article>
       </div>
-
-      {exportPath ? <p>{exportPath}</p> : null}
-      {purgeState.stage === "done" ? (
-        <p>{purgeState.deletedCount} logs supprimes localement.</p>
-      ) : null}
     </section>
   );
 }

@@ -47,7 +47,6 @@ export function WorkshopScreen() {
   if (!ideaId) {
     return (
       <section className="panel page-panel">
-        <div className="eyebrow">Production</div>
         <h1>Atelier editorial</h1>
         <p className="empty-state">Selectionne une idee depuis le backlog pour commencer.</p>
       </section>
@@ -56,13 +55,7 @@ export function WorkshopScreen() {
 
   return (
     <section className="panel page-panel">
-      <div className="eyebrow">Production</div>
       <h1>Atelier editorial</h1>
-      <p>
-        L'atelier transforme une idee en post en passant par une structure,
-        une accroche puis un draft. Le but est de garder une generation visible
-        et pilotable, et pas un simple bloc de texte opaque.
-      </p>
 
       {error ? <WorkshopErrorBanner error={error} onDismiss={clearError} /> : null}
 

@@ -26,8 +26,8 @@ function createFakeExecutionService(): ExecutionRuntimeService {
       { id: "run_1", skillName: "linkedin-hook-engine", status: "succeeded" }
     ]),
     getDiagnostics: vi.fn().mockReturnValue({
-      runnerMode: "codex",
-      codexAvailable: true,
+      activeEngine: "codex",
+      engines: [],
       availableSkills: ["linkedin-post-writer"],
       message: "ok"
     })
@@ -100,12 +100,12 @@ describe("execution IPC", () => {
 
       const result = (await handlers.get("execution:get-diagnostics")?.(
         undefined
-      )) as IpcResult<{ runnerMode: string; codexAvailable: boolean }>;
+      )) as IpcResult<{ activeEngine: string; engines: unknown[] }>;
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.data.runnerMode).toBe("codex");
-        expect(result.data.codexAvailable).toBe(true);
+        expect(result.data.activeEngine).toBe("codex");
+        expect(result.data.engines).toBeDefined();
       }
     });
 

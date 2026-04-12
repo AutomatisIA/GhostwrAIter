@@ -8,6 +8,7 @@ import type {
 } from "../../../shared/types/execution";
 import { SkillRegistryService } from "./skill-registry.service";
 import { SkillRunnerService } from "./skill-runner.service";
+import type { EngineRegistry } from "./engine-registry";
 
 type ExecutionRunRow = {
   id: string;
@@ -53,7 +54,8 @@ export class ExecutionService {
     private readonly codexAvailabilityCheck: () => boolean,
     private readonly skillRegistryService: SkillRegistryService,
     private readonly skillRunnerService?: SkillRunnerService,
-    private readonly executionLogsDirectory?: string
+    private readonly executionLogsDirectory?: string,
+    private readonly engineRegistry?: EngineRegistry
   ) {}
 
   listRuns(): ExecutionRunEntry[] {
@@ -85,17 +87,22 @@ export class ExecutionService {
     }));
   }
 
-  getDiagnostics(): ExecutionDiagnostics {
-    const codexAvailable = this.codexAvailabilityCheck();
-    const runnerMode = this.skillRunnerService?.getRunnerMode() ?? "unavailable";
+  async getDiagnostics(): Promise<ExecutionDiagnostics> {
+    const engines = this.engineRegistry
+      ? await this.engineRegistry.detectEngines()
+      : [];
+    const activeSelection = this.engineRegistry
+      ? await this.engineRegistry.getActiveEngine()
+      : null;
+    const activeEngine = activeSelection?.engine ?? "unavailable";
+    const hasAuthenticated = engines.some((e) => e.installState === "authenticated");
 
     return {
-      runnerMode,
-      codexAvailable,
-      message:
-        runnerMode === "codex"
-          ? "Codex disponible et actif. Les generations passent uniquement si la sortie respecte le contrat attendu."
-          : "Codex indisponible. Aucune generation n'est autorisee tant que le runner n'est pas disponible.",
+      activeEngine,
+      engines,
+      message: hasAuthenticated
+        ? "Moteur IA disponible et actif. Les generations passent uniquement si la sortie respecte le contrat attendu."
+        : "Aucun moteur IA disponible. Aucune generation n'est autorisee tant qu'un moteur n'est pas connecte.",
       availableSkills: this.skillRegistryService.listInstalledSkills()
     };
   }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import type { LibraryEntry } from "@shared/types/library";
+import type { CalendarItem } from "@shared/types/calendar";
 
 function formatLibraryStatus(status: LibraryEntry["status"]) {
   if (status === "scheduled") {
@@ -14,8 +15,31 @@ function formatLibraryStatus(status: LibraryEntry["status"]) {
   return "Draft";
 }
 
+function formatCalendarStatus(status: CalendarItem["status"]) {
+  if (status === "planned") {
+    return "Planifie";
+  }
+
+  if (status === "published") {
+    return "Publie";
+  }
+
+  if (status === "missed") {
+    return "Manque";
+  }
+
+  return "Pret";
+}
+
+type TabView = "drafts" | "planning";
+
 export function LibraryScreen() {
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const initialView = (searchParams.get("view") === "planning" ? "planning" : "drafts") as TabView;
+  const [activeTab, setActiveTab] = useState<TabView>(initialView);
+
+  // --- Drafts state ---
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<LibraryEntry["status"] | "all">("all");
@@ -26,6 +50,25 @@ export function LibraryScreen() {
   const [editHeadline, setEditHeadline] = useState("");
   const [editBody, setEditBody] = useState("");
 
+  // --- Inline scheduling state ---
+  const [schedulingDraftId, setSchedulingDraftId] = useState<string | null>(null);
+  const [schedulingDate, setSchedulingDate] = useState("");
+
+  // --- Planning state ---
+  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
+  const [calendarStatusFilter, setCalendarStatusFilter] = useState<CalendarItem["status"] | "all">("all");
+  const [planningLoading, setPlanningLoading] = useState(false);
+  const [planningStatus, setPlanningStatus] = useState("");
+
+  // --- Scheduled dates lookup (draftId -> plannedDate) ---
+  const [scheduledDates, setScheduledDates] = useState<Map<string, string>>(new Map());
+
+  function switchTab(tab: TabView) {
+    setActiveTab(tab);
+    setSearchParams(tab === "drafts" ? {} : { view: "planning" });
+  }
+
+  // Load library entries on mount
   useEffect(() => {
     window.linkedinPoster.library
       .listEntries()
@@ -43,7 +86,47 @@ export function LibraryScreen() {
       .finally(() => {
         setLoading(false);
       });
+
+    // Also load calendar items to populate scheduled dates badges
+    window.linkedinPoster.calendar.listItems().then((items) => {
+      const dateMap = new Map<string, string>();
+      for (const item of items) {
+        dateMap.set(item.draftId, item.plannedDate);
+      }
+      setScheduledDates(dateMap);
+    }).catch(() => {
+      // Non-critical — badges just won't show
+    });
   }, []);
+
+  // Load planning items when switching to planning tab
+  useEffect(() => {
+    if (activeTab !== "planning") return;
+
+    setPlanningLoading(true);
+    setPlanningStatus("Chargement du planning...");
+
+    window.linkedinPoster.calendar
+      .listItems()
+      .then((items) => {
+        // Sort chronologically
+        const sorted = [...items].sort(
+          (a, b) => new Date(a.plannedDate).getTime() - new Date(b.plannedDate).getTime()
+        );
+        setCalendarItems(sorted);
+        setPlanningStatus(
+          sorted.length > 0
+            ? "Planning charge."
+            : "Aucune publication planifiee."
+        );
+      })
+      .catch(() => {
+        setPlanningStatus("Impossible de charger le planning.");
+      })
+      .finally(() => {
+        setPlanningLoading(false);
+      });
+  }, [activeTab]);
 
   async function handleSearch(nextQuery: string) {
     setQuery(nextQuery);
@@ -98,6 +181,38 @@ export function LibraryScreen() {
     }
   }
 
+  async function handleConfirmSchedule(draftId: string) {
+    if (!schedulingDate) return;
+    setBusyDraftId(draftId);
+    setStatus("Planification en cours...");
+    try {
+      await window.linkedinPoster.calendar.scheduleDraft({
+        draftId,
+        plannedDate: schedulingDate,
+        status: "planned",
+      });
+      // Refresh entries and scheduled dates
+      const [refreshedEntries, refreshedItems] = await Promise.all([
+        window.linkedinPoster.library.listEntries(),
+        window.linkedinPoster.calendar.listItems(),
+      ]);
+      setEntries(refreshedEntries);
+      const dateMap = new Map<string, string>();
+      for (const item of refreshedItems) {
+        dateMap.set(item.draftId, item.plannedDate);
+      }
+      setScheduledDates(dateMap);
+      setSchedulingDraftId(null);
+      setSchedulingDate("");
+      setStatus("Draft planifie.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setStatus(`Erreur de planification : ${message}`);
+    } finally {
+      setBusyDraftId(null);
+    }
+  }
+
   const visibleEntries = useMemo(
     () =>
       entries.filter((entry) => {
@@ -107,156 +222,316 @@ export function LibraryScreen() {
     [entries, statusFilter]
   );
 
+  const visibleCalendarItems = useMemo(
+    () =>
+      calendarItems.filter(
+        (item) => calendarStatusFilter === "all" || item.status === calendarStatusFilter
+      ),
+    [calendarItems, calendarStatusFilter]
+  );
+
   return (
     <section className="panel page-panel">
-      <div className="eyebrow">Capitalisation</div>
       <h1>Bibliotheque locale</h1>
-      <p>
-        Retrouve ici les drafts deja produits pour les comparer, les modifier,
-        les transformer en variantes divergentes et les envoyer au calendrier.
-      </p>
 
-      <div className="insight-strip">
-        <article className="insight-card">
-          <span className="status-label">Visibles</span>
-          <strong>
-            {loading
-              ? "..."
-              : `${visibleEntries.length} draft${visibleEntries.length > 1 ? "s" : ""}`}
-          </strong>
-        </article>
-        <article className="insight-card">
-          <span className="status-label">Qualite moyenne</span>
-          <strong>
-            {loading || visibleEntries.length === 0
-              ? "..."
-              : `${Math.round(
-                  visibleEntries.reduce((sum, entry) => sum + entry.qualityScore, 0) /
-                    visibleEntries.length *
-                    100
-                )}%`}
-          </strong>
-        </article>
+      {/* Tab switcher */}
+      <div style={{ display: "flex", gap: "8px", marginBottom: "4px" }}>
+        <button
+          type="button"
+          className={activeTab === "drafts" ? "primary-button" : "secondary-button"}
+          style={{ padding: "10px 20px", fontSize: "0.92rem" }}
+          onClick={() => switchTab("drafts")}
+        >
+          Drafts
+        </button>
+        <button
+          type="button"
+          className={activeTab === "planning" ? "primary-button" : "secondary-button"}
+          style={{ padding: "10px 20px", fontSize: "0.92rem" }}
+          onClick={() => switchTab("planning")}
+        >
+          Planning
+        </button>
       </div>
 
-      <div className="filter-bar">
-        <label className="field compact-field">
-          <span>Recherche</span>
-          <input
-            aria-label="Recherche"
-            value={query}
-            onChange={(event) => void handleSearch(event.target.value)}
-            placeholder="Titre, pilier, tag..."
-          />
-        </label>
-        <label className="field compact-field">
-          <span>Statut</span>
-          <select
-            aria-label="Statut"
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as LibraryEntry["status"] | "all")
-            }
-          >
-            <option value="all">Tous</option>
-            <option value="draft">Draft</option>
-            <option value="variant">Variante</option>
-            <option value="scheduled">Planifie</option>
-          </select>
-        </label>
-      </div>
-      <div className="form-status">{status}</div>
+      {activeTab === "drafts" && (
+        <>
+          <div className="insight-strip">
+            <article className="insight-card">
+              <span className="status-label">Visibles</span>
+              <strong>
+                {loading
+                  ? "..."
+                  : `${visibleEntries.length} draft${visibleEntries.length > 1 ? "s" : ""}`}
+              </strong>
+            </article>
+            <article className="insight-card">
+              <span className="status-label">Qualite moyenne</span>
+              <strong>
+                {loading || visibleEntries.length === 0
+                  ? "..."
+                  : `${Math.round(
+                      visibleEntries.reduce((sum, entry) => sum + entry.qualityScore, 0) /
+                        visibleEntries.length *
+                        100
+                    )}%`}
+              </strong>
+            </article>
+          </div>
 
-      {loading ? (
-        <div className="list-grid" aria-label="Chargement de la bibliotheque">
-          <article className="list-card skeleton-card" />
-          <article className="list-card skeleton-card" />
-        </div>
-      ) : null}
+          <div className="filter-bar">
+            <label className="field compact-field">
+              <span>Recherche</span>
+              <input
+                aria-label="Recherche"
+                value={query}
+                onChange={(event) => void handleSearch(event.target.value)}
+                placeholder="Titre, pilier, tag..."
+              />
+            </label>
+            <label className="field compact-field">
+              <span>Statut</span>
+              <select
+                aria-label="Statut"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as LibraryEntry["status"] | "all")
+                }
+              >
+                <option value="all">Tous</option>
+                <option value="draft">Draft</option>
+                <option value="variant">Variante</option>
+                <option value="scheduled">Planifie</option>
+              </select>
+            </label>
+          </div>
+          <div className="form-status">{status}</div>
 
-      <div className="list-grid">
-        {visibleEntries.map((entry) => (
-          <article key={entry.draftId} className="list-card">
-            <div className="status-label">
-              {entry.pillarLabel} · {formatLibraryStatus(entry.status)}
+          {loading ? (
+            <div className="list-grid" aria-label="Chargement de la bibliotheque">
+              <article className="list-card skeleton-card" />
+              <article className="list-card skeleton-card" />
             </div>
+          ) : null}
 
-            {editingDraftId === entry.draftId ? (
-              <>
-                <input
-                  className="draft-edit-headline"
-                  value={editHeadline}
-                  onChange={(e) => setEditHeadline(e.target.value)}
-                  aria-label="Titre du post"
-                />
-                <textarea
-                  className="draft-edit-body"
-                  value={editBody}
-                  onChange={(e) => setEditBody(e.target.value)}
-                  rows={12}
-                  aria-label="Corps du post"
-                />
-                <div className="form-actions" style={{ marginTop: "0.75rem" }}>
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() => void handleSaveEditing(entry.draftId)}
-                    disabled={busyDraftId !== null || !editHeadline.trim() || !editBody.trim()}
-                  >
-                    Enregistrer
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={handleCancelEditing}
-                    disabled={busyDraftId !== null}
-                  >
-                    Annuler
-                  </button>
+          <div className="list-grid">
+            {visibleEntries.map((entry) => (
+              <article key={entry.draftId} className="list-card">
+                <div className="status-label">
+                  {entry.pillarLabel} · {formatLibraryStatus(entry.status)}
+                  {scheduledDates.has(entry.draftId) && (
+                    <span
+                      style={{
+                        marginLeft: "8px",
+                        fontSize: "0.76rem",
+                        fontWeight: 600,
+                        color: "var(--color-accent-sky)",
+                        background: "var(--color-sky-bg)",
+                        border: "1px solid var(--color-sky-border)",
+                        borderRadius: "6px",
+                        padding: "2px 8px",
+                        textTransform: "none",
+                        letterSpacing: "normal",
+                      }}
+                    >
+                      Planifie le {scheduledDates.get(entry.draftId)}
+                    </span>
+                  )}
                 </div>
-              </>
-            ) : (
-              <>
-                <strong>{entry.headline}</strong>
-                <p>{entry.bodyPreview}</p>
-                <p>{entry.tags.join(", ")}</p>
-                <div className="quality-row">
-                  <span>Qualite</span>
-                  <strong>{Math.round(entry.qualityScore * 100)}%</strong>
+
+                {editingDraftId === entry.draftId ? (
+                  <>
+                    <input
+                      className="draft-edit-headline"
+                      value={editHeadline}
+                      onChange={(e) => setEditHeadline(e.target.value)}
+                      aria-label="Titre du post"
+                    />
+                    <textarea
+                      className="draft-edit-body"
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      rows={12}
+                      aria-label="Corps du post"
+                    />
+                    <div className="form-actions" style={{ marginTop: "0.75rem" }}>
+                      <button
+                        type="button"
+                        className="primary-button"
+                        onClick={() => void handleSaveEditing(entry.draftId)}
+                        disabled={busyDraftId !== null || !editHeadline.trim() || !editBody.trim()}
+                      >
+                        Enregistrer
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={handleCancelEditing}
+                        disabled={busyDraftId !== null}
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <strong>{entry.headline}</strong>
+                    <p>{entry.bodyPreview}</p>
+                    <p>{entry.tags.join(", ")}</p>
+                    <div className="quality-row">
+                      <span>Qualite</span>
+                      <strong>{Math.round(entry.qualityScore * 100)}%</strong>
+                    </div>
+                    <div className="form-actions" style={{ marginTop: "1rem" }}>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => handleStartEditing(entry)}
+                        disabled={busyDraftId !== null}
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busyDraftId !== null}
+                        onClick={() => void handleCreateDivergentVariant(entry.draftId)}
+                      >
+                        {busyDraftId === entry.draftId
+                          ? "Generation en cours..."
+                          : "Variante divergente"}
+                      </button>
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={busyDraftId !== null}
+                        onClick={() => {
+                          if (schedulingDraftId === entry.draftId) {
+                            setSchedulingDraftId(null);
+                            setSchedulingDate("");
+                          } else {
+                            setSchedulingDraftId(entry.draftId);
+                            setSchedulingDate("");
+                          }
+                        }}
+                      >
+                        Planifier
+                      </button>
+                    </div>
+
+                    {/* Inline scheduling form */}
+                    {schedulingDraftId === entry.draftId && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          marginTop: "12px",
+                          padding: "12px 14px",
+                          borderRadius: "14px",
+                          background: "var(--color-bg-muted)",
+                          border: "1px solid var(--color-border)",
+                        }}
+                      >
+                        <input
+                          type="date"
+                          aria-label="Date de publication"
+                          value={schedulingDate}
+                          onChange={(e) => setSchedulingDate(e.target.value)}
+                          style={{
+                            border: "1px solid var(--color-border-medium)",
+                            borderRadius: "10px",
+                            padding: "8px 12px",
+                            background: "var(--color-bg-input)",
+                            font: "inherit",
+                            color: "inherit",
+                            fontSize: "0.9rem",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="primary-button"
+                          style={{ padding: "8px 16px", fontSize: "0.88rem" }}
+                          disabled={!schedulingDate || busyDraftId !== null}
+                          onClick={() => void handleConfirmSchedule(entry.draftId)}
+                        >
+                          {busyDraftId === entry.draftId ? "Planification..." : "Confirmer"}
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{ padding: "8px 16px", fontSize: "0.88rem" }}
+                          onClick={() => {
+                            setSchedulingDraftId(null);
+                            setSchedulingDate("");
+                          }}
+                          disabled={busyDraftId !== null}
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </article>
+            ))}
+          </div>
+        </>
+      )}
+
+      {activeTab === "planning" && (
+        <>
+          <div className="insight-strip">
+            <article className="insight-card">
+              <span className="status-label">Publications</span>
+              <strong>
+                {planningLoading
+                  ? "..."
+                  : `${visibleCalendarItems.length} planifiee${visibleCalendarItems.length > 1 ? "s" : ""}`}
+              </strong>
+            </article>
+          </div>
+
+          <div className="filter-bar" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
+            <label className="field compact-field">
+              <span>Statut</span>
+              <select
+                aria-label="Filtrer par statut"
+                value={calendarStatusFilter}
+                onChange={(event) =>
+                  setCalendarStatusFilter(event.target.value as CalendarItem["status"] | "all")
+                }
+              >
+                <option value="all">Tous les statuts</option>
+                <option value="planned">Planifie</option>
+                <option value="ready">Pret</option>
+                <option value="published">Publie</option>
+                <option value="missed">Manque</option>
+              </select>
+            </label>
+          </div>
+          <div className="form-status">{planningStatus}</div>
+
+          {planningLoading ? (
+            <div className="list-grid" aria-label="Chargement du planning">
+              <article className="list-card skeleton-card" />
+              <article className="list-card skeleton-card" />
+            </div>
+          ) : null}
+
+          <div className="list-grid">
+            {visibleCalendarItems.map((item) => (
+              <article key={item.id} className="list-card">
+                <div className="status-label">
+                  {item.pillarLabel} · {formatCalendarStatus(item.status)}
                 </div>
-                <div className="form-actions" style={{ marginTop: "1rem" }}>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => handleStartEditing(entry)}
-                    disabled={busyDraftId !== null}
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    disabled={busyDraftId !== null}
-                    onClick={() => void handleCreateDivergentVariant(entry.draftId)}
-                  >
-                    {busyDraftId === entry.draftId
-                      ? "Generation en cours..."
-                      : "Variante divergente"}
-                  </button>
-                  <button
-                    type="button"
-                    className="primary-button"
-                    disabled={busyDraftId !== null}
-                    onClick={() => navigate(`/calendrier?draftId=${entry.draftId}`)}
-                  >
-                    Planifier
-                  </button>
-                </div>
-              </>
-            )}
-          </article>
-        ))}
-      </div>
+                <strong>{item.plannedDate}</strong>
+                <p>{item.draftHeadline}</p>
+              </article>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }

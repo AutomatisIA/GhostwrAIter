@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import { ExecutionService } from "../domains/execution/execution.service";
+import type { EngineRegistry } from "../domains/execution/engine-registry";
 import { SkillRegistryService } from "../domains/execution/skill-registry.service";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import {
@@ -20,14 +21,16 @@ export class ExecutionRuntimeService {
     codexAvailabilityCheck: () => boolean,
     skillRegistryService: SkillRegistryService,
     skillRunnerService?: SkillRunnerService,
-    executionLogsDirectory?: string
+    executionLogsDirectory?: string,
+    engineRegistry?: EngineRegistry
   ) {
     this.service = new ExecutionService(
       db,
       codexAvailabilityCheck,
       skillRegistryService,
       skillRunnerService,
-      executionLogsDirectory
+      executionLogsDirectory,
+      engineRegistry
     );
   }
 

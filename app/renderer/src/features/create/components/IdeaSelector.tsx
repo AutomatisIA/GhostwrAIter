@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
 import type { IdeaInput, IdeaRecord, NewsSourceInput } from "@shared/types/ideas";
 
 const emptyIdea: IdeaInput = {
@@ -13,7 +12,11 @@ const emptyNewsSource: NewsSourceInput = {
   sourceSummary: ""
 };
 
-export function IdeasScreen() {
+type IdeaSelectorProps = {
+  onSelect: (ideaId: string) => void;
+};
+
+export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   const [ideas, setIdeas] = useState<IdeaRecord[]>([]);
   const [form, setForm] = useState<IdeaInput>(emptyIdea);
   const [newsSource, setNewsSource] = useState<NewsSourceInput>(emptyNewsSource);
@@ -60,10 +63,11 @@ export function IdeasScreen() {
     setIsCreatingIdea(true);
     setStatus("Creation de l'idee en cours...");
     try {
-      await window.linkedinPoster.ideas.createIdea(form);
+      const created = await window.linkedinPoster.ideas.createIdea(form);
       setForm(emptyIdea);
       await loadIdeas();
       setStatus("Idee ajoutee au backlog.");
+      onSelect(created.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
       setStatus(`Erreur lors de la creation de l'idee : ${message}`);
@@ -77,10 +81,11 @@ export function IdeasScreen() {
     setIsCreatingFromNews(true);
     setStatus("Transformation de la veille en cours...");
     try {
-      await window.linkedinPoster.ideas.createFromNewsSource(newsSource);
+      const result = await window.linkedinPoster.ideas.createFromNewsSource(newsSource);
       setNewsSource(emptyNewsSource);
       await loadIdeas();
       setStatus("Draft veille cree depuis la source collee.");
+      onSelect(result.idea.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
       setStatus(`Erreur lors de la transformation de la veille : ${message}`);
@@ -102,47 +107,7 @@ export function IdeasScreen() {
   const pillarOptions = Array.from(new Set(ideas.map((idea) => idea.pillarLabel))).sort();
 
   return (
-    <section className="panel page-panel">
-      <h1>Idees editoriales</h1>
-
-      <div className="insight-strip">
-        <article className="insight-card">
-          <span className="status-label">Volume</span>
-          <strong>{loading ? "..." : `${visibleIdeas.length} idee${visibleIdeas.length > 1 ? "s" : ""} visible${visibleIdeas.length > 1 ? "s" : ""}`}</strong>
-        </article>
-        <article className="insight-card">
-          <span className="status-label">Piliers</span>
-          <strong>{loading ? "..." : `${pillarOptions.length || 0} pilier${pillarOptions.length > 1 ? "s" : ""}`}</strong>
-        </article>
-      </div>
-
-      <div className="filter-bar">
-        <label className="field compact-field">
-          <span>Filtrer les idees</span>
-          <input
-            aria-label="Filtrer les idees"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Sujet, angle, pilier..."
-          />
-        </label>
-        <label className="field compact-field">
-          <span>Filtrer par pilier</span>
-          <select
-            aria-label="Filtrer par pilier"
-            value={pillarFilter}
-            onChange={(event) => setPillarFilter(event.target.value)}
-          >
-            <option value="all">Tous les piliers</option>
-            {pillarOptions.map((pillar) => (
-              <option key={pillar} value={pillar}>
-                {pillar}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
+    <>
       <div className="ideas-modes">
         <article className="ideas-mode-card">
           <div className="ideas-mode-icon" aria-hidden="true">Idee</div>
@@ -278,6 +243,35 @@ export function IdeasScreen() {
 
       {status && !loading ? <p className="form-status">{status}</p> : null}
 
+      {ideas.length > 0 ? (
+        <div className="filter-bar">
+          <label className="field compact-field">
+            <span>Filtrer les idees</span>
+            <input
+              aria-label="Filtrer les idees"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Sujet, angle, pilier..."
+            />
+          </label>
+          <label className="field compact-field">
+            <span>Filtrer par pilier</span>
+            <select
+              aria-label="Filtrer par pilier"
+              value={pillarFilter}
+              onChange={(event) => setPillarFilter(event.target.value)}
+            >
+              <option value="all">Tous les piliers</option>
+              {pillarOptions.map((pillar) => (
+                <option key={pillar} value={pillar}>
+                  {pillar}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="list-grid" aria-label="Chargement des idees">
           <article className="list-card skeleton-card" />
@@ -291,12 +285,16 @@ export function IdeasScreen() {
             <div className="status-label">{idea.pillarLabel}</div>
             <strong>{idea.title}</strong>
             <p>{idea.angle}</p>
-            <Link className="inline-link" to={`/atelier?ideaId=${idea.id}`}>
-              Ouvrir dans l'atelier
-            </Link>
+            <button
+              type="button"
+              className="inline-link"
+              onClick={() => onSelect(idea.id)}
+            >
+              Selectionner
+            </button>
           </article>
         ))}
       </div>
-    </section>
+    </>
   );
 }

@@ -61,13 +61,7 @@ export function ExecutionScreen() {
 
   return (
     <section className="panel page-panel">
-      <div className="eyebrow">Runner</div>
       <h1>Comprendre ce que fait le runner</h1>
-      <p>
-        Cette page explique comment l'application produit ses resultats. Tu peux
-        verifier le mode actuel, voir les capacites detectees et relire les runs
-        recents avec une interpretation plus metier que technique.
-      </p>
 
       {diagnostics ? (
         <>

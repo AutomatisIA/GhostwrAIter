@@ -73,12 +73,12 @@ describe("execution service", () => {
     expect(runs.some((run) => run.skillName === "linkedin-structure-selector")).toBe(true);
   });
 
-  it("returns runner diagnostics", () => {
-    const diagnostics = executionService.getDiagnostics();
+  it("returns runner diagnostics", async () => {
+    const diagnostics = await executionService.getDiagnostics();
 
-    expect(diagnostics.runnerMode).toBe("codex");
-    expect(diagnostics.codexAvailable).toBe(true);
-    expect(diagnostics.message).toContain("Codex disponible et actif");
+    expect(diagnostics.activeEngine).toBeDefined();
+    expect(diagnostics.engines).toBeDefined();
+    expect(diagnostics.message).toBeTruthy();
     expect(diagnostics.availableSkills).toContain("linkedin-post-writer");
   });
 

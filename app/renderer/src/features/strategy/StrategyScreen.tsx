@@ -43,13 +43,7 @@ export function StrategyScreen() {
 
   return (
     <section className="panel page-panel">
-      <div className="eyebrow">Socle</div>
       <h1>Strategie editoriale</h1>
-      <p>
-        Cette page definit la source de verite de l'outil. Tu y poses qui tu aides,
-        ce que tu vends, les sujets a pousser et les regles de ton a respecter
-        avant toute generation.
-      </p>
 
       <div className="dashboard-grid dashboard-grid-secondary">
         <article className="panel checklist-card">

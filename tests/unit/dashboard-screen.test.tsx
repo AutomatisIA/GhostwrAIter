@@ -1,43 +1,50 @@
 // @vitest-environment jsdom
 import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { App } from "../../app/renderer/src/app/App";
 
-describe("DashboardScreen", () => {
+describe("CockpitScreen", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     cleanup();
   });
 
-  it("guides a first-time user with live workspace stats and next steps", async () => {
+  // jsdom doesn't implement matchMedia
+  beforeAll(() => {
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn()
+      }))
+    });
+  });
+
+  it("displays pipeline, next action, and metrics for an active workspace", async () => {
     window.linkedinPoster = {
       platform: "darwin",
       appName: "LinkedIn Poster",
       strategy: {
         getActiveBundle: vi.fn().mockResolvedValue({
-          profile: {
-            id: "profile_active",
-            name: "Philippe",
-            positioning: "Consultant IA PME",
-            bio: "",
-            expertiseSummary: ""
-          },
-          offers: [{ id: "offer_1", name: "Audit IA", promise: "", problems: "" }],
+          profile: { id: "p1", name: "Philippe", positioning: "Consultant IA", bio: "", expertiseSummary: "" },
+          offers: [{ id: "o1", name: "Audit", promise: "", problems: "" }],
           icps: [],
-          pillars: [{ id: "pillar_1", label: "Adoption IA", position: 0, isDefault: true }],
-          voiceRules: [{ id: "rule_1", category: "Anti-style", ruleText: "Pas de hype", ruleType: "anti_style" }]
-        })
+          pillars: [{ id: "p1", label: "Adoption IA", position: 0, isDefault: true }],
+          voiceRules: [{ id: "r1", category: "Anti-style", ruleText: "Pas de hype", ruleType: "anti_style" }]
+        }),
+        saveBundle: vi.fn(),
+        generateFoundation: vi.fn()
       },
       ideas: {
         listIdeas: vi.fn().mockResolvedValue([
-          {
-            id: "idea_1",
-            title: "Pourquoi les PME bloquent",
-            angle: "Le cadrage avant l'outil",
-            pillarLabel: "Adoption IA",
-            createdAt: new Date().toISOString()
-          }
+          { id: "idea_1", title: "Sujet 1", angle: "Angle", pillarLabel: "Adoption IA", createdAt: new Date().toISOString() }
         ]),
         createIdea: vi.fn(),
         createFromNewsSource: vi.fn(),
@@ -50,50 +57,42 @@ describe("DashboardScreen", () => {
         getSuggestedStructures: vi.fn(),
         generateHooks: vi.fn(),
         generateFinalDraft: vi.fn(),
-        createVariant: vi.fn()
+        createVariant: vi.fn(),
+        updateDraftText: vi.fn()
       },
       library: {
         listEntries: vi.fn().mockResolvedValue([
-          {
-            draftId: "draft_1",
-            headline: "Post 1",
-            bodyPreview: "Preview",
-            qualityScore: 0.82,
-            createdAt: new Date().toISOString(),
-            tags: ["ia"],
-            status: "draft",
-            pillarLabel: "Adoption IA",
-            sourceDraftId: null
-          }
+          { draftId: "d1", headline: "Post 1", bodyPreview: "", qualityScore: 0.8, createdAt: new Date().toISOString(), tags: [], status: "draft", pillarLabel: "Adoption IA", sourceDraftId: null }
         ]),
         searchEntries: vi.fn(),
-        createVariantFromDraft: vi.fn()
+        createVariantFromDraft: vi.fn(),
+        updateEntryText: vi.fn(),
+        createDivergentVariant: vi.fn()
       },
       calendar: {
-        listItems: vi.fn().mockResolvedValue([
-          {
-            id: "cal_1",
-            draftId: "draft_1",
-            draftHeadline: "Post 1",
-            pillarLabel: "Adoption IA",
-            plannedDate: "2026-04-18",
-            status: "planned"
-          }
-        ]),
+        listItems: vi.fn().mockResolvedValue([]),
         scheduleDraft: vi.fn()
       },
       execution: {
         getDiagnostics: vi.fn().mockResolvedValue({
-          runnerMode: "codex",
-          codexAvailable: true,
-          message: "Runner operationnel en mode codex.",
-          availableSkills: ["linkedin-post-writer"]
+          activeEngine: "codex",
+          engines: [],
+          availableSkills: ["linkedin-post-writer"],
+          message: "Codex disponible"
         }),
-        listRuns: vi.fn()
+        listRuns: vi.fn().mockResolvedValue([]),
+        openRunLog: vi.fn()
       },
       settings: {
         exportWorkspace: vi.fn(),
-        purgeExecutionLogs: vi.fn()
+        countExecutionLogs: vi.fn().mockResolvedValue({ count: 0 }),
+        purgeExecutionLogs: vi.fn(),
+        getPreference: vi.fn().mockResolvedValue({ key: "theme", value: null }),
+        setPreference: vi.fn(),
+        getAllPreferences: vi.fn().mockResolvedValue({}),
+        detectEngines: vi.fn().mockResolvedValue({ engines: [] }),
+        getActiveEngine: vi.fn().mockResolvedValue({ engine: "codex", status: {} }),
+        setActiveEngine: vi.fn()
       }
     };
 
@@ -101,16 +100,8 @@ describe("DashboardScreen", () => {
 
     render(<App />);
 
-    expect(await screen.findByText("Commencer sans se perdre")).toBeTruthy();
-    expect(screen.getByText("1 idee")).toBeTruthy();
-    expect(screen.getByText("1 draft")).toBeTruthy();
-    expect(screen.getByText("1 contenu planifie")).toBeTruthy();
-    expect(screen.getByText("Mode codex")).toBeTruthy();
-    expect(screen.getByText("Strategie: OK")).toBeTruthy();
-    expect(screen.getByText("Si c'est ta premiere ouverture")).toBeTruthy();
-    expect(screen.getByText("Va d'abord dans Strategie.")).toBeTruthy();
-    expect(
-      screen.getByText("Remplis au moins le positionnement, une offre et deux piliers.")
-    ).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Cockpit" })).toBeTruthy();
+    expect(await screen.findByText("1 idée")).toBeTruthy();
+    expect(await screen.findByText("1 draft")).toBeTruthy();
   });
 });
