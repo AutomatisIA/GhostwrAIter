@@ -20,7 +20,7 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   const [ideas, setIdeas] = useState<IdeaRecord[]>([]);
   const [form, setForm] = useState<IdeaInput>(emptyIdea);
   const [newsSource, setNewsSource] = useState<NewsSourceInput>(emptyNewsSource);
-  const [status, setStatus] = useState("Chargement des idees...");
+  const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [isCreatingIdea, setIsCreatingIdea] = useState(false);
   const [isCreatingFromNews, setIsCreatingFromNews] = useState(false);
@@ -32,7 +32,7 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   async function loadIdeas() {
     const result = await window.linkedinPoster.ideas.listIdeas();
     setIdeas(result);
-    setStatus(result.length > 0 ? "Backlog charge." : "Aucune idee pour le moment.");
+    setStatus(result.length > 0 ? "" : "Aucune idée pour le moment — créez-en une ci-dessus.");
   }
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
       window.linkedinPoster.strategy.getActiveBundle().catch(() => null)
     ]).then(([loadedIdeas, bundle]) => {
       setIdeas(loadedIdeas);
-      setStatus(loadedIdeas.length > 0 ? "Backlog charge." : "Aucune idee pour le moment.");
+      setStatus(loadedIdeas.length > 0 ? "" : "Aucune idée pour le moment — créez-en une ci-dessus.");
       if (bundle) {
         const labels = bundle.pillars.map((p) => p.label).filter(Boolean);
         setStrategyPillars(labels);
@@ -52,7 +52,7 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
         }
       }
     }).catch(() => {
-      setStatus("Impossible de charger les idees.");
+      setStatus("Impossible de charger les idées.");
     }).finally(() => {
       setLoading(false);
     });
@@ -61,16 +61,16 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsCreatingIdea(true);
-    setStatus("Creation de l'idee en cours...");
+    setStatus("Création de l'idée en cours...");
     try {
       const created = await window.linkedinPoster.ideas.createIdea(form);
       setForm(emptyIdea);
       await loadIdeas();
-      setStatus("Idee ajoutee au backlog.");
+      setStatus("Idée ajoutée.");
       onSelect(created.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
-      setStatus(`Erreur lors de la creation de l'idee : ${message}`);
+      setStatus(`Erreur : ${message}`);
     } finally {
       setIsCreatingIdea(false);
     }
@@ -79,16 +79,16 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   async function handleNewsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsCreatingFromNews(true);
-    setStatus("Transformation de la veille en cours...");
+    setStatus("Transformation en cours...");
     try {
       const result = await window.linkedinPoster.ideas.createFromNewsSource(newsSource);
       setNewsSource(emptyNewsSource);
       await loadIdeas();
-      setStatus("Draft veille cree depuis la source collee.");
+      setStatus("Draft créé depuis la veille.");
       onSelect(result.idea.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
-      setStatus(`Erreur lors de la transformation de la veille : ${message}`);
+      setStatus(`Erreur : ${message}`);
     } finally {
       setIsCreatingFromNews(false);
     }
@@ -241,14 +241,24 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
         </article>
       </div>
 
-      {status && !loading ? <p className="form-status">{status}</p> : null}
+      {status ? (
+        <p className="form-status" style={{
+          marginTop: 12,
+          padding: "8px 12px",
+          borderRadius: 10,
+          fontSize: "0.85rem",
+          background: status.startsWith("Erreur") ? "var(--color-error-bg)" : "var(--color-bg-muted)",
+          color: status.startsWith("Erreur") ? "var(--color-error-text)" : "var(--color-text-secondary)",
+          border: status.startsWith("Erreur") ? "1px solid var(--color-error-border)" : "none"
+        }}>{status}</p>
+      ) : null}
 
       {ideas.length > 0 ? (
         <div className="filter-bar">
           <label className="field compact-field">
-            <span>Filtrer les idees</span>
+            <span>Filtrer les idées</span>
             <input
-              aria-label="Filtrer les idees"
+              aria-label="Filtrer les idées"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Sujet, angle, pilier..."

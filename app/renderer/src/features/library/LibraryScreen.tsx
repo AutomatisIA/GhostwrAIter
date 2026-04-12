@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import type { LibraryEntry } from "@shared/types/library";
 import type { CalendarItem } from "@shared/types/calendar";
 
@@ -34,6 +34,7 @@ function formatCalendarStatus(status: CalendarItem["status"]) {
 type TabView = "drafts" | "planning";
 
 export function LibraryScreen() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialView = (searchParams.get("view") === "planning" ? "planning" : "drafts") as TabView;
@@ -376,6 +377,8 @@ export function LibraryScreen() {
                       <button type="button" className="lib-card-action" disabled={busyDraftId !== null} onClick={() => void handleCreateDivergentVariant(entry.draftId)}>
                         {busyDraftId === entry.draftId ? "En cours..." : "Variante"}
                       </button>
+                      <span className="lib-card-action-separator" />
+                      <button type="button" className="lib-card-action" onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}>Retravailler</button>
                       <span className="lib-card-action-separator" />
                       <button type="button" className="lib-card-action" disabled={busyDraftId !== null} onClick={() => { if (schedulingDraftId === entry.draftId) { setSchedulingDraftId(null); setSchedulingDate(""); } else { setSchedulingDraftId(entry.draftId); setSchedulingDate(""); } }}>Planifier</button>
                       <span className="lib-card-action-separator" />

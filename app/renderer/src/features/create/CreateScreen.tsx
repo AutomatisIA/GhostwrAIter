@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useWorkshopFlow } from "../workshop/hooks/useWorkshopFlow";
 import { WorkshopGuide } from "../workshop/components/WorkshopGuide";
 import { CadragePanel } from "../workshop/components/CadragePanel";
@@ -11,8 +12,18 @@ import { IdeaSelector } from "./components/IdeaSelector";
 type ScreenMode = "selecting" | "workshop";
 
 export function CreateScreen() {
-  const [mode, setMode] = useState<ScreenMode>("selecting");
-  const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ideaIdFromUrl = searchParams.get("ideaId");
+
+  const [mode, setMode] = useState<ScreenMode>(ideaIdFromUrl ? "workshop" : "selecting");
+  const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(ideaIdFromUrl);
+
+  useEffect(() => {
+    if (ideaIdFromUrl && mode === "selecting") {
+      setSelectedIdeaId(ideaIdFromUrl);
+      setMode("workshop");
+    }
+  }, [ideaIdFromUrl, mode]);
 
   const {
     step,
@@ -50,11 +61,13 @@ export function CreateScreen() {
   function handleSelectIdea(ideaId: string) {
     setSelectedIdeaId(ideaId);
     setMode("workshop");
+    setSearchParams({ ideaId });
   }
 
   function handleChangeIdea() {
     setSelectedIdeaId(null);
     setMode("selecting");
+    setSearchParams({});
   }
 
   return (
@@ -71,7 +84,7 @@ export function CreateScreen() {
               className="secondary-button"
               onClick={handleChangeIdea}
             >
-              Changer d'idee
+              Changer d'idée
             </button>
           </div>
 

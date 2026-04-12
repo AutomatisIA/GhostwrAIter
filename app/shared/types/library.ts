@@ -1,5 +1,6 @@
 export type LibraryEntry = {
   draftId: string;
+  ideaId: string;
   headline: string;
   bodyPreview: string;
   bodyMarkdown: string;

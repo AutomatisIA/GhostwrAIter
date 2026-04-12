@@ -12,6 +12,7 @@ import type {
 
 type RawLibraryRow = {
   draftId: string;
+  ideaId: string;
   headline: string;
   bodyPreview: string;
   bodyMarkdown: string;
@@ -397,6 +398,7 @@ export class LibraryService {
       .prepare(`
         SELECT
           d.id AS draftId,
+          d.idea_id AS ideaId,
           d.headline,
           substr(d.body_markdown, 1, 140) AS bodyPreview,
           d.body_markdown AS bodyMarkdown,
