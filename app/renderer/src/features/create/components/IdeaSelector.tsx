@@ -110,13 +110,13 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
     <>
       <div className="ideas-modes">
         <article className="ideas-mode-card">
-          <div className="ideas-mode-icon" aria-hidden="true">Idee</div>
-          <h2>Saisir une idee</h2>
+          <div className="ideas-mode-icon" aria-hidden="true">Idée</div>
+          <h2>Saisir une idée</h2>
           <p className="ideas-mode-description">
-            Quand tu as deja un sujet en tete. Remplis le titre, l'angle et
-            le pilier editorial pour l'envoyer dans le backlog.
+            Quand tu as déjà un sujet en tête. Remplis le titre, l'angle et
+            le pilier éditorial pour l'envoyer dans le backlog.
           </p>
-          <form className="strategy-form" onSubmit={handleSubmit}>
+          <form className="strategy-form" onSubmit={handleSubmit} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <label className="field">
               <span>Titre du sujet</span>
               <input
@@ -139,10 +139,10 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
               />
             </label>
             <label className="field">
-              <span>Pilier editorial</span>
+              <span>Pilier éditorial</span>
               {strategyPillars.length > 0 ? (
                 <select
-                  aria-label="Pilier editorial"
+                  aria-label="Pilier éditorial"
                   value={form.pillarLabel}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, pillarLabel: event.target.value }))
@@ -154,18 +154,18 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                 </select>
               ) : (
                 <input
-                  aria-label="Pilier editorial"
+                  aria-label="Pilier éditorial"
                   value={form.pillarLabel}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, pillarLabel: event.target.value }))
                   }
-                  placeholder="Aucun pilier defini — remplis la strategie d'abord"
+                  placeholder="Aucun pilier défini — remplis la stratégie d'abord"
                 />
               )}
             </label>
-            <div className="form-actions">
+            <div className="form-actions" style={{ marginTop: "auto", paddingTop: 12 }}>
               <button type="submit" className="primary-button" disabled={isCreatingIdea}>
-                Ajouter l'idee
+                Ajouter l'idée
               </button>
             </div>
           </form>
@@ -175,10 +175,10 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
           <div className="ideas-mode-icon" aria-hidden="true">Veille</div>
           <h2>Transformer une veille</h2>
           <p className="ideas-mode-description">
-            Quand tu veux reagir a un article externe. Colle le titre et le
-            resume de la source pour obtenir un draft initial.
+            Quand tu veux réagir à un article externe. Colle le titre et le
+            résumé de la source pour obtenir un draft initial.
           </p>
-          <form className="strategy-form" onSubmit={handleNewsSubmit}>
+          <form className="strategy-form" onSubmit={handleNewsSubmit} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <label className="field">
               <span>Titre source</span>
               <input
@@ -190,9 +190,9 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
               />
             </label>
             <label className="field">
-              <span>Resume source</span>
+              <span>Résumé source</span>
               <textarea
-                aria-label="Resume source"
+                aria-label="Résumé source"
                 rows={3}
                 value={newsSource.sourceSummary}
                 onChange={(event) =>
@@ -200,42 +200,42 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                 }
               />
             </label>
-            <div className="form-actions">
+            <div className="form-actions" style={{ marginTop: "auto", paddingTop: 12 }}>
               <button type="submit" className="primary-button" disabled={isCreatingFromNews}>
-                Transformer la veille en draft
+                Transformer en draft
               </button>
             </div>
           </form>
         </article>
 
         <article className="ideas-mode-card">
-          <div className="ideas-mode-icon" aria-hidden="true">Strategie</div>
-          <h2>Generer depuis la strategie</h2>
+          <div className="ideas-mode-icon" aria-hidden="true">Stratégie</div>
+          <h2>Générer depuis la stratégie</h2>
           <p className="ideas-mode-description">
-            Quand tu veux que l'app propose des sujets a partir des piliers
-            editoriaux, des ICPs et des offres de ta strategie active.
+            Quand tu veux que l'app propose des sujets à partir des piliers
+            éditoriaux, des ICPs et des offres de ta stratégie active.
           </p>
-          <div className="form-actions">
+          <div className="form-actions" style={{ marginTop: "auto", paddingTop: 12 }}>
             <button
               type="button"
               className="primary-button"
               disabled={isGeneratingFromStrategy}
               onClick={async () => {
                 setIsGeneratingFromStrategy(true);
-                setStatus("Generation des sujets en cours...");
+                setStatus("Génération des sujets en cours...");
                 try {
                   await window.linkedinPoster.ideas.generateFromStrategy();
                   await loadIdeas();
-                  setStatus("Sujets generes depuis la strategie.");
+                  setStatus("Sujets générés depuis la stratégie.");
                 } catch (error) {
                   const message = error instanceof Error ? error.message : "Erreur inconnue";
-                  setStatus(`Erreur lors de la generation des sujets : ${message}`);
+                  setStatus(`Erreur lors de la génération des sujets : ${message}`);
                 } finally {
                   setIsGeneratingFromStrategy(false);
                 }
               }}
             >
-              Generer des sujets depuis la strategie
+              Générer des sujets
             </button>
           </div>
         </article>

@@ -256,7 +256,7 @@ export function LibraryScreen() {
 
   return (
     <section className="panel page-panel">
-      <h1>Bibliotheque locale</h1>
+      <h1>Bibliothèque</h1>
 
       {/* Tab switcher */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "4px" }}>

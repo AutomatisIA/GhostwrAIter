@@ -52,7 +52,7 @@ export function SettingsScreen() {
 
   return (
     <section className="panel page-panel">
-      <h1>Parametres</h1>
+      <h1>Paramètres</h1>
 
       <div className="strategy-form" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
         {/* Apparence */}

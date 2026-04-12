@@ -59,7 +59,7 @@ export function CreateScreen() {
 
   return (
     <section className="panel page-panel">
-      <h1>Creer</h1>
+      <h1>Créer</h1>
 
       {mode === "selecting" ? (
         <IdeaSelector onSelect={handleSelectIdea} />

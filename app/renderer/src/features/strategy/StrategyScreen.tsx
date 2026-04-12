@@ -43,7 +43,7 @@ export function StrategyScreen() {
 
   return (
     <section className="panel page-panel">
-      <h1>Strategie editoriale</h1>
+      <h1>Stratégie éditoriale</h1>
 
       <div className="dashboard-grid dashboard-grid-secondary">
         <article className="panel checklist-card">
