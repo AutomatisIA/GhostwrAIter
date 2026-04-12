@@ -78,20 +78,24 @@ export class IdeasService {
       .filter(Boolean);
 
     return lines.map((line, index) => {
-      const [titlePart, anglePart] = line
-        .replace(/^\d+\.\s*/, "")
-        .split("| angle: ");
-      const pillarLabel = bundle.pillars[index % bundle.pillars.length]?.label;
+      const cleaned = line.replace(/^\d+\.\s*/, "");
+      const pillarLabel =
+        bundle.pillars[index % bundle.pillars.length]?.label ?? "General";
 
-      if (!titlePart?.trim() || !anglePart?.split("| score:")[0]?.trim() || !pillarLabel) {
-        throw new Error("Codex returned malformed topic lines.");
+      const angleMatch = cleaned.split("| angle: ");
+      if (angleMatch.length >= 2 && angleMatch[1]) {
+        const title = (angleMatch[0] ?? "").split(" - ")[0]?.trim() || (angleMatch[0] ?? "").trim();
+        const angle = angleMatch[1].split("| score:")[0]?.trim() ?? "";
+        if (title && angle) {
+          return this.repository.createIdea({ title, angle, pillarLabel });
+        }
       }
 
-      return this.repository.createIdea({
-        title: titlePart.split(" - ")[0]?.trim() || titlePart.trim(),
-        angle: anglePart.split("| score:")[0].trim(),
-        pillarLabel
-      });
+      const dashParts = cleaned.split(" - ");
+      const title = (dashParts[0] ?? cleaned).trim();
+      const angle = dashParts.length > 1 ? dashParts.slice(1).join(" - ").trim() : "";
+
+      return this.repository.createIdea({ title, angle, pillarLabel });
     });
   }
 
