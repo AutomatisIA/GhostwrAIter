@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { HashRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { LibraryScreen } from "../features/library/LibraryScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { StrategyScreen } from "../features/strategy/StrategyScreen";
@@ -110,8 +110,8 @@ function AppShell() {
 
 export function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <AppShell />
-    </BrowserRouter>
+    </HashRouter>
   );
 }

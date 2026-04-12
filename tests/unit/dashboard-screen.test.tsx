@@ -96,8 +96,6 @@ describe("CockpitScreen", () => {
       }
     };
 
-    window.history.replaceState({}, "", "/");
-
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Cockpit" })).toBeTruthy();
