@@ -7,6 +7,7 @@ type CadragePanelProps = {
   objective: PostObjective;
   onObjectiveChange: (objective: PostObjective) => void;
   onNext: () => void;
+  isLoading: boolean;
 };
 
 export function CadragePanel({
@@ -14,7 +15,8 @@ export function CadragePanel({
   onTypologyChange,
   objective,
   onObjectiveChange,
-  onNext
+  onNext,
+  isLoading
 }: CadragePanelProps) {
   return (
     <div className="workshop-step">
@@ -40,6 +42,7 @@ export function CadragePanel({
         <select
           value={objective}
           onChange={(e) => onObjectiveChange(e.target.value as PostObjective)}
+          disabled={isLoading}
         >
           {OBJECTIVES.map((o) => (
             <option key={o.value} value={o.value}>
@@ -49,8 +52,15 @@ export function CadragePanel({
         </select>
       </div>
       <div className="form-actions">
-        <button className="primary-button" onClick={onNext}>
-          Suivant : Structure
+        <button className="primary-button" onClick={onNext} disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <span className="spinner-inline" aria-hidden="true" />
+              Generation en cours...
+            </>
+          ) : (
+            "Suivant : Structure"
+          )}
         </button>
       </div>
     </div>
