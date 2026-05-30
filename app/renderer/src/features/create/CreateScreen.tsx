@@ -28,7 +28,6 @@ export function CreateScreen() {
       // quand on arrive avec une idee. Sync legitime depuis une source externe.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedIdeaId(ideaIdFromUrl);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("workshop");
     }
   }, [ideaIdFromUrl, mode]);
