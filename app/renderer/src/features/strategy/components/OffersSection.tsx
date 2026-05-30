@@ -27,8 +27,9 @@ export function OffersSection({ offers, onAdd, onRemove, onUpdate }: OffersSecti
       </div>
 
       <CompletenessIndicator
-        filled={Math.min(offers.length, 5)}
-        total={5}
+        variant="list"
+        count={offers.length}
+        itemNoun="offre"
         critical={offers.length === 0}
         impactedSkill="post-writer"
       />

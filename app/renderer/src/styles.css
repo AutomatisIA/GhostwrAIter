@@ -672,8 +672,14 @@ a {
 }
 
 /* Metric cards (T019) : surface neutre, profondeur, lift au survol via Card */
+.dashboard-grid > * {
+  display: flex;
+}
+
 .metric-card.ds-card {
   display: flex;
+  flex: 1;
+  height: 100%;
   flex-direction: column;
   gap: var(--space-1);
   text-decoration: none;
@@ -1299,6 +1305,62 @@ code.error-code {
   flex-direction: column;
   gap: 8px;
   margin: 12px 0 18px;
+}
+
+.completeness-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.completeness-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-strong);
+}
+
+.completeness-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  cursor: help;
+  line-height: 1;
+}
+
+.completeness-count {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.completeness-state {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.completeness-state.ok {
+  background: var(--color-sky-bg);
+  color: var(--color-accent);
+}
+
+.completeness-state.empty {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .completeness-bar {

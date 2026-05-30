@@ -34,8 +34,9 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
       </div>
 
       <CompletenessIndicator
-        filled={Math.min(icps.length, 5)}
-        total={5}
+        variant="list"
+        count={icps.length}
+        itemNoun="persona"
         critical={icps.length === 0}
         impactedSkill="hook-engine"
       />

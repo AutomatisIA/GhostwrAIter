@@ -36,8 +36,9 @@ export function VoiceRulesSection({
       </div>
 
       <CompletenessIndicator
-        filled={Math.min(voiceRules.length, 5)}
-        total={5}
+        variant="list"
+        count={voiceRules.length}
+        itemNoun="règle de voix"
         critical={voiceRules.length === 0}
         impactedSkill="post-writer"
       />

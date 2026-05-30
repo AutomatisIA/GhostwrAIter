@@ -26,6 +26,7 @@ export function ProfileSection({ profile, onUpdate }: ProfileSectionProps) {
       </div>
 
       <CompletenessIndicator
+        variant="fields"
         filled={filled}
         total={fields.length}
         critical={critical}

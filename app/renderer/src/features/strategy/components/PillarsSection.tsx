@@ -36,8 +36,9 @@ export function PillarsSection({
       </div>
 
       <CompletenessIndicator
-        filled={Math.min(pillars.length, 5)}
-        total={5}
+        variant="list"
+        count={pillars.length}
+        itemNoun="pilier"
         critical={pillars.length === 0}
         impactedSkill="topic-generator"
       />
