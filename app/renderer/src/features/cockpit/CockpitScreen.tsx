@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useMotionTemplate, useReducedMotion, useSpring } from "motion/react";
 import type { IdeaRecord } from "@shared/types/ideas";
 import type { LibraryEntry } from "@shared/types/library";
 import { Button, Card, EmptyState, Skeleton } from "../../design-system/primitives";
@@ -177,6 +177,31 @@ export function CockpitScreen() {
     }
   });
 
+  // Parallaxe subtile sur la carte hero « Prochaine action » (feature 010, T044,
+  // FR-017). L'inclinaison suit le curseur avec une amplitude faible (±5 deg) et
+  // un ressort doux. ENTIEREMENT neutralisee sous prefers-reduced-motion : on
+  // n'attache alors aucun handler et la transformation reste a zero (voir
+  // `handleNextActionPointerMove`). Reste discret, pas un gadget.
+  const NEXT_ACTION_TILT_DEG = 5;
+  const tiltSpringConfig = { stiffness: 150, damping: 18, mass: 0.4 };
+  const nextActionRotateX = useSpring(0, tiltSpringConfig);
+  const nextActionRotateY = useSpring(0, tiltSpringConfig);
+  const nextActionTransform = useMotionTemplate`perspective(900px) rotateX(${nextActionRotateX}deg) rotateY(${nextActionRotateY}deg)`;
+
+  function handleNextActionPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (prefersReducedMotion) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const ratioX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const ratioY = (event.clientY - bounds.top) / bounds.height - 0.5;
+    nextActionRotateY.set(ratioX * NEXT_ACTION_TILT_DEG * 2);
+    nextActionRotateX.set(-ratioY * NEXT_ACTION_TILT_DEG * 2);
+  }
+
+  function handleNextActionPointerLeave() {
+    nextActionRotateX.set(0);
+    nextActionRotateY.set(0);
+  }
+
   const metrics: Metric[] = [
     {
       to: "/strategie",
@@ -321,24 +346,32 @@ export function CockpitScreen() {
         </Card>
       ) : null}
 
-      {/* Next Action Card : surface mise en avant (gradient d'accent + glow) */}
+      {/* Next Action Card : surface mise en avant (gradient d'accent + glow),
+          parallaxe subtile au survol (T044) neutralisee si reduced-motion. */}
       {!isFirstRun ? (
-        <Card accent elevation={3} className="next-action-card">
-          <span className="next-action-eyebrow">Prochaine action</span>
-          <strong className="next-action-title">{nextAction.label}</strong>
-          <span className="next-action-explanation">
-            {nextAction.explanation}
-          </span>
-          {nextAction.to ? (
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => navigate(nextAction.to as string)}
-            >
-              {nextAction.label}
-            </Button>
-          ) : null}
-        </Card>
+        <motion.div
+          className="next-action-parallax"
+          style={prefersReducedMotion ? undefined : { transform: nextActionTransform }}
+          onPointerMove={prefersReducedMotion ? undefined : handleNextActionPointerMove}
+          onPointerLeave={prefersReducedMotion ? undefined : handleNextActionPointerLeave}
+        >
+          <Card accent elevation={3} className="next-action-card">
+            <span className="next-action-eyebrow">Prochaine action</span>
+            <strong className="next-action-title">{nextAction.label}</strong>
+            <span className="next-action-explanation">
+              {nextAction.explanation}
+            </span>
+            {nextAction.to ? (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => navigate(nextAction.to as string)}
+              >
+                {nextAction.label}
+              </Button>
+            ) : null}
+          </Card>
+        </motion.div>
       ) : null}
 
       {/* Recent Drafts + Recent Ideas : zones de lecture, fonds neutres */}

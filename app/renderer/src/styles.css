@@ -1024,6 +1024,22 @@ a {
   color: var(--color-text-secondary);
 }
 
+/* Parallaxe hero (T044) : wrapper qui porte l'inclinaison 3D au survol.
+   La transformation est pilotee par motion (JS) ; ici on prepare le contexte
+   3D et on isole le rendu. Neutralise sous reduced-motion (aucun handler ni
+   transform appliques cote JS). */
+.next-action-parallax {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-action-parallax {
+    transform: none;
+    will-change: auto;
+  }
+}
+
 /* Next-action card (T019) : hero, gradient d'accent + glow */
 .next-action-card.ds-card[data-elevation] {
   display: flex;

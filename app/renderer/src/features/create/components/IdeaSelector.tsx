@@ -1,7 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { motion } from "motion/react";
 import type { IdeaInput, IdeaRecord, NewsSourceInput } from "@shared/types/ideas";
-import { Button, Card, EmptyState, Field, Skeleton, useToast } from "../../../design-system/primitives";
+import {
+  AiProgress,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  Skeleton,
+  useToast
+} from "../../../design-system/primitives";
+import { useAiProgress } from "../../../feedback/useAiProgress";
 import { InfoHint } from "../../../help";
 import {
   fadeInUp,
@@ -44,6 +53,27 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
 
   const container = useMotionVariants(staggerContainer);
   const item = useMotionVariants(fadeInUp);
+
+  // Feedback IA continu sur les operations composites longues (feature 010,
+  // T032) : « Transformer une veille » (phase `news`) et « Generer des sujets »
+  // (phase `idees`). La creation manuelle d'idee (`isCreatingIdea`) est un
+  // simple insert SQLite, pas une operation IA : on ne l'inclut pas. Les deux
+  // operations IA s'excluent mutuellement, d'ou un pipeline mono-phase derive
+  // de la phase active (position honnete 1 / 1). Le ressenti de continuite est
+  // porte par les flags locaux (bascule synchrone), pas par le canal qui
+  // n'emet la phase qu'au retour de l'appel (spawnSync, research D3). Les toasts
+  // existants gardent le resultat terminal : pas de double annonce ici.
+  const aiActive = isCreatingFromNews || isGeneratingFromStrategy;
+  const aiActivePhase = isCreatingFromNews
+    ? "news"
+    : isGeneratingFromStrategy
+      ? "idees"
+      : null;
+  const aiProgress = useAiProgress({
+    active: aiActive,
+    activePhase: aiActivePhase,
+    pipeline: aiActivePhase ? [aiActivePhase] : undefined
+  });
 
   async function loadIdeas() {
     const result = await window.linkedinPoster.ideas.listIdeas();
@@ -303,6 +333,17 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
           </div>
         </Card>
       </div>
+
+      {aiActive ? (
+        <AiProgress
+          phase={aiProgress.phase}
+          intentLabel={aiProgress.intentLabel || "Génération en cours…"}
+          elapsedMs={aiProgress.elapsedMs}
+          currentIndex={aiProgress.currentIndex}
+          totalSteps={aiProgress.totalSteps}
+          state={aiProgress.state === "idle" ? "running" : aiProgress.state}
+        />
+      ) : null}
 
       {hasIdeas ? (
         <div className="filter-bar">

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { motion } from "motion/react";
-import { Button, Card, Skeleton, Tabs } from "../../design-system/primitives";
+import { AiProgress, Button, Card, Skeleton, Tabs } from "../../design-system/primitives";
+import { useAiProgress } from "../../feedback/useAiProgress";
 import {
   fadeInUp,
   staggerContainer,
@@ -57,6 +58,19 @@ export function StrategyScreen() {
 
   const container = useMotionVariants(staggerContainer);
   const item = useMotionVariants(fadeInUp);
+
+  // Feedback IA continu pendant la generation du socle (feature 010, T032).
+  // Operation composite mono-phase (`foundation`) : on contraint le pipeline a
+  // une seule etape pour une position honnete (1 / 1). Le ressenti de
+  // continuite est porte par le flag local `generating` (bascule synchrone),
+  // le canal `execution:progress` ne portant la phase qu'au retour de l'appel
+  // (spawnSync bloque le main, research D3). Le toast existant garde le
+  // resultat terminal succes/echec : pas de double annonce ici.
+  const foundationProgress = useAiProgress({
+    active: generating,
+    activePhase: generating ? "foundation" : null,
+    pipeline: ["foundation"]
+  });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -220,6 +234,19 @@ export function StrategyScreen() {
               </Button>
             )}
           </motion.div>
+
+          {generating ? (
+            <motion.div variants={item}>
+              <AiProgress
+                phase={foundationProgress.phase}
+                intentLabel={foundationProgress.intentLabel || "Génération en cours…"}
+                elapsedMs={foundationProgress.elapsedMs}
+                currentIndex={foundationProgress.currentIndex}
+                totalSteps={foundationProgress.totalSteps}
+                state={foundationProgress.state === "idle" ? "running" : foundationProgress.state}
+              />
+            </motion.div>
+          ) : null}
 
           {isEditingFoundation ? (
             <motion.div variants={item} className="strategy-socle-editor">
