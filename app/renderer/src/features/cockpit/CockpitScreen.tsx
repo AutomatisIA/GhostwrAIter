@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, useMotionTemplate, useReducedMotion, useSpring } from "motion/react";
 import type { IdeaRecord } from "@shared/types/ideas";
 import type { LibraryEntry } from "@shared/types/library";
+import { Button, Card, EmptyState, Skeleton } from "../../design-system/primitives";
+import {
+  fadeInUp,
+  staggerContainer,
+  useMotionVariants
+} from "../../design-system/motion/variants";
 
 type CockpitState = {
   strategyReady: boolean;
@@ -30,25 +37,25 @@ function getNextAction(state: CockpitState): {
 } {
   if (!state.strategyReady) {
     return {
-      label: "Definir votre strategie editoriale",
+      label: "Définir votre stratégie éditoriale",
       explanation:
-        "La strategie est la fondation de tout votre contenu. Sans elle, l'IA ne peut pas generer de posts pertinents.",
+        "La stratégie est la fondation de tout votre contenu. Sans elle, l'IA ne peut pas générer de posts pertinents.",
       to: "/strategie"
     };
   }
   if (state.ideasCount === 0) {
     return {
-      label: "Creer votre premiere idee",
+      label: "Créer votre première idée",
       explanation:
-        "L'atelier de creation transforme vos idees en drafts LinkedIn. Commencez par capturer un sujet.",
+        "L'atelier de création transforme vos idées en drafts LinkedIn. Commencez par capturer un sujet.",
       to: "/creer"
     };
   }
   if (state.draftsCount === 0) {
     return {
-      label: "Rediger votre premier post",
+      label: "Rédiger votre premier post",
       explanation:
-        "Vous avez des idees en stock. Passez a l'etape redaction pour generer un draft complet.",
+        "Vous avez des idées en stock. Passez à l'étape rédaction pour générer un draft complet.",
       to: "/creer"
     };
   }
@@ -56,20 +63,33 @@ function getNextAction(state: CockpitState): {
     return {
       label: "Planifier vos drafts",
       explanation:
-        "Vos drafts sont prets. Placez-les dans le calendrier pour organiser votre publication.",
+        "Vos drafts sont prêts. Placez-les dans le calendrier pour organiser votre publication.",
       to: "/bibliotheque"
     };
   }
   return {
     label: "Tout est en place",
-    explanation: "Votre pipeline de contenu est operationnel.",
+    explanation: "Votre pipeline de contenu est opérationnel.",
     to: null
   };
 }
 
+type Metric = {
+  to: string;
+  icon: string;
+  label: string;
+  value: string;
+  caption: string;
+};
+
 export function CockpitScreen() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<CockpitState>(initialState);
+
+  const prefersReducedMotion = useReducedMotion() ?? false;
+  const container = useMotionVariants(staggerContainer);
+  const item = useMotionVariants(fadeInUp);
 
   useEffect(() => {
     let mounted = true;
@@ -141,41 +161,112 @@ export function CockpitScreen() {
   const nextAction = getNextAction(state);
 
   const segments = [
-    { label: "Strategie", lit: state.strategyReady },
-    { label: "Idees", lit: state.ideasCount > 0 },
+    { label: "Stratégie", lit: state.strategyReady },
+    { label: "Idées", lit: state.ideasCount > 0 },
     { label: "Drafts", lit: state.draftsCount > 0 },
-    { label: "Planifies", lit: state.plannedCount > 0 },
-    { label: "Publies", lit: state.publishedCount > 0 }
+    { label: "Planifiés", lit: state.plannedCount > 0 },
+    { label: "Publiés", lit: state.publishedCount > 0 }
+  ];
+  const litCount = segments.filter((seg) => seg.lit).length;
+  const progress = litCount / segments.length;
+  const progressVariants = useMotionVariants({
+    hidden: { scaleX: 0 },
+    visible: {
+      scaleX: progress,
+      transition: { duration: 0.4, ease: [0.2, 0, 0, 1] }
+    }
+  });
+
+  // Parallaxe subtile sur la carte hero « Prochaine action » (feature 010, T044,
+  // FR-017). L'inclinaison suit le curseur avec une amplitude faible (±5 deg) et
+  // un ressort doux. ENTIEREMENT neutralisee sous prefers-reduced-motion : on
+  // n'attache alors aucun handler et la transformation reste a zero (voir
+  // `handleNextActionPointerMove`). Reste discret, pas un gadget.
+  const NEXT_ACTION_TILT_DEG = 5;
+  const tiltSpringConfig = { stiffness: 150, damping: 18, mass: 0.4 };
+  const nextActionRotateX = useSpring(0, tiltSpringConfig);
+  const nextActionRotateY = useSpring(0, tiltSpringConfig);
+  const nextActionTransform = useMotionTemplate`perspective(900px) rotateX(${nextActionRotateX}deg) rotateY(${nextActionRotateY}deg)`;
+
+  function handleNextActionPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    if (prefersReducedMotion) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const ratioX = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const ratioY = (event.clientY - bounds.top) / bounds.height - 0.5;
+    nextActionRotateY.set(ratioX * NEXT_ACTION_TILT_DEG * 2);
+    nextActionRotateX.set(-ratioY * NEXT_ACTION_TILT_DEG * 2);
+  }
+
+  function handleNextActionPointerLeave() {
+    nextActionRotateX.set(0);
+    nextActionRotateY.set(0);
+  }
+
+  const metrics: Metric[] = [
+    {
+      to: "/strategie",
+      icon: state.strategyReady ? "✅" : "⚠️",
+      label: "Stratégie",
+      value: state.strategyReady ? "Prête" : "À définir",
+      caption: state.strategyReady
+        ? "Positionnement, piliers et voix configurés"
+        : "Configurez offres, ICPs et piliers"
+    },
+    {
+      to: "/creer",
+      icon: "💡",
+      label: "Idées",
+      value: String(state.ideasCount),
+      caption:
+        state.ideasCount > 0
+          ? `${state.ideasCount > 1 ? "idées" : "idée"} dans le backlog`
+          : "Aucune idée encore"
+    },
+    {
+      to: "/bibliotheque",
+      icon: "📝",
+      label: "Drafts",
+      value: String(state.draftsCount),
+      caption:
+        state.draftsCount > 0
+          ? `${state.draftsCount > 1 ? "drafts" : "draft"} en bibliothèque`
+          : "Aucun draft rédigé"
+    },
+    {
+      to: "/bibliotheque?view=planning",
+      icon: "📅",
+      label: "Planifiés",
+      value: String(state.plannedCount),
+      caption:
+        state.plannedCount > 0
+          ? `${state.plannedCount > 1 ? "posts planifiés" : "post planifié"}`
+          : "Rien au calendrier"
+    }
   ];
 
   if (loading) {
     return (
       <section className="panel page-panel dashboard-page">
         <h1>Cockpit</h1>
-        {/* Skeleton: metrics row */}
-        <div className="dashboard-grid">
-          <article className="panel metric-card skeleton-card" aria-busy="true" />
-          <article className="panel metric-card skeleton-card" aria-busy="true" />
-          <article className="panel metric-card skeleton-card" aria-busy="true" />
-          <article className="panel metric-card skeleton-card" aria-busy="true" />
+        <div className="dashboard-grid cockpit-skeleton-metrics">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
         </div>
-        {/* Skeleton: pipeline + next action */}
-        <article
-          className="panel skeleton-card"
-          aria-busy="true"
-          style={{ minHeight: 120 }}
-        />
-        {/* Skeleton: recent drafts + recent ideas */}
-        <div className="dashboard-grid dashboard-grid-secondary">
-          <div style={{ display: "grid", gap: 12 }}>
-            <article className="list-card skeleton-card" aria-busy="true" style={{ minHeight: 80 }} />
-            <article className="list-card skeleton-card" aria-busy="true" style={{ minHeight: 80 }} />
-            <article className="list-card skeleton-card" aria-busy="true" style={{ minHeight: 80 }} />
+        <div className="cockpit-skeleton-pipeline">
+          <Skeleton variant="card" />
+        </div>
+        <div className="dashboard-grid dashboard-grid-secondary cockpit-skeleton-lists">
+          <div className="cockpit-list-stack">
+            <Skeleton variant="card" />
+            <Skeleton variant="card" />
+            <Skeleton variant="card" />
           </div>
-          <div style={{ display: "grid", gap: 12 }}>
-            <article className="list-card skeleton-card" aria-busy="true" style={{ minHeight: 80 }} />
-            <article className="list-card skeleton-card" aria-busy="true" style={{ minHeight: 80 }} />
-            <article className="list-card skeleton-card" aria-busy="true" style={{ minHeight: 80 }} />
+          <div className="cockpit-list-stack">
+            <Skeleton variant="card" />
+            <Skeleton variant="card" />
+            <Skeleton variant="card" />
           </div>
         </div>
       </section>
@@ -186,80 +277,47 @@ export function CockpitScreen() {
     <section className="panel page-panel dashboard-page">
       <h1>Cockpit</h1>
 
-      {/* Metrics Row */}
-      <div className="dashboard-grid">
-        <Link to="/strategie" className="panel metric-card metric-card-link">
-          <span className="status-label">
-            {state.strategyReady ? "\u2705 " : "\u26A0\uFE0F "}Strategie
-          </span>
-          <strong style={{ fontSize: "2rem", lineHeight: 1.1 }}>
-            {state.strategyReady ? "Prete" : "A definir"}
-          </strong>
-          <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem", marginTop: 4, display: "block" }}>
-            {state.strategyReady
-              ? "Positionnement, piliers et voix configures"
-              : "Configurez offres, ICPs et piliers"}
-          </span>
-        </Link>
-        <Link to="/creer" className="panel metric-card metric-card-link">
-          <span className="status-label">{"\uD83D\uDCA1"} Idees</span>
-          <strong style={{ fontSize: "2rem", lineHeight: 1.1 }}>
-            {state.ideasCount}
-          </strong>
-          <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem", marginTop: 4, display: "block" }}>
-            {state.ideasCount > 0
-              ? `${state.ideasCount > 1 ? "idees" : "idee"} dans le backlog`
-              : "Aucune idee encore"}
-          </span>
-        </Link>
-        <Link to="/bibliotheque" className="panel metric-card metric-card-link">
-          <span className="status-label">{"\uD83D\uDCDD"} Drafts</span>
-          <strong style={{ fontSize: "2rem", lineHeight: 1.1 }}>
-            {state.draftsCount}
-          </strong>
-          <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem", marginTop: 4, display: "block" }}>
-            {state.draftsCount > 0
-              ? `${state.draftsCount > 1 ? "drafts" : "draft"} en bibliotheque`
-              : "Aucun draft redige"}
-          </span>
-        </Link>
-        <Link to="/bibliotheque?view=planning" className="panel metric-card metric-card-link">
-          <span className="status-label">{"\uD83D\uDCC5"} Planifies</span>
-          <strong style={{ fontSize: "2rem", lineHeight: 1.1 }}>
-            {state.plannedCount}
-          </strong>
-          <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85rem", marginTop: 4, display: "block" }}>
-            {state.plannedCount > 0
-              ? `${state.plannedCount > 1 ? "posts planifies" : "post planifie"}`
-              : "Rien au calendrier"}
-          </span>
-        </Link>
-      </div>
+      {/* Metrics Row : profondeur via elevation, surfaces neutres, lift au survol */}
+      <motion.div
+        className="dashboard-grid"
+        variants={container}
+        initial="hidden"
+        animate="visible"
+      >
+        {metrics.map((metric) => (
+          <motion.div key={metric.to} variants={item}>
+            <Card
+              as={Link}
+              to={metric.to}
+              interactive
+              elevation={2}
+              className="metric-card"
+            >
+              <span className="status-label">
+                {metric.icon} {metric.label}
+              </span>
+              <strong className="metric-card-value">{metric.value}</strong>
+              <span className="metric-card-caption">{metric.caption}</span>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
 
-      {/* Pipeline Progress */}
-      <div className="completeness-indicator">
-        <div className="completeness-bar">
-          {segments.map((seg) => (
-            <div
-              key={seg.label}
-              className={`completeness-segment${seg.lit ? " lit" : ""}`}
-              title={seg.label}
-            />
-          ))}
+      {/* Pipeline Progress : barre tokenisee, remplissage anime */}
+      <div className="cockpit-pipeline">
+        <div className="cockpit-pipeline-track">
+          <motion.div
+            className="cockpit-pipeline-fill"
+            variants={progressVariants}
+            initial={prefersReducedMotion ? "visible" : "hidden"}
+            animate="visible"
+          />
         </div>
-        <div style={{ display: "flex", gap: 0 }}>
+        <div className="cockpit-pipeline-labels">
           {segments.map((seg) => (
             <span
               key={seg.label}
-              style={{
-                flex: 1,
-                textAlign: "center",
-                fontSize: "0.78rem",
-                color: seg.lit
-                  ? "var(--color-text-strong)"
-                  : "var(--color-text-secondary)",
-                fontWeight: seg.lit ? 600 : 400
-              }}
+              className={`cockpit-pipeline-label${seg.lit ? " lit" : ""}`}
             >
               {seg.label}
             </span>
@@ -269,98 +327,71 @@ export function CockpitScreen() {
 
       {/* First-run card */}
       {isFirstRun ? (
-        <article className="panel first-run-card">
-          <strong>Bienvenue — trois etapes pour demarrer</strong>
-          <ol style={{ margin: 0, paddingLeft: 18 }}>
+        <Card accent elevation={2} className="first-run-card">
+          <strong>Bienvenue : trois étapes pour démarrer</strong>
+          <ol className="first-run-steps">
             <li>
-              <strong>Strategie</strong> — positionnement, offres, piliers, voix
+              <strong>Stratégie</strong> : positionnement, offres, piliers, voix
             </li>
             <li>
-              <strong>Idees</strong> — capturer vos premiers sujets
+              <strong>Idées</strong> : capturer vos premiers sujets
             </li>
             <li>
-              <strong>Rediger</strong> — produire votre premier draft
+              <strong>Rédiger</strong> : produire votre premier draft
             </li>
           </ol>
-          <Link to="/strategie" className="primary-button first-run-cta">
-            Commencer par la Strategie
-          </Link>
-        </article>
+          <Button variant="primary" onClick={() => navigate("/strategie")}>
+            Commencer par la stratégie
+          </Button>
+        </Card>
       ) : null}
 
-      {/* Next Action Card */}
+      {/* Next Action Card : surface mise en avant (gradient d'accent + glow),
+          parallaxe subtile au survol (T044) neutralisee si reduced-motion. */}
       {!isFirstRun ? (
-        <article
-          className="panel"
-          style={{
-            padding: "22px 26px",
-            borderLeft: "4px solid var(--color-accent-sky)"
-          }}
+        <motion.div
+          className="next-action-parallax"
+          style={prefersReducedMotion ? undefined : { transform: nextActionTransform }}
+          onPointerMove={prefersReducedMotion ? undefined : handleNextActionPointerMove}
+          onPointerLeave={prefersReducedMotion ? undefined : handleNextActionPointerLeave}
         >
-          <strong style={{ display: "block", marginBottom: 6, fontSize: "1.1rem" }}>
-            Prochaine action
-          </strong>
-          <span
-            style={{
-              display: "block",
-              fontSize: "1.05rem",
-              color: "var(--color-text-secondary)",
-              marginBottom: 6
-            }}
-          >
-            {nextAction.label}
-          </span>
-          <span
-            style={{
-              display: "block",
-              fontSize: "0.88rem",
-              color: "var(--color-text-secondary)",
-              marginBottom: nextAction.to ? 14 : 0,
-              opacity: 0.8
-            }}
-          >
-            {nextAction.explanation}
-          </span>
-          {nextAction.to ? (
-            <Link to={nextAction.to} className="primary-button">
-              {nextAction.label}
-            </Link>
-          ) : null}
-        </article>
+          <Card accent elevation={3} className="next-action-card">
+            <span className="next-action-eyebrow">Prochaine action</span>
+            <strong className="next-action-title">{nextAction.label}</strong>
+            <span className="next-action-explanation">
+              {nextAction.explanation}
+            </span>
+            {nextAction.to ? (
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => navigate(nextAction.to as string)}
+              >
+                {nextAction.label}
+              </Button>
+            ) : null}
+          </Card>
+        </motion.div>
       ) : null}
 
-      {/* Recent Drafts + Recent Ideas */}
+      {/* Recent Drafts + Recent Ideas : zones de lecture, fonds neutres */}
       <div className="dashboard-grid dashboard-grid-secondary">
-        {/* Recent Drafts */}
         <div>
-          <h2 style={{ fontSize: "1.05rem", marginBottom: 12 }}>Derniers drafts</h2>
+          <h2 className="cockpit-list-heading">Derniers drafts</h2>
           {state.recentDrafts.length > 0 ? (
-            <div style={{ display: "grid", gap: 10 }}>
+            <div className="cockpit-list-stack">
               {state.recentDrafts.map((draft) => (
                 <Link
                   key={draft.draftId}
                   to="/bibliotheque"
-                  className="list-card"
-                  style={{ textDecoration: "none", color: "inherit" }}
+                  className="list-card cockpit-list-card"
                 >
                   <span className="status-label">{draft.pillarLabel}</span>
-                  <strong style={{ display: "block", fontSize: "0.95rem" }}>
+                  <strong className="cockpit-list-title">
                     {draft.headline}
                   </strong>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginTop: 8
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: "0.82rem",
-                        color: "var(--color-text-secondary)"
-                      }}
-                    >
+                  <div className="cockpit-list-footer">
+                    <span className="cockpit-list-meta">
                       Qualité : {Math.round(draft.qualityScore * 100)}%
                     </span>
                     <span className="inline-link">Ouvrir</span>
@@ -369,51 +400,48 @@ export function CockpitScreen() {
               ))}
             </div>
           ) : (
-            <article className="panel" style={{ padding: "18px 20px" }}>
-              <p style={{ margin: 0, color: "var(--color-text-secondary)" }}>
-                Aucun draft — commencez par{" "}
-                <Link to="/creer" className="inline-link" style={{ marginTop: 0 }}>
-                  creer une idee
-                </Link>
-              </p>
-            </article>
+            <Card elevation={1}>
+              <EmptyState
+                title="Aucun draft"
+                description="Vos drafts apparaîtront ici. Commencez par créer une idée pour lancer la rédaction."
+                action={{
+                  label: "Créer une idée",
+                  onClick: () => navigate("/creer")
+                }}
+              />
+            </Card>
           )}
         </div>
 
-        {/* Recent Ideas */}
         <div>
-          <h2 style={{ fontSize: "1.05rem", marginBottom: 12 }}>Dernieres idees</h2>
+          <h2 className="cockpit-list-heading">Dernières idées</h2>
           {state.recentIdeas.length > 0 ? (
-            <div style={{ display: "grid", gap: 10 }}>
+            <div className="cockpit-list-stack">
               {state.recentIdeas.map((idea) => (
                 <Link
                   key={idea.id}
                   to="/creer"
-                  className="list-card"
-                  style={{ textDecoration: "none", color: "inherit" }}
+                  className="list-card cockpit-list-card"
                 >
                   <span className="status-label">{idea.pillarLabel}</span>
-                  <strong style={{ display: "block", fontSize: "0.95rem" }}>
-                    {idea.title}
-                  </strong>
-                  <span
-                    className="inline-link"
-                    style={{ fontSize: "0.85rem" }}
-                  >
+                  <strong className="cockpit-list-title">{idea.title}</strong>
+                  <span className="inline-link cockpit-list-link">
                     Ouvrir dans l'atelier
                   </span>
                 </Link>
               ))}
             </div>
           ) : (
-            <article className="panel" style={{ padding: "18px 20px" }}>
-              <p style={{ margin: 0, color: "var(--color-text-secondary)" }}>
-                Aucune idee —{" "}
-                <Link to="/creer" className="inline-link" style={{ marginTop: 0 }}>
-                  creer votre premiere idee
-                </Link>
-              </p>
-            </article>
+            <Card elevation={1}>
+              <EmptyState
+                title="Aucune idée"
+                description="Capturez vos premiers sujets pour alimenter votre pipeline de contenu."
+                action={{
+                  label: "Créer votre première idée",
+                  onClick: () => navigate("/creer")
+                }}
+              />
+            </Card>
           )}
         </div>
       </div>

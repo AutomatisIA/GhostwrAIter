@@ -1,4 +1,6 @@
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { Button, Card, EmptyState, Field } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
 import { CompletenessIndicator } from "./CompletenessIndicator";
 
 type IcpsSectionProps = {
@@ -17,98 +19,132 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
     <section className="editor-section">
       <div className="section-heading">
         <div>
-          <h2>ICP</h2>
+          <h2 className="section-title-with-hint">
+            ICP
+            <InfoHint term="icp" />
+          </h2>
           <p>
-            Les personas permettent d'ecrire pour des problemes et un langage reel, pas pour
-            “tout le monde”.
+            Ces portraits permettent d'écrire pour des problèmes et un langage réels, pas pour
+            « tout le monde ».
           </p>
         </div>
-        <button type="button" className="secondary-button" onClick={onAdd}>
+        <Button variant="secondary" onClick={onAdd}>
           Ajouter un ICP
-        </button>
+        </Button>
       </div>
 
       <CompletenessIndicator
-        filled={Math.min(icps.length, 5)}
-        total={5}
+        variant="list"
+        count={icps.length}
+        itemNoun="persona"
         critical={icps.length === 0}
         impactedSkill="hook-engine"
       />
 
+      {icps.length === 0 ? (
+        <Card elevation={1}>
+          <EmptyState
+            title="Aucun client idéal défini"
+            description="Décrivez au moins un client idéal : son métier, ses douleurs et ses mots à lui. Vos posts parleront à de vraies personnes plutôt qu'à tout le monde."
+            action={{ label: "Ajouter un ICP", onClick: onAdd }}
+          />
+        </Card>
+      ) : null}
+
       {icps.map((icp, index) => (
-        <article key={`icp-${index}`} className="editor-card">
+        <Card key={`icp-${index}`} elevation={1} className="editor-card">
           <div className="section-heading compact">
             <strong>ICP {index + 1}</strong>
-            <button
-              type="button"
-              className="secondary-button danger-button"
-              onClick={() => onRemove(index)}
-            >
+            <Button variant="danger" size="sm" onClick={() => onRemove(index)}>
               Retirer
-            </button>
+            </Button>
           </div>
 
-          <label className="field">
-            <span>Segment {index + 1}</span>
-            <input
-              aria-label={`Segment ${index + 1}`}
-              value={icp.segment}
-              onChange={(event) => onUpdate(index, "segment", event.target.value)}
-              placeholder="Ex. Dirigeant de PME de 20 a 200 personnes"
-            />
-          </label>
+          <div className="strategy-fields">
+            <Field
+              label={`Segment ${index + 1}`}
+              htmlFor={`icp-segment-${index}`}
+              hint="Le type de client visé : métier, taille d'entreprise, contexte."
+              example="Dirigeant de PME de 20 à 200 personnes."
+            >
+              <input
+                value={icp.segment}
+                onChange={(event) => onUpdate(index, "segment", event.target.value)}
+                placeholder="Ex. Dirigeant de PME de 20 à 200 personnes"
+              />
+            </Field>
 
-          <label className="field">
-            <span>Douleurs principales {index + 1}</span>
-            <textarea
-              aria-label={`Douleurs principales ${index + 1}`}
-              rows={2}
-              value={icp.pains}
-              onChange={(event) => onUpdate(index, "pains", event.target.value)}
-              placeholder="Ex. Trop de bruit, peu de ROI, equipe pas alignee."
-            />
-          </label>
+            <Field
+              label={`Douleurs principales ${index + 1}`}
+              htmlFor={`icp-pains-${index}`}
+              hint="Ce qui empêche ce client de dormir, dans ses propres termes."
+              example="Trop de bruit, peu de ROI, équipe pas alignée."
+            >
+              <textarea
+                rows={2}
+                value={icp.pains}
+                onChange={(event) => onUpdate(index, "pains", event.target.value)}
+                placeholder="Ex. Trop de bruit, peu de ROI, équipe pas alignée."
+              />
+            </Field>
 
-          <label className="field">
-            <span>Objections</span>
-            <textarea
-              rows={2}
-              value={icp.objections ?? ""}
-              onChange={(event) => onUpdate(index, "objections", event.target.value)}
-              placeholder="Ex. J'ai peur d'un gadget de plus ou d'un projet sans adoption."
-            />
-          </label>
+            <Field
+              label="Objections"
+              htmlFor={`icp-objections-${index}`}
+              hint="Les freins qui le retiennent avant de vous faire confiance."
+              example="J'ai peur d'un gadget de plus ou d'un projet sans adoption."
+            >
+              <textarea
+                rows={2}
+                value={icp.objections ?? ""}
+                onChange={(event) => onUpdate(index, "objections", event.target.value)}
+                placeholder="Ex. J'ai peur d'un gadget de plus ou d'un projet sans adoption."
+              />
+            </Field>
 
-          <label className="field">
-            <span>Resultats attendus</span>
-            <textarea
-              rows={2}
-              value={icp.desiredOutcomes ?? ""}
-              onChange={(event) => onUpdate(index, "desiredOutcomes", event.target.value)}
-              placeholder="Ex. Un premier cas d'usage rentable et defendable en interne."
-            />
-          </label>
+            <Field
+              label="Résultats attendus"
+              htmlFor={`icp-outcomes-${index}`}
+              hint="Le succès concret qu'il espère obtenir."
+              example="Un premier cas d'usage rentable et défendable en interne."
+            >
+              <textarea
+                rows={2}
+                value={icp.desiredOutcomes ?? ""}
+                onChange={(event) => onUpdate(index, "desiredOutcomes", event.target.value)}
+                placeholder="Ex. Un premier cas d'usage rentable et défendable en interne."
+              />
+            </Field>
 
-          <label className="field">
-            <span>Indices de langage</span>
-            <textarea
-              rows={2}
-              value={icp.languageCues ?? ""}
-              onChange={(event) => onUpdate(index, "languageCues", event.target.value)}
-              placeholder="Ex. Concret, rentable, equipe, process, risque."
-            />
-          </label>
+            <Field
+              label="Indices de langage"
+              htmlFor={`icp-language-${index}`}
+              hint="Les mots qu'il emploie, à reprendre pour qu'il se reconnaisse."
+              example="Concret, rentable, équipe, process, risque."
+            >
+              <textarea
+                rows={2}
+                value={icp.languageCues ?? ""}
+                onChange={(event) => onUpdate(index, "languageCues", event.target.value)}
+                placeholder="Ex. Concret, rentable, équipe, process, risque."
+              />
+            </Field>
 
-          <label className="field">
-            <span>Comportement LinkedIn</span>
-            <textarea
-              rows={2}
-              value={icp.linkedinBehavior ?? ""}
-              onChange={(event) => onUpdate(index, "linkedinBehavior", event.target.value)}
-              placeholder="Ex. Lit des retours terrain, commente peu, partage les cas reels."
-            />
-          </label>
-        </article>
+            <Field
+              label="Comportement LinkedIn"
+              htmlFor={`icp-behavior-${index}`}
+              hint="Comment il se comporte sur LinkedIn : lit, commente, partage."
+              example="Lit des retours terrain, commente peu, partage les cas réels."
+            >
+              <textarea
+                rows={2}
+                value={icp.linkedinBehavior ?? ""}
+                onChange={(event) => onUpdate(index, "linkedinBehavior", event.target.value)}
+                placeholder="Ex. Lit des retours terrain, commente peu, partage les cas réels."
+              />
+            </Field>
+          </div>
+        </Card>
       ))}
     </section>
   );

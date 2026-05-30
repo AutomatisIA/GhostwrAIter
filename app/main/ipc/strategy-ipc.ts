@@ -1,5 +1,10 @@
+import type { WebContents } from "electron";
 import Database from "better-sqlite3";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
+import {
+  emitPhaseSettled,
+  emitPhaseStarted
+} from "../domains/execution/execution-progress-emitter";
 import {
   StrategyRepository,
   createStrategyTables
@@ -33,20 +38,48 @@ export class StrategyService {
     return this.repository.getActiveStrategyBundle();
   }
 
-  async generateFoundation() {
+  async generateFoundation(sender?: WebContents) {
     const bundle = this.repository.getActiveStrategyBundle();
-    const result = await this.skillRunnerService.executeAsync({
-      runId: `run_${Date.now()}`,
-      skillName: "linkedin-strategy-foundation",
-      skillVersion: "1.0.0",
-      context: {},
-      payload: bundle,
-      attachments: []
-    });
+    const runId = `run_${Date.now()}`;
+    emitPhaseStarted(sender, { runId, phase: "foundation", engine: "codex" });
+    let result;
+    try {
+      result = await this.skillRunnerService.executeAsync({
+        runId,
+        skillName: "linkedin-strategy-foundation",
+        skillVersion: "1.0.0",
+        context: {},
+        payload: bundle,
+        attachments: []
+      });
+    } catch (err) {
+      emitPhaseSettled(sender, {
+        runId,
+        phase: "foundation",
+        engine: "codex",
+        status: "failed",
+        errorCode: err instanceof Error ? err.name : undefined
+      });
+      throw err;
+    }
 
     if (result.status !== "succeeded" || !result.artifacts?.[0]?.content) {
+      emitPhaseSettled(sender, {
+        runId,
+        phase: "foundation",
+        engine: "codex",
+        status: "failed",
+        errorCode: result.error?.code
+      });
       throw new Error(result.error?.message ?? result.summary);
     }
+
+    emitPhaseSettled(sender, {
+      runId,
+      phase: "foundation",
+      engine: "codex",
+      status: "completed"
+    });
 
     return {
       summaryMarkdown: result.artifacts[0].content
@@ -77,6 +110,6 @@ export function registerStrategyIpcHandlers(
     ipcRegistrar,
     "strategy:generate-foundation",
     emptyInputSchema,
-    () => strategyService.generateFoundation()
+    (_input, sender) => strategyService.generateFoundation(sender)
   );
 }

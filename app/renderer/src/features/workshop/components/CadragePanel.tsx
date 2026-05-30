@@ -1,4 +1,8 @@
+import { motion } from "motion/react";
 import type { PostObjective, PostTypology } from "@shared/types/workshop";
+import { Button, Card } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
+import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
 import { OBJECTIVES, TYPOLOGIES } from "../constants";
 
 type CadragePanelProps = {
@@ -18,28 +22,61 @@ export function CadragePanel({
   onNext,
   isLoading
 }: CadragePanelProps) {
+  const container = useMotionVariants(staggerContainer);
+  const item = useMotionVariants(fadeInUp);
+
   return (
     <div className="workshop-step">
-      <h3>Choisis l'angle et l'objectif</h3>
+      <h3>
+        Choisis le cadrage <InfoHint term="cadrage" />
+      </h3>
       <p className="step-description">
-        Commence par definir le type de post et son objectif prioritaire.
-        Cela sert a orienter la structure et le niveau de tension du draft.
+        Commence par définir le type de post et son objectif prioritaire.
+        Cela sert à orienter la structure et le niveau de tension du draft.
       </p>
-      <div className="grid-selection">
-        {TYPOLOGIES.map((t) => (
-          <article
-            key={t.value}
-            className={`selection-card ${typology === t.value ? "selected" : ""}`}
-            onClick={() => onTypologyChange(t.value)}
-          >
-            <strong>{t.label}</strong>
-            <p>{t.description}</p>
-          </article>
-        ))}
-      </div>
+
       <div className="input-group">
-        <label>Objectif prioritaire</label>
+        <label className="ds-field__label">
+          Typologie <InfoHint term="typologie" />
+        </label>
+        <motion.div
+          className="grid-selection"
+          variants={container}
+          initial="hidden"
+          animate="visible"
+        >
+          {TYPOLOGIES.map((t) => {
+            const selected = typology === t.value;
+            return (
+              <motion.div key={t.value} variants={item}>
+                <Card
+                  interactive
+                  elevation={selected ? 2 : 1}
+                  className={`selection-card ${selected ? "selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => onTypologyChange(t.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onTypologyChange(t.value);
+                    }
+                  }}
+                >
+                  <strong>{t.label}</strong>
+                  <p>{t.description}</p>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
+
+      <div className="input-group">
+        <label htmlFor="cadrage-objective" className="ds-field__label">
+          Objectif prioritaire <InfoHint term="objectif" />
+        </label>
         <select
+          id="cadrage-objective"
           value={objective}
           onChange={(e) => onObjectiveChange(e.target.value as PostObjective)}
           disabled={isLoading}
@@ -51,17 +88,11 @@ export function CadragePanel({
           ))}
         </select>
       </div>
+
       <div className="form-actions">
-        <button className="primary-button" onClick={onNext} disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <span className="spinner-inline" aria-hidden="true" />
-              Generation en cours...
-            </>
-          ) : (
-            "Suivant : Structure"
-          )}
-        </button>
+        <Button variant="primary" onClick={onNext} loading={isLoading} disabled={isLoading}>
+          {isLoading ? "Génération en cours…" : "Suivant : structure"}
+        </Button>
       </div>
     </div>
   );

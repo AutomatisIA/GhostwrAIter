@@ -1,11 +1,29 @@
-import { useEffect, useState } from "react";
-import { HashRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  HashRouter,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+  useLocation
+} from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { LibraryScreen } from "../features/library/LibraryScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
 import { StrategyScreen } from "../features/strategy/StrategyScreen";
 import { CreateScreen } from "../features/create/CreateScreen";
 import { CockpitScreen } from "../features/cockpit/CockpitScreen";
 import { applyTheme } from "./theme";
+import { isTourSeen } from "./tour-seen";
+import { ToastProvider } from "../feedback/ToastProvider";
+import {
+  GUIDED_TOUR_SEEN_KEY,
+  GuidedTour,
+  shouldShowTour,
+  TourContext,
+  type TourApi
+} from "../help";
+import { pageTransition, useMotionVariants } from "../design-system/motion/variants";
 import type { ThemePreference } from "../../../shared/types/settings";
 
 const sections = [
@@ -16,8 +34,49 @@ const sections = [
   { path: "/parametres", label: "Paramètres" }
 ];
 
+/**
+ * Routes animees (T042). La transition de page (`pageTransition`) est jouee
+ * via `AnimatePresence` autour des `<Routes>`. On clef sur le SEUL pathname
+ * (pas la `key` complete) pour que les deep-links a query-params, ex.
+ * `?view=planning`, ne remontent pas inutilement la meme page. Les variants
+ * sont reduced-motion-aware via `useMotionVariants`. Les redirections legacy
+ * restent intactes.
+ */
+function AnimatedRoutes() {
+  const location = useLocation();
+  const variants = useMotionVariants(pageTransition);
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        className="route-transition ds-allow-opacity-motion"
+        variants={variants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+      >
+        <Routes location={location}>
+          <Route path="/" element={<CockpitScreen />} />
+          <Route path="/strategie" element={<StrategyScreen />} />
+          <Route path="/creer" element={<CreateScreen />} />
+          <Route path="/bibliotheque" element={<LibraryScreen />} />
+          <Route path="/parametres" element={<SettingsScreen />} />
+
+          {/* Legacy redirects */}
+          <Route path="/idees" element={<Navigate to="/creer" replace />} />
+          <Route path="/atelier" element={<Navigate to="/creer" replace />} />
+          <Route path="/calendrier" element={<Navigate to="/bibliotheque?view=planning" replace />} />
+          <Route path="/runner" element={<Navigate to="/parametres?section=diagnostics" replace />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function AppShell() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
   useEffect(() => {
     window.linkedinPoster.settings
@@ -28,6 +87,74 @@ function AppShell() {
       })
       .catch(() => applyTheme("system"));
   }, []);
+
+  // Declenchement automatique au premier lancement : espace vierge ET flag
+  // `guided-tour-seen` absent. Decision via `shouldShowTour` (pur, teste).
+  //
+  // Le flag est le signal GATE : si sa lecture echoue, on s'abstient. En
+  // revanche, sur un espace fraichement initialise, `getActiveBundle()` LEVE
+  // « No active strategy profile found » : c'est precisement le signe d'une
+  // strategie vide, pas d'un espace illisible. On traite donc l'echec de la
+  // strategie comme « vide » plutot que comme un abandon (cf. data-model :
+  // workspace vierge = aucune strategie/idee).
+  useEffect(() => {
+    let mounted = true;
+
+    async function evaluateAutoTour() {
+      let seen: boolean;
+      try {
+        const seenResult = await window.linkedinPoster.settings.getPreference(
+          GUIDED_TOUR_SEEN_KEY
+        );
+        seen = isTourSeen(seenResult.value);
+      } catch {
+        // Flag illisible : on s'abstient (signal gate indisponible).
+        return;
+      }
+
+      const strategyEmpty = await window.linkedinPoster.strategy
+        .getActiveBundle()
+        .then(
+          (bundle) =>
+            bundle.offers.length === 0 &&
+            bundle.icps.length === 0 &&
+            bundle.pillars.length === 0 &&
+            bundle.voiceRules.length === 0
+        )
+        // Absence de profil de strategie (espace neuf) => considere comme vide.
+        .catch(() => true);
+
+      const ideasEmpty = await window.linkedinPoster.ideas
+        .listIdeas()
+        .then((ideas) => ideas.length === 0)
+        .catch(() => true);
+
+      const isEmpty = strategyEmpty && ideasEmpty;
+      if (mounted && shouldShowTour({ seen, isEmpty })) {
+        setIsTourOpen(true);
+      }
+    }
+
+    void evaluateAutoTour();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const closeTour = useCallback(() => {
+    setIsTourOpen(false);
+    // On marque la visite comme vue : plus de declenchement automatique.
+    void window.linkedinPoster.settings
+      .setPreference(GUIDED_TOUR_SEEN_KEY, "true")
+      .catch(() => {
+        /* Le flag sera retente au prochain passage ; sans incidence visible. */
+      });
+  }, []);
+
+  const tourApi = useMemo<TourApi>(
+    () => ({ open: () => setIsTourOpen(true) }),
+    []
+  );
 
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -43,6 +170,7 @@ function AppShell() {
   }
 
   return (
+    <TourContext.Provider value={tourApi}>
     <div className="shell">
       <button
         type="button"
@@ -67,12 +195,14 @@ function AppShell() {
       ) : null}
 
       <aside className={`sidebar ${isDrawerOpen ? "drawer-open" : ""}`}>
-        <div className="brand panel">
-          <h2>Ghostwr<span style={{ color: "var(--color-accent-sky)" }}>AI</span>ter</h2>
-          <span style={{ fontSize: "0.7rem", color: "var(--color-text-secondary)", fontWeight: 600 }}>v{window.linkedinPoster.appVersion}</span>
+        <div className="brand">
+          <h2 className="brand-wordmark">
+            Ghostwr<span className="brand-accent">AI</span>ter
+          </h2>
+          <span className="brand-version">v{window.linkedinPoster.appVersion}</span>
         </div>
 
-        <nav className="panel nav-panel" aria-label="Navigation principale">
+        <nav className="nav-panel" aria-label="Navigation principale">
           {sections.map((section) => (
             <NavLink
               key={section.path}
@@ -83,35 +213,30 @@ function AppShell() {
               }
               onClick={closeDrawer}
             >
-              <span>{section.label}</span>
+              <span className="nav-link-label">{section.label}</span>
             </NavLink>
           ))}
         </nav>
       </aside>
 
       <main className="content">
-        <Routes>
-          <Route path="/" element={<CockpitScreen />} />
-          <Route path="/strategie" element={<StrategyScreen />} />
-          <Route path="/creer" element={<CreateScreen />} />
-          <Route path="/bibliotheque" element={<LibraryScreen />} />
-          <Route path="/parametres" element={<SettingsScreen />} />
-
-          {/* Legacy redirects */}
-          <Route path="/idees" element={<Navigate to="/creer" replace />} />
-          <Route path="/atelier" element={<Navigate to="/creer" replace />} />
-          <Route path="/calendrier" element={<Navigate to="/bibliotheque?view=planning" replace />} />
-          <Route path="/runner" element={<Navigate to="/parametres?section=diagnostics" replace />} />
-        </Routes>
+        <AnimatedRoutes />
       </main>
+
+      {/* La cle remonte la visite a chaque ouverture, garantissant un demarrage
+          a la premiere etape sans setState dans un effet. */}
+      <GuidedTour key={isTourOpen ? "tour-open" : "tour-closed"} open={isTourOpen} onClose={closeTour} />
     </div>
+    </TourContext.Provider>
   );
 }
 
 export function App() {
   return (
     <HashRouter>
-      <AppShell />
+      <ToastProvider>
+        <AppShell />
+      </ToastProvider>
     </HashRouter>
   );
 }

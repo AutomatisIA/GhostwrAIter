@@ -5,6 +5,20 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { SettingsScreen } from "../../app/renderer/src/features/settings/SettingsScreen";
+import { ToastProvider } from "../../app/renderer/src/feedback/ToastProvider";
+import { TourContext } from "../../app/renderer/src/help";
+
+function renderScreen() {
+  return render(
+    <MemoryRouter>
+      <ToastProvider>
+        <TourContext.Provider value={{ open: vi.fn() }}>
+          <SettingsScreen />
+        </TourContext.Provider>
+      </ToastProvider>
+    </MemoryRouter>
+  );
+}
 
 function mockLinkedinPoster(overrides: {
   exportWorkspace: ReturnType<typeof vi.fn>;
@@ -58,9 +72,9 @@ describe("SettingsScreen", () => {
       purgeExecutionLogs: vi.fn()
     });
 
-    render(<MemoryRouter><SettingsScreen /></MemoryRouter>);
+    renderScreen();
 
-    await user.click(screen.getByRole("button", { name: "Exporter le workspace" }));
+    await user.click(screen.getByRole("button", { name: "Exporter l'espace de travail" }));
 
     await waitFor(() => {
       expect(exportWorkspace).toHaveBeenCalledTimes(1);
@@ -80,30 +94,32 @@ describe("SettingsScreen", () => {
       purgeExecutionLogs
     });
 
-    render(<MemoryRouter><SettingsScreen /></MemoryRouter>);
+    renderScreen();
 
-    await user.click(screen.getByRole("button", { name: "Purger les logs" }));
+    await user.click(screen.getByRole("button", { name: "Purger les journaux" }));
 
     await waitFor(() => {
       expect(countExecutionLogs).toHaveBeenCalledTimes(1);
     });
 
+    // La purge ne doit jamais partir sans confirmation explicite.
     expect(purgeExecutionLogs).not.toHaveBeenCalled();
 
-    const confirmButton = await screen.findByRole("button", {
-      name: /Confirmer la suppression des 7 logs/
-    });
-    expect(confirmButton).toBeTruthy();
+    // Un dialogue de confirmation s'ouvre et indique le nombre de logs concernes.
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeTruthy();
+    expect(await screen.findByText(/7 journaux techniques/)).toBeTruthy();
 
     expect(screen.getByRole("button", { name: "Annuler" })).toBeTruthy();
 
+    const confirmButton = screen.getByRole("button", { name: "Purger définitivement" });
     await user.click(confirmButton);
 
     await waitFor(() => {
       expect(purgeExecutionLogs).toHaveBeenCalledTimes(1);
     });
 
-    expect(await screen.findByText("7 logs supprimes localement.")).toBeTruthy();
+    expect(await screen.findByText("7 journaux techniques supprimés de votre ordinateur.")).toBeTruthy();
   });
 
   it("cancels the purge when clicking Annuler", async () => {
@@ -117,17 +133,17 @@ describe("SettingsScreen", () => {
       purgeExecutionLogs
     });
 
-    render(<MemoryRouter><SettingsScreen /></MemoryRouter>);
+    renderScreen();
 
-    await user.click(screen.getByRole("button", { name: "Purger les logs" }));
+    await user.click(screen.getByRole("button", { name: "Purger les journaux" }));
 
     await waitFor(() => {
       expect(countExecutionLogs).toHaveBeenCalledTimes(1);
     });
 
-    await user.click(screen.getByRole("button", { name: "Annuler" }));
+    await user.click(await screen.findByRole("button", { name: "Annuler" }));
 
     expect(purgeExecutionLogs).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Purger les logs" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Purger les journaux" })).toBeTruthy();
   });
 });

@@ -1,4 +1,5 @@
 import log from "electron-log/main.js";
+import type { WebContents } from "electron";
 import { ZodError, type ZodTypeAny, type ZodTuple } from "zod";
 
 /**
@@ -31,19 +32,39 @@ export type IpcRegistrar = {
  * Handler signature for single-input validated channels. The handler receives
  * the post-validation value, may be sync or async, and MUST NOT construct its
  * own envelope — the wrapper is the only code that produces envelopes.
+ *
+ * The trailing `sender` is the calling renderer's `WebContents` (feature 010,
+ * T027), forwarded so handlers may emit the additive `execution:progress`
+ * channel back to the originating window. It is OPTIONAL: existing closures
+ * that ignore it (e.g. `(ideaId) => ...`) remain assignable unchanged.
  */
 export type ValidatedIpcHandler<TInput, TOutput> = (
-  input: TInput
+  input: TInput,
+  sender?: WebContents
 ) => TOutput | Promise<TOutput>;
 
 /**
  * Handler signature for positional tuple-input channels. The handler receives
- * the spread of the validated tuple as positional arguments.
+ * the spread of the validated tuple as positional arguments, followed by the
+ * optional calling `WebContents` (feature 010, T027). Existing handlers that
+ * accept only the tuple arguments remain assignable.
  */
 export type ValidatedIpcTupleHandler<
   TArgs extends readonly unknown[],
   TOutput
-> = (...args: TArgs) => TOutput | Promise<TOutput>;
+> = (...args: [...TArgs, (WebContents | undefined)?]) => TOutput | Promise<TOutput>;
+
+/**
+ * Narrows the `unknown` IPC event to its `sender` `WebContents` without
+ * widening the `IpcRegistrar` type. Returns `undefined` when the shape does
+ * not match (defense in depth; should not happen with a real Electron event).
+ */
+function extractSender(event: unknown): WebContents | undefined {
+  if (event !== null && typeof event === "object" && "sender" in event) {
+    return (event as { sender?: WebContents }).sender;
+  }
+  return undefined;
+}
 
 /**
  * Mapping from the class name (or `error.name`) of a thrown typed error to
@@ -164,7 +185,7 @@ export function registerValidatedHandler<TInput, TOutput>(
   schema: ZodTypeAny,
   handler: ValidatedIpcHandler<TInput, TOutput>
 ): void {
-  ipcRegistrar.handle(channel, async (_event, ...args) => {
+  ipcRegistrar.handle(channel, async (event, ...args) => {
     const rawInput = args.length === 0 ? undefined : args[0];
     const parsed = schema.safeParse(rawInput);
     if (!parsed.success) {
@@ -173,7 +194,7 @@ export function registerValidatedHandler<TInput, TOutput>(
       return envelope;
     }
     try {
-      const output = await handler(parsed.data as TInput);
+      const output = await handler(parsed.data as TInput, extractSender(event));
       return { ok: true, data: output } satisfies IpcResult<TOutput>;
     } catch (err) {
       const envelope = classifyThrown(err);
@@ -198,7 +219,7 @@ export function registerValidatedTupleHandler<
   tupleSchema: ZodTuple<never, never>,
   handler: ValidatedIpcTupleHandler<TArgs, TOutput>
 ): void {
-  ipcRegistrar.handle(channel, async (_event, ...args) => {
+  ipcRegistrar.handle(channel, async (event, ...args) => {
     const parsed = tupleSchema.safeParse(args);
     if (!parsed.success) {
       const envelope = envelopeFromZodError(parsed.error);
@@ -207,7 +228,9 @@ export function registerValidatedTupleHandler<
     }
     try {
       const parsedArgs = parsed.data as unknown as TArgs;
-      const output = await handler(...parsedArgs);
+      const output = await handler(
+        ...([...parsedArgs, extractSender(event)] as [...TArgs, WebContents?])
+      );
       return { ok: true, data: output } satisfies IpcResult<TOutput>;
     } catch (err) {
       const envelope = classifyThrown(err);

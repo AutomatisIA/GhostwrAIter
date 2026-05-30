@@ -1,9 +1,14 @@
+import type { WebContents } from "electron";
 import Database from "better-sqlite3";
 import { IdeasRepository } from "../ideas/ideas.repository";
 import {
   SkillRunnerService,
   type SkillRunnerInvocation
 } from "../execution/skill-runner.service";
+import {
+  emitPhaseSettled,
+  emitPhaseStarted
+} from "../execution/execution-progress-emitter";
 import type { WorkshopSession } from "../../../shared/types/workshop";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import { createId } from "../../shared/create-id";
@@ -18,10 +23,13 @@ export class NewsToPostService {
     private readonly getFoundationSummary?: () => string | null
   ) {}
 
-  createDraftFromSource(input: {
-    sourceTitle: string;
-    sourceSummary: string;
-  }): WorkshopSession {
+  createDraftFromSource(
+    input: {
+      sourceTitle: string;
+      sourceSummary: string;
+    },
+    sender?: WebContents
+  ): WorkshopSession {
     const idea = this.ideasRepository.createIdea({
       title: input.sourceTitle,
       angle: input.sourceSummary,
@@ -41,9 +49,17 @@ export class NewsToPostService {
       attachments: []
     };
 
+    emitPhaseStarted(sender, { runId, phase: "news", engine: "codex" });
     const result = this.skillRunnerService.execute(invocation);
 
     if (result.status !== "succeeded" || !result.data?.draft) {
+      emitPhaseSettled(sender, {
+        runId,
+        phase: "news",
+        engine: "codex",
+        status: "failed",
+        errorCode: result.error?.code
+      });
       throw new Error(result.error?.message ?? result.summary);
     }
 
@@ -96,6 +112,15 @@ export class NewsToPostService {
       startedAt: createdAt,
       finishedAt: createdAt,
       createdAt
+    });
+
+    // "completed" emis apres la persistance reussie : si une ecriture echoue,
+    // l'utilisateur ne voit pas un faux signal de succes.
+    emitPhaseSettled(sender, {
+      runId,
+      phase: "news",
+      engine: "codex",
+      status: "completed"
     });
 
     return {

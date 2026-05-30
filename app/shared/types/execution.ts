@@ -27,3 +27,15 @@ export type ExecutionApi = {
   getDiagnostics: () => Promise<ExecutionDiagnostics>;
   openRunLog: (runId: string) => Promise<OpenRunLogResult>;
 };
+
+import type { ExecutionProgressEvent } from "./execution-progress";
+
+/**
+ * Abonnement additif au canal one-way `execution:progress` (feature 010, T028).
+ * Expose au top-level de `window.linkedinPoster` (pas sous `.execution`), car
+ * c'est une souscription d'evenement et non un appel requete/reponse : elle ne
+ * passe pas par l'enveloppe IpcResult. Retourne une fonction de desabonnement.
+ */
+export type OnExecutionProgress = (
+  listener: (event: ExecutionProgressEvent) => void
+) => () => void;

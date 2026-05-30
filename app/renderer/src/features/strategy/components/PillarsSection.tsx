@@ -1,4 +1,6 @@
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { Button, Card, EmptyState, Field } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
 import { CompletenessIndicator } from "./CompletenessIndicator";
 
 type PillarsSectionProps = {
@@ -22,63 +24,82 @@ export function PillarsSection({
     <section className="editor-section">
       <div className="section-heading">
         <div>
-          <h2>Piliers editoriaux</h2>
-          <p>Les piliers servent a organiser le backlog, la bibliotheque et le calendrier.</p>
+          <h2 className="section-title-with-hint">
+            Piliers éditoriaux
+            <InfoHint term="pilier" />
+          </h2>
+          <p>Les piliers servent à organiser le backlog, la bibliothèque et le calendrier.</p>
         </div>
-        <button type="button" className="secondary-button" onClick={onAdd}>
+        <Button variant="secondary" onClick={onAdd}>
           Ajouter un pilier
-        </button>
+        </Button>
       </div>
 
       <CompletenessIndicator
-        filled={Math.min(pillars.length, 5)}
-        total={5}
+        variant="list"
+        count={pillars.length}
+        itemNoun="pilier"
         critical={pillars.length === 0}
         impactedSkill="topic-generator"
       />
 
+      {pillars.length === 0 ? (
+        <Card elevation={1}>
+          <EmptyState
+            title="Aucun pilier"
+            description="Définissez deux à quatre grands thèmes autour desquels vous publiez. Chaque idée et chaque post se rattachera à l'un d'eux pour garder une ligne cohérente."
+            action={{ label: "Ajouter un pilier", onClick: onAdd }}
+          />
+        </Card>
+      ) : null}
+
       {pillars.map((pillar, index) => (
-        <article key={`pillar-${index}`} className="editor-card">
+        <Card key={`pillar-${index}`} elevation={1} className="editor-card">
           <div className="section-heading compact">
             <strong>Pilier {index + 1}</strong>
-            <button
-              type="button"
-              className="secondary-button danger-button"
-              onClick={() => onRemove(index)}
-            >
+            <Button variant="danger" size="sm" onClick={() => onRemove(index)}>
               Retirer
-            </button>
+            </Button>
           </div>
 
-          <label className="field">
-            <span>Label du pilier {index + 1}</span>
-            <input
-              aria-label={`Label du pilier ${index + 1}`}
-              value={pillar.label}
-              onChange={(event) => onUpdate(index, "label", event.target.value)}
-              placeholder="Ex. Adoption IA"
-            />
-          </label>
+          <div className="strategy-fields">
+            <Field
+              label={`Label du pilier ${index + 1}`}
+              htmlFor={`pillar-label-${index}`}
+              hint="Un thème court qui revient dans vos publications."
+              example="Adoption IA, Recrutement, Relation client."
+            >
+              <input
+                value={pillar.label}
+                onChange={(event) => onUpdate(index, "label", event.target.value)}
+                placeholder="Ex. Adoption IA"
+              />
+            </Field>
 
-          <label className="field">
-            <span>Description du pilier</span>
-            <textarea
-              rows={2}
-              value={pillar.description ?? ""}
-              onChange={(event) => onUpdate(index, "description", event.target.value)}
-              placeholder="Ex. Comment cadrer, embarquer l'equipe et deployer sans friction."
-            />
-          </label>
+            <Field
+              label="Description du pilier"
+              htmlFor={`pillar-description-${index}`}
+              hint="Ce que recouvre ce thème, pour cadrer les idées qui en relèvent."
+              example="Comment cadrer, embarquer l'équipe et déployer sans friction."
+            >
+              <textarea
+                rows={2}
+                value={pillar.description ?? ""}
+                onChange={(event) => onUpdate(index, "description", event.target.value)}
+                placeholder="Ex. Comment cadrer, embarquer l'équipe et déployer sans friction."
+              />
+            </Field>
 
-          <label className="checkbox-field">
-            <input
-              type="checkbox"
-              checked={pillar.isDefault}
-              onChange={(event) => onUpdate(index, "isDefault", event.target.checked)}
-            />
-            <span>Pilier par defaut</span>
-          </label>
-        </article>
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={pillar.isDefault}
+                onChange={(event) => onUpdate(index, "isDefault", event.target.checked)}
+              />
+              <span>Pilier par défaut</span>
+            </label>
+          </div>
+        </Card>
       ))}
     </section>
   );

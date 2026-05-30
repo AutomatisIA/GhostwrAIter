@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import type { ThemePreference } from "@shared/types/settings";
 import { applyTheme } from "../../../app/theme";
+import { Tabs } from "../../../design-system/primitives";
 
 const options: { value: ThemePreference; label: string }[] = [
-  { value: "system", label: "Systeme" },
+  { value: "system", label: "Système" },
   { value: "light", label: "Clair" },
   { value: "dark", label: "Sombre" }
 ];
+
+const HINTS: Record<ThemePreference, string> = {
+  system: "Suit automatiquement le réglage clair ou sombre de votre ordinateur.",
+  light: "Interface claire, idéale en pleine lumière.",
+  dark: "Interface sombre, plus reposante le soir."
+};
 
 export function ThemeSelector() {
   const [current, setCurrent] = useState<ThemePreference>("system");
@@ -33,18 +40,17 @@ export function ThemeSelector() {
   }
 
   return (
-    <div style={{ display: "flex", gap: "8px" }}>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          className={current === option.value ? "primary-button" : "secondary-button"}
-          style={{ padding: "10px 16px" }}
-          onClick={() => handleChange(option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
+    <div className="settings-theme">
+      <Tabs
+        aria-label="Apparence de l'application"
+        items={options.map((option) => ({
+          value: option.value,
+          label: option.label
+        }))}
+        value={current}
+        onChange={(value) => handleChange(value as ThemePreference)}
+      />
+      <p className="settings-theme-hint">{HINTS[current]}</p>
     </div>
   );
 }

@@ -6,6 +6,8 @@ import type {
   StructureOption,
   WorkshopSession
 } from "@shared/types/workshop";
+import { Button, Card } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
 import { TYPOLOGIES, formatObjectiveLabel, getQualityFeedback } from "../constants";
 
 type DraftPanelProps = {
@@ -23,6 +25,19 @@ type DraftPanelProps = {
   onSaveDraftText: (headline: string, bodyMarkdown: string) => void;
   isSavingDraftText: boolean;
 };
+
+function renderStructureLabel(label: string) {
+  return label.split(/\s*->\s*/).map((part, i, arr) => (
+    <span key={i}>
+      {part}
+      {i < arr.length - 1 ? (
+        <span className="workshop-structure-arrow" aria-hidden="true">
+          {" › "}
+        </span>
+      ) : null}
+    </span>
+  ));
+}
 
 export function DraftPanel({
   session,
@@ -45,6 +60,8 @@ export function DraftPanel({
   const [editBody, setEditBody] = useState(session.draft.bodyMarkdown);
   const [copyLabel, setCopyLabel] = useState("Copier le post");
 
+  const correctionRecommended = session.draft.qualityScore < 0.85 && !isEditing;
+
   function handleStartEditing() {
     setEditHeadline(session.draft.headline);
     setEditBody(session.draft.bodyMarkdown);
@@ -63,7 +80,7 @@ export function DraftPanel({
   function handleCopyPost() {
     const text = session.draft.headline + "\n\n" + session.draft.bodyMarkdown;
     navigator.clipboard.writeText(text).then(() => {
-      setCopyLabel("Copie !");
+      setCopyLabel("Copié !");
       setTimeout(() => setCopyLabel("Copier le post"), 1500);
     });
   }
@@ -71,93 +88,91 @@ export function DraftPanel({
   return (
     <div className="workshop-layout">
       <div className="workshop-sidebar">
-        <article className="list-card">
-          <div className="status-label">Pret a publier ou retravailler</div>
+        <Card elevation={1}>
+          <div className="status-label">Prêt à publier ou retravailler</div>
           <strong>{session.draft.headline}</strong>
           <p>
-            Le draft est genere. Tu peux le modifier a la main, lancer une
-            correction premium ou l'envoyer dans la bibliotheque puis au calendrier.
+            Le draft est généré. Tu peux le modifier à la main, lancer une
+            correction premium ou l'envoyer dans la bibliothèque puis au calendrier.
           </p>
-        </article>
+        </Card>
 
-        <article className="list-card">
+        <Card elevation={1}>
           <div className="status-label">Lecture critique</div>
           <strong>{qualityFeedback.title}</strong>
           <p>{qualityFeedback.message}</p>
-        </article>
+        </Card>
 
-        <article className="list-card">
-          <div className="status-label">Contexte utilise</div>
+        <Card elevation={1}>
+          <div className="status-label">
+            Contexte utilisé <InfoHint term="pilier" />
+          </div>
           <p>Pilier : {session.contextUsed.pillarLabel}</p>
           <p>Voix : {session.contextUsed.voiceGuardrail}</p>
           <p>Skills : {session.contextUsed.activeSkills.join(", ")}</p>
-        </article>
+        </Card>
 
-        <article className="list-card">
+        <Card elevation={1}>
           <div className="status-label">Configuration</div>
           <p>Typologie : {TYPOLOGIES.find((item) => item.value === typology)?.label}</p>
           <p>Objectif : {formatObjectiveLabel(objective)}</p>
-          <p>Structure : {selectedStructure?.label
-            ? selectedStructure.label.split(/\s*->\s*/).map((part, i, arr) => (
-                <span key={i}>
-                  {part}
-                  {i < arr.length - 1 ? <span style={{ color: "var(--color-accent-sky)", margin: "0 6px" }}>›</span> : null}
-                </span>
-              ))
-            : selectedStructureKey}</p>
           <p>
-            Accroche : {selectedHook?.text ?? session.draft.selectedHookText ?? "Non definie"}
+            Structure :{" "}
+            {selectedStructure?.label
+              ? renderStructureLabel(selectedStructure.label)
+              : selectedStructureKey}
           </p>
-        </article>
+          <p>
+            Accroche : {selectedHook?.text ?? session.draft.selectedHookText ?? "Non définie"}
+          </p>
+        </Card>
 
+        {/* Navigation de retour : hierarchie attenuee (ghost) pour ne pas
+            concurrencer l'action premium. */}
         <div className="workshop-summary">
-          <button type="button" className="secondary-button full-width" onClick={onReopenCadrage}>
+          <Button variant="ghost" className="full-width" onClick={onReopenCadrage}>
             Revoir le cadrage
-          </button>
-          <button type="button" className="secondary-button full-width" onClick={onReopenStructureSelection}>
+          </Button>
+          <Button variant="ghost" className="full-width" onClick={onReopenStructureSelection}>
             Changer la structure
-          </button>
-          <button type="button" className="secondary-button full-width" onClick={onReopenHookSelection}>
+          </Button>
+          <Button variant="ghost" className="full-width" onClick={onReopenHookSelection}>
             Changer l'accroche
-          </button>
+          </Button>
         </div>
 
+        {/* Action dominante : la correction premium est l'acte fort de l'étape.
+            La modification manuelle reste secondaire. */}
+        <Button
+          variant="primary"
+          className="full-width"
+          onClick={onCorrect}
+          loading={isLoadingCorrection}
+          disabled={isLoadingCorrection || isEditing}
+        >
+          {isLoadingCorrection ? "Correction en cours…" : "Lancer la correction premium"}
+        </Button>
+
+        {correctionRecommended ? (
+          <span className="correction-hint">
+            Score actuel : {Math.round(session.draft.qualityScore * 100)}%. Correction recommandée.
+          </span>
+        ) : null}
+
         {!isEditing ? (
-          <button
-            type="button"
-            className="primary-button full-width"
+          <Button
+            variant="secondary"
+            className="full-width"
             onClick={handleStartEditing}
             disabled={isLoadingCorrection || isSavingDraftText}
           >
             Modifier le texte
-          </button>
+          </Button>
         ) : null}
-
-        {session.draft.qualityScore < 0.85 && !isEditing ? (
-          <span className="correction-hint">
-            Score actuel : {Math.round(session.draft.qualityScore * 100)}% — correction recommandee
-          </span>
-        ) : null}
-
-        <button
-          type="button"
-          className={`secondary-button full-width ${session.draft.qualityScore < 0.85 && !isEditing ? "correction-recommended" : ""}`}
-          onClick={onCorrect}
-          disabled={isLoadingCorrection || isEditing}
-        >
-          {isLoadingCorrection ? (
-            <>
-              <span className="spinner-inline" aria-hidden="true" />
-              Generation en cours...
-            </>
-          ) : (
-            "Lancer la correction premium"
-          )}
-        </button>
       </div>
 
-      <article className="list-card workshop-draft main-content">
-        <div className="status-label">{isEditing ? "Mode edition" : "Post Final"}</div>
+      <Card elevation={2} className="workshop-draft main-content" as="article">
+        <div className="status-label">{isEditing ? "Mode édition" : "Post final"}</div>
         {isEditing ? (
           <>
             <input
@@ -174,29 +189,17 @@ export function DraftPanel({
               aria-label="Corps du post"
             />
             <div className="form-actions">
-              <button
-                type="button"
-                className="primary-button"
+              <Button
+                variant="primary"
                 onClick={handleSave}
+                loading={isSavingDraftText}
                 disabled={isSavingDraftText || !editHeadline.trim() || !editBody.trim()}
               >
-                {isSavingDraftText ? (
-                  <>
-                    <span className="spinner-inline" aria-hidden="true" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  "Enregistrer"
-                )}
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleCancelEditing}
-                disabled={isSavingDraftText}
-              >
+                {isSavingDraftText ? "Enregistrement…" : "Enregistrer"}
+              </Button>
+              <Button variant="ghost" onClick={handleCancelEditing} disabled={isSavingDraftText}>
                 Annuler
-              </button>
+              </Button>
             </div>
           </>
         ) : (
@@ -204,25 +207,21 @@ export function DraftPanel({
             <strong>{session.draft.headline}</strong>
             <div className="draft-body">
               {session.draft.bodyMarkdown.split("\n").map((line, i) => (
-                <p key={i}>{line || "\u00A0"}</p>
+                <p key={i}>{line || " "}</p>
               ))}
             </div>
             <div className="quality-row">
-              <span>Qualite estimee</span>
+              <span>Qualité estimée</span>
               <strong>{Math.round(session.draft.qualityScore * 100)}%</strong>
             </div>
             <div className="form-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleCopyPost}
-              >
+              <Button variant="secondary" onClick={handleCopyPost}>
                 {copyLabel}
-              </button>
+              </Button>
             </div>
           </>
         )}
-      </article>
+      </Card>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { CalendarApi } from "./types/calendar";
-import type { ExecutionApi } from "./types/execution";
+import type { ExecutionApi, OnExecutionProgress } from "./types/execution";
 import type { IdeasApi } from "./types/ideas";
 import type { LibraryApi } from "./types/library";
 import type { SettingsApi } from "./types/settings";
@@ -20,6 +20,8 @@ declare global {
       calendar: CalendarApi;
       execution: ExecutionApi;
       settings: SettingsApi;
+      /** Abonnement additif au canal de progression IA (feature 010, T028). */
+      onExecutionProgress: OnExecutionProgress;
     };
   }
 }

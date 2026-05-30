@@ -1,4 +1,8 @@
+import { motion } from "motion/react";
 import type { StructureOption } from "@shared/types/workshop";
+import { Button, Card, Skeleton } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
+import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
 
 type StructurePanelProps = {
   structures: StructureOption[];
@@ -19,54 +23,71 @@ export function StructurePanel({
   isLoading,
   isLoadingNext
 }: StructurePanelProps) {
+  const container = useMotionVariants(staggerContainer);
+  const item = useMotionVariants(fadeInUp);
+
   return (
     <div className="workshop-step">
-      <h3>Selectionne une structure narrative</h3>
+      <h3>
+        Sélectionne une structure narrative <InfoHint term="structure" />
+      </h3>
       <p className="step-description">
-        La structure determine l'ordre du raisonnement. Choisis celle qui
-        sert le mieux l'idee et l'objectif retenu.
+        La structure détermine l'ordre du raisonnement. Choisis celle qui
+        sert le mieux l'idée et l'objectif retenu.
       </p>
-      <div className="grid-selection">
-        {isLoading ? (
-          <>
-            <article className="selection-card skeleton-card" aria-busy="true" />
-            <article className="selection-card skeleton-card" aria-busy="true" />
-            <article className="selection-card skeleton-card" aria-busy="true" />
-          </>
-        ) : (
-          structures.map((s, index) => (
-            <article
-              key={s.key}
-              className={`selection-card ${selectedStructureKey === s.key ? "selected" : ""}`}
-              onClick={() => onSelect(s.key)}
-            >
-              {index === 0 ? (
-                <span className="recommended-badge">Recommandee</span>
-              ) : null}
-              <strong>{s.label}</strong>
-              <p>{s.rationale}</p>
-            </article>
-          ))
-        )}
-      </div>
+      {isLoading ? (
+        <div className="grid-selection" aria-busy="true" aria-label="Chargement des structures">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </div>
+      ) : (
+        <motion.div
+          className="grid-selection"
+          variants={container}
+          initial="hidden"
+          animate="visible"
+        >
+          {structures.map((s, index) => {
+            const selected = selectedStructureKey === s.key;
+            return (
+              <motion.div key={s.key} variants={item}>
+                <Card
+                  interactive
+                  elevation={selected ? 2 : 1}
+                  className={`selection-card ${selected ? "selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => onSelect(s.key)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSelect(s.key);
+                    }
+                  }}
+                >
+                  {index === 0 ? (
+                    <span className="recommended-badge">Recommandée</span>
+                  ) : null}
+                  <strong>{s.label}</strong>
+                  <p>{s.rationale}</p>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
       <div className="form-actions">
-        <button type="button" className="secondary-button" onClick={onBack}>
+        <Button variant="ghost" onClick={onBack}>
           Retour
-        </button>
-        <button
-          className="primary-button"
+        </Button>
+        <Button
+          variant="primary"
           onClick={onNext}
+          loading={isLoadingNext}
           disabled={isLoading || isLoadingNext || structures.length === 0}
         >
-          {isLoadingNext ? (
-            <>
-              <span className="spinner-inline" aria-hidden="true" />
-              Generation en cours...
-            </>
-          ) : (
-            "Suivant : Accroche"
-          )}
-        </button>
+          {isLoadingNext ? "Génération en cours…" : "Suivant : accroche"}
+        </Button>
       </div>
     </div>
   );

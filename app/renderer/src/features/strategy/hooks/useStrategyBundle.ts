@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { StrategyBundleInput } from "@shared/schemas/strategy";
+import { useToast } from "../../../feedback/toast-context";
 
 const emptyBundle: StrategyBundleInput = {
   profile: {
@@ -53,10 +54,13 @@ export function createEmptyVoiceRule() {
 }
 
 export function useStrategyBundle() {
+  const toast = useToast();
   const [bundle, setBundle] = useState<StrategyBundleInput>(emptyBundle);
-  const [status, setStatus] = useState("Chargement du socle strategique...");
+  const [loading, setLoading] = useState(true);
   const [foundationSummary, setFoundationSummary] = useState("");
   const [foundationOutdated, setFoundationOutdated] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -107,11 +111,12 @@ export function useStrategyBundle() {
             ruleType: rule.ruleType
           }))
         });
-        setStatus("Socle strategique charge.");
       })
       .catch(() => {
-        if (!isMounted) return;
-        setStatus("Aucune strategie active. Vous pouvez en creer une.");
+        // Aucune strategie active n'est pas une erreur : on garde le bundle vide.
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
       });
 
     return () => {
@@ -251,22 +256,38 @@ export function useStrategyBundle() {
         position: index
       }))
     };
-    await window.linkedinPoster.strategy.saveBundle(normalizedBundle);
-    if (foundationSummary) setFoundationOutdated(true);
-    setStatus("Stratégie enregistrée.");
+    setSaving(true);
+    try {
+      await window.linkedinPoster.strategy.saveBundle(normalizedBundle);
+      if (foundationSummary) setFoundationOutdated(true);
+      toast.show({ kind: "success", message: "Stratégie enregistrée." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      toast.show({
+        kind: "error",
+        message: `Échec de l'enregistrement de la stratégie : ${message}`
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function generateFoundation() {
+    setGenerating(true);
     try {
       const result = await window.linkedinPoster.strategy.generateFoundation();
       setFoundationSummary(result.summaryMarkdown);
       setFoundationOutdated(false);
       await window.linkedinPoster.settings.setPreference("foundation_summary", result.summaryMarkdown);
-      setStatus("Socle éditorial généré.");
+      toast.show({ kind: "success", message: "Socle éditorial généré." });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
-      setFoundationSummary("");
-      setStatus(`Erreur lors de la génération du socle éditorial : ${message}`);
+      toast.show({
+        kind: "error",
+        message: `Échec de la génération du socle éditorial : ${message}`
+      });
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -277,7 +298,9 @@ export function useStrategyBundle() {
 
   return {
     bundle,
-    status,
+    loading,
+    saving,
+    generating,
     foundationSummary,
     foundationOutdated,
     setFoundationSummary: updateFoundationSummary,

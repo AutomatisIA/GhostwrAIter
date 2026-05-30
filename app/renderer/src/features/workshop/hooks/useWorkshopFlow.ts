@@ -39,7 +39,7 @@ function extractError(err: unknown): WorkshopError {
 function toStoredHookOptions(session: WorkshopSession): HookOption[] {
   return session.hooks.map((hook, index) => ({
     id: hook.id,
-    family: index === 0 ? "hook retenu" : "alternative deja generee",
+    family: index === 0 ? "hook retenu" : "alternative déjà générée",
     text: hook.text,
     score: Math.max(0.55, 0.9 - index * 0.08)
   }));
@@ -48,7 +48,7 @@ function toStoredHookOptions(session: WorkshopSession): HookOption[] {
 export function useWorkshopFlow(ideaId: string | null) {
   const [step, setStep] = useState(1);
   const [status, setStatus] = useState(
-    ideaId ? "Configure ton post." : "Selectionne une idee depuis le backlog."
+    ideaId ? "Configure ton post." : "Sélectionne une idée depuis le backlog."
   );
   const [error, setError] = useState<WorkshopError | null>(null);
 
@@ -94,7 +94,7 @@ export function useWorkshopFlow(ideaId: string | null) {
               {
                 key: restoredStructureKey,
                 label: restoredStructureLabel,
-                rationale: "Structure deja utilisee dans le draft courant."
+                rationale: "Structure déjà utilisée dans le draft courant."
               }
             ]
           : []
@@ -104,7 +104,7 @@ export function useWorkshopFlow(ideaId: string | null) {
       setSelectedHookId(restoredHookId);
       setSession(result);
       setStep(4);
-      setStatus("Draft pret.");
+      setStatus("Draft prêt.");
     });
   }, [ideaId]);
 
@@ -116,7 +116,7 @@ export function useWorkshopFlow(ideaId: string | null) {
     if (!ideaId) return;
     clearError();
     setIsLoadingStructures(true);
-    setStatus("Rechargement des structures...");
+    setStatus("Rechargement des structures…");
     try {
       const results = await window.linkedinPoster.workshop.getSuggestedStructures(
         ideaId,
@@ -133,7 +133,7 @@ export function useWorkshopFlow(ideaId: string | null) {
       setStatus("Choisis une structure.");
     } catch (err) {
       setError(extractError(err));
-      setStatus("Echec du rechargement des structures.");
+      setStatus("Échec du rechargement des structures.");
     } finally {
       setIsLoadingStructures(false);
     }
@@ -146,7 +146,7 @@ export function useWorkshopFlow(ideaId: string | null) {
 
     if (!structureKey) {
       setIsLoadingStructures(true);
-      setStatus("Chargement de la structure actuelle...");
+      setStatus("Chargement de la structure actuelle…");
       try {
         const structureResults = await window.linkedinPoster.workshop.getSuggestedStructures(
           ideaId,
@@ -158,7 +158,7 @@ export function useWorkshopFlow(ideaId: string | null) {
         setSelectedStructureKey(structureKey);
       } catch (err) {
         setError(extractError(err));
-        setStatus("Echec du chargement de la structure.");
+        setStatus("Échec du chargement de la structure.");
         setIsLoadingStructures(false);
         return;
       } finally {
@@ -167,12 +167,12 @@ export function useWorkshopFlow(ideaId: string | null) {
     }
 
     if (!structureKey) {
-      setStatus("Aucune structure disponible pour generer des hooks.");
+      setStatus("Aucune structure disponible pour générer des hooks.");
       return;
     }
 
     setIsLoadingHooks(true);
-    setStatus("Rechargement des hooks...");
+    setStatus("Rechargement des hooks…");
     try {
       const hookResults = await window.linkedinPoster.workshop.generateHooks(
         ideaId,
@@ -189,7 +189,7 @@ export function useWorkshopFlow(ideaId: string | null) {
       setStatus("Choisis ton accroche.");
     } catch (err) {
       setError(extractError(err));
-      setStatus("Echec du rechargement des hooks.");
+      setStatus("Échec du rechargement des hooks.");
     } finally {
       setIsLoadingHooks(false);
     }
@@ -199,7 +199,7 @@ export function useWorkshopFlow(ideaId: string | null) {
     if (!ideaId) return;
     clearError();
     setIsLoadingStructures(true);
-    setStatus("Selection de la structure...");
+    setStatus("Sélection de la structure…");
     try {
       const results = await window.linkedinPoster.workshop.getSuggestedStructures(
         ideaId,
@@ -212,7 +212,7 @@ export function useWorkshopFlow(ideaId: string | null) {
       setStatus("Choisis une structure.");
     } catch (err) {
       setError(extractError(err));
-      setStatus("Echec de la selection de structure.");
+      setStatus("Échec de la sélection de structure.");
     } finally {
       setIsLoadingStructures(false);
     }
@@ -222,7 +222,7 @@ export function useWorkshopFlow(ideaId: string | null) {
     if (!ideaId) return;
     clearError();
     setIsLoadingHooks(true);
-    setStatus("Generation des hooks...");
+    setStatus("Génération des hooks…");
     try {
       const results = await window.linkedinPoster.workshop.generateHooks(
         ideaId,
@@ -235,7 +235,7 @@ export function useWorkshopFlow(ideaId: string | null) {
       setStatus("Choisis ton accroche.");
     } catch (err) {
       setError(extractError(err));
-      setStatus("Echec de la generation des hooks.");
+      setStatus("Échec de la génération des hooks.");
     } finally {
       setIsLoadingHooks(false);
     }
@@ -245,7 +245,7 @@ export function useWorkshopFlow(ideaId: string | null) {
     if (!ideaId) return;
     clearError();
     setIsLoadingDraft(true);
-    setStatus("Generation du draft final...");
+    setStatus("Génération du draft final…");
     try {
       const result = await window.linkedinPoster.workshop.generateFinalDraft(
         ideaId,
@@ -259,10 +259,10 @@ export function useWorkshopFlow(ideaId: string | null) {
       );
       setSession(result);
       setStep(4);
-      setStatus("Draft genere !");
+      setStatus("Draft généré !");
     } catch (err) {
       setError(extractError(err));
-      setStatus("Echec de la generation du draft.");
+      setStatus("Échec de la génération du draft.");
     } finally {
       setIsLoadingDraft(false);
     }
@@ -272,14 +272,14 @@ export function useWorkshopFlow(ideaId: string | null) {
     if (!session) return;
     clearError();
     setIsLoadingCorrection(true);
-    setStatus("Passe de correction...");
+    setStatus("Passe de correction…");
     try {
       const result = await window.linkedinPoster.workshop.correctDraft(session.draft.id);
       setSession(result);
-      setStatus("Draft corrige.");
+      setStatus("Draft corrigé.");
     } catch (err) {
       setError(extractError(err));
-      setStatus("Echec de la correction.");
+      setStatus("Échec de la correction.");
     } finally {
       setIsLoadingCorrection(false);
     }
@@ -298,10 +298,10 @@ export function useWorkshopFlow(ideaId: string | null) {
         bodyMarkdown
       );
       setSession(result);
-      setStatus("Texte enregistre.");
+      setStatus("Texte enregistré.");
     } catch (err) {
       setError(extractError(err));
-      setStatus("Echec de l'enregistrement.");
+      setStatus("Échec de l'enregistrement.");
     } finally {
       setIsSavingDraftText(false);
     }
