@@ -57,8 +57,15 @@ export function LibraryScreen() {
   const container = useMotionVariants(staggerContainer);
   const item = useMotionVariants(fadeInUp);
 
-  const initialView = (searchParams.get("view") === "planning" ? "planning" : "drafts") as TabView;
-  const [activeTab, setActiveTab] = useState<TabView>(initialView);
+  // `activeTab` est DERIVE de l'URL (`?view=planning`), pas un state local
+  // (finding revue Codex). La transition de route d'App.tsx est keyee sur le
+  // SEUL pathname (pas la query), donc naviguer vers `/bibliotheque?view=planning`
+  // alors qu'on est deja sur `/bibliotheque` (lien Cockpit « Planifiés »,
+  // redirections legacy) NE remonte PAS le composant. Un `useState` initialise a
+  // l'init ne verrait alors jamais le changement de query. En derivant de
+  // `searchParams` (qui re-rend a chaque changement d'URL sans remount), l'onglet
+  // suit l'URL en continu sans setState dans un effet.
+  const activeTab: TabView = searchParams.get("view") === "planning" ? "planning" : "drafts";
 
   // --- Drafts state ---
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
@@ -85,7 +92,8 @@ export function LibraryScreen() {
   const [scheduledDates, setScheduledDates] = useState<Map<string, string>>(new Map());
 
   function switchTab(tab: TabView) {
-    setActiveTab(tab);
+    // `activeTab` etant derive de l'URL, il suffit de mettre a jour la query :
+    // le changement de `searchParams` re-rend et re-derive l'onglet actif.
     setSearchParams(tab === "drafts" ? {} : { view: "planning" });
   }
 
@@ -199,6 +207,12 @@ export function LibraryScreen() {
   }
 
   async function handleDeleteEntry(draftId: string) {
+    // Garde de re-entree : si une suppression (ou toute action draft) est deja
+    // en vol, on ignore tout clic supplementaire sur Confirmer (anti
+    // double-soumission, complement du bouton disabled cote dialog).
+    if (busyDraftId !== null) {
+      return;
+    }
     setBusyDraftId(draftId);
     try {
       await window.linkedinPoster.library.deleteEntry(draftId);
@@ -735,6 +749,7 @@ export function LibraryScreen() {
         }
         confirmLabel="Supprimer"
         cancelLabel="Annuler"
+        confirmLoading={busyDraftId !== null}
         onConfirm={() => {
           if (entryBeingDeleted) {
             void handleDeleteEntry(entryBeingDeleted.draftId);

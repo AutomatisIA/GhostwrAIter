@@ -185,6 +185,81 @@ describe("useAiProgress", () => {
     expect(result.current.errorCode).toBe("CODEX_CLI_FAILED");
   });
 
+  it("ignore un evenement d'une AUTRE phase quand activePhase est fixe (anti-flip concurrent)", () => {
+    const channel = installFakeChannel();
+    // activePhase = "redaction" : le canal est partage, une operation concurrente
+    // sur une autre phase ("structure") ne doit PAS alterer l'etat affiche.
+    const { result } = renderHook(() =>
+      useAiProgress({ active: true, activePhase: "redaction" })
+    );
+
+    // Etat de reference : running, phase = redaction (derivee de activePhase).
+    expect(result.current.state).toBe("running");
+    expect(result.current.phase).toBe("redaction");
+
+    // Evenement terminal d'une AUTRE phase : doit etre ignore (ni success, ni
+    // bascule de phase). Sans la garde, ce `completed` flipperait l'etat.
+    act(() => {
+      channel.emit(
+        makeEvent({ phase: "structure", status: "completed" })
+      );
+    });
+    expect(result.current.state).toBe("running");
+    expect(result.current.phase).toBe("redaction");
+
+    // De meme pour un failed concurrent : ignore, pas d'errorCode parasite.
+    act(() => {
+      channel.emit(
+        makeEvent({ phase: "structure", status: "failed", errorCode: "OTHER_FAIL" })
+      );
+    });
+    expect(result.current.state).toBe("running");
+    expect(result.current.errorCode).toBeUndefined();
+  });
+
+  it("prend en compte le terminal de la phase ACTIVE malgre la garde de phase", () => {
+    const channel = installFakeChannel();
+    const { result, rerender } = renderHook(
+      ({ active }: { active: boolean }) =>
+        useAiProgress({ active, activePhase: "redaction" }),
+      { initialProps: { active: true } }
+    );
+
+    // L'evenement terminal de la phase ACTIVE doit bien passer la garde.
+    act(() => {
+      channel.emit(makeEvent({ phase: "redaction", status: "completed" }));
+    });
+    rerender({ active: false });
+    expect(result.current.state).toBe("success");
+  });
+
+  it("met a jour la garde de phase via la ref (pas de closure obsolete)", () => {
+    const channel = installFakeChannel();
+    // activePhase change apres le montage : la garde doit suivre la NOUVELLE
+    // valeur (ref tenue a jour), pas celle capturee au montage.
+    const { result, rerender } = renderHook(
+      ({ activePhase }: { activePhase: "structure" | "hook" }) =>
+        useAiProgress({ active: true, activePhase }),
+      { initialProps: { activePhase: "structure" as const } }
+    );
+
+    rerender({ activePhase: "hook" });
+
+    // Un evenement de l'ancienne phase ("structure") doit desormais etre ignore.
+    act(() => {
+      channel.emit(makeEvent({ phase: "structure", status: "failed", errorCode: "STALE" }));
+    });
+    expect(result.current.state).toBe("running");
+    expect(result.current.errorCode).toBeUndefined();
+
+    // Un evenement de la phase active courante ("hook") passe la garde.
+    act(() => {
+      channel.emit(makeEvent({ phase: "hook", status: "failed", errorCode: "HOOK_FAIL" }));
+    });
+    expect(result.current.state).toBe("error");
+    expect(result.current.errorCode).toBe("HOOK_FAIL");
+  });
+
   it("le timer s'arrete une fois l'operation terminee", () => {
     const channel = installFakeChannel();
     const { result, rerender } = renderHook(

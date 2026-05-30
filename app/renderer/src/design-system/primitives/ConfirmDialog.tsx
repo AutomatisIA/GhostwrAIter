@@ -8,6 +8,13 @@ export interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  /**
+   * Etat de chargement du bouton Confirmer : affiche le spinner et desactive
+   * l'action (anti double-soumission pendant une operation en vol).
+   */
+  confirmLoading?: boolean;
+  /** Desactive le bouton Confirmer sans afficher de spinner. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -28,6 +35,8 @@ export function ConfirmDialog({
   confirmLabel = "Confirmer",
   cancelLabel = "Annuler",
   destructive = false,
+  confirmLoading = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel
 }: ConfirmDialogProps) {
@@ -115,7 +124,12 @@ export function ConfirmDialog({
           <Button ref={cancelRef} variant="ghost" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant={destructive ? "danger" : "primary"} onClick={onConfirm}>
+          <Button
+            variant={destructive ? "danger" : "primary"}
+            onClick={onConfirm}
+            loading={confirmLoading}
+            disabled={confirmDisabled}
+          >
             {confirmLabel}
           </Button>
         </div>

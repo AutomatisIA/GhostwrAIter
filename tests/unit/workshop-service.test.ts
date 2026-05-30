@@ -12,6 +12,10 @@ import {
 } from "../../app/main/domains/workshop/workshop.service";
 import { SkillRunnerService } from "../../app/main/domains/execution/skill-runner.service";
 import {
+  EXECUTION_PROGRESS_CHANNEL,
+  type ExecutionProgressEvent
+} from "../../app/shared/types/execution-progress";
+import {
   createStrategyBundleFixture,
   createStrictSkillRunnerService
 } from "./helpers/fake-codex";
@@ -280,5 +284,136 @@ describe("ensureColumn (workshop schema helper)", () => {
     expect(keys).toContain("execution_runs.log_path");
     expect(keys).toContain("execution_runs.started_at");
     expect(keys).toContain("execution_runs.finished_at");
+  });
+});
+
+describe("runPhase progress emission (finding revue Codex)", () => {
+  let db: Database.Database;
+  let ideasRepository: IdeasRepository;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    createIdeasTables(db);
+    createWorkshopTables(db);
+    ideasRepository = new IdeasRepository(db);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  /**
+   * Faux `WebContents` qui capture les evenements `execution:progress` emis,
+   * sans dependre d'Electron. Suffisant pour observer la borne terminale.
+   */
+  function makeFakeSender() {
+    const events: ExecutionProgressEvent[] = [];
+    const sender = {
+      isDestroyed: () => false,
+      send: (channel: string, event: ExecutionProgressEvent) => {
+        if (channel === EXECUTION_PROGRESS_CHANNEL) {
+          events.push(event);
+        }
+      }
+    };
+    return { sender, events };
+  }
+
+  /**
+   * Construit un service dont le runner renvoie le `status` fourni pour la
+   * skill structure-selector (le reste delegue au fake strict).
+   */
+  function makeServiceWithStatus(status: "succeeded" | "partial" | "failed") {
+    const strict = createStrictSkillRunnerService();
+    const skillRunner = new SkillRunnerService({
+      codexCliRunner: {
+        isAvailable: () => true,
+        execute: (invocation) => {
+          if (invocation.skillName === "linkedin-structure-selector") {
+            if (status === "succeeded") {
+              return strict.execute(invocation);
+            }
+            return {
+              status,
+              summary: `structure-selector ${status}`,
+              error:
+                status === "failed"
+                  ? { code: "CODEX_CLI_FAILED", message: "echec moteur" }
+                  : undefined
+            };
+          }
+          return strict.execute(invocation);
+        }
+      }
+    });
+    return new WorkshopService(
+      db,
+      ideasRepository,
+      () => createStrategyBundleFixture(),
+      undefined,
+      skillRunner
+    );
+  }
+
+  it("emet `completed` quand le statut est succeeded", () => {
+    const service = makeServiceWithStatus("succeeded");
+    const { sender, events } = makeFakeSender();
+    const idea = ideasRepository.createIdea({
+      title: "IA en PME",
+      angle: "Le process avant l'outil",
+      pillarLabel: "Methodes"
+    });
+
+    service.getSuggestedStructures(
+      idea.id,
+      "expertise",
+      "awareness",
+      sender as never
+    );
+
+    const terminal = events.find((e) => e.status === "completed" || e.status === "failed");
+    expect(terminal?.status).toBe("completed");
+    expect(terminal?.phase).toBe("structure");
+  });
+
+  it("emet `failed` (pas `completed`) quand le statut est partial", () => {
+    const service = makeServiceWithStatus("partial");
+    const { sender, events } = makeFakeSender();
+    const idea = ideasRepository.createIdea({
+      title: "IA en PME",
+      angle: "Le process avant l'outil",
+      pillarLabel: "Methodes"
+    });
+
+    // L'appelant throw sur tout statut != succeeded : on capture pour ne pas
+    // masquer l'assertion sur l'evenement emis AVANT le throw.
+    expect(() =>
+      service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)
+    ).toThrow();
+
+    // Aucun faux signal de succes : la borne terminale doit etre `failed`.
+    const completed = events.filter((e) => e.status === "completed");
+    expect(completed).toHaveLength(0);
+    const terminal = events.find((e) => e.status === "failed");
+    expect(terminal?.status).toBe("failed");
+    expect(terminal?.phase).toBe("structure");
+  });
+
+  it("emet `failed` avec l'errorCode quand le statut est failed", () => {
+    const service = makeServiceWithStatus("failed");
+    const { sender, events } = makeFakeSender();
+    const idea = ideasRepository.createIdea({
+      title: "IA en PME",
+      angle: "Le process avant l'outil",
+      pillarLabel: "Methodes"
+    });
+
+    expect(() =>
+      service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)
+    ).toThrow();
+
+    const terminal = events.find((e) => e.status === "failed");
+    expect(terminal?.status).toBe("failed");
+    expect(terminal?.errorCode).toBe("CODEX_CLI_FAILED");
   });
 });

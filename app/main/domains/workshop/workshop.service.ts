@@ -751,20 +751,25 @@ export class WorkshopService {
   ): SkillRunnerResult {
     emitPhaseStarted(sender, { runId: invocation.runId, phase, engine: "codex" });
     const result = this.executeSkill(invocation);
-    if (result.status === "failed") {
+    // `completed` n'est emis QUE pour un succes franc : les appelants amont
+    // throw des que `status !== "succeeded"` (y compris `partial`). Emettre
+    // `completed` sur un `partial` produirait un faux signal de succes alors
+    // que le flux metier va echouer. On aligne donc la borne terminale sur le
+    // throw aval : succeeded => completed, tout le reste => failed.
+    if (result.status === "succeeded") {
       emitPhaseSettled(sender, {
         runId: invocation.runId,
         phase,
         engine: "codex",
-        status: "failed",
-        errorCode: result.error?.code
+        status: "completed"
       });
     } else {
       emitPhaseSettled(sender, {
         runId: invocation.runId,
         phase,
         engine: "codex",
-        status: "completed"
+        status: "failed",
+        errorCode: result.error?.code
       });
     }
     return result;

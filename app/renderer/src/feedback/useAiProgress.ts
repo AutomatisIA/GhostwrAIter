@@ -101,6 +101,27 @@ export function useAiProgress(options: UseAiProgressOptions): AiProgressState {
   const [errorCode, setErrorCode] = useState<string | undefined>(undefined);
   const [elapsedMs, setElapsedMs] = useState(0);
 
+  // Garde de correlation par phase (feature 010, finding revue Codex). Le canal
+  // `execution:progress` est partage : une operation concurrente (ex. une autre
+  // phase lancee en parallele) emet sur le meme canal. Sans filtre, un evenement
+  // d'une autre phase ferait flipper l'etat affiche pour la phase active.
+  //
+  // Choix : quand `activePhase` est defini, on IGNORE tout evenement dont la
+  // phase differe. On filtre par PHASE (et non par `runId`) car le hook ne recoit
+  // pas de runId et la phase active est la seule reference disponible cote
+  // renderer (cf. activePhase porte par le flag local synchrone). La transition
+  // terminale completed/failed de la phase ACTIVE reste donc bien prise en compte.
+  //
+  // L'effet d'abonnement a des deps `[]` (un seul abonnement pour la duree de
+  // vie du hook) : on lit `activePhase` via une ref tenue a jour, sinon la
+  // closure capturerait la valeur du montage (closure obsolete). La ref est
+  // initialisee a la valeur du montage puis synchronisee dans un effet dedie
+  // (la mutation pendant le rendu est interdite par react-hooks/refs).
+  const activePhaseRef = useRef<ExecutionPhase | null>(options.activePhase ?? null);
+  useEffect(() => {
+    activePhaseRef.current = options.activePhase ?? null;
+  }, [options.activePhase]);
+
   // Abonnement au canal additif. Le desabonnement (removeListener) est appele
   // au demontage : pas de fuite.
   useEffect(() => {
@@ -109,6 +130,12 @@ export function useAiProgress(options: UseAiProgressOptions): AiProgressState {
       return undefined;
     }
     const unsubscribe = api.onExecutionProgress((event: ExecutionProgressEvent) => {
+      // Garde de phase AVANT toute mutation d'etat : un evenement d'une autre
+      // phase ne doit alterer ni `phase`, ni `engine`, ni la machine a etats.
+      const active = activePhaseRef.current;
+      if (active != null && event.phase !== active) {
+        return;
+      }
       setPhase(event.phase);
       setEngine(event.engine);
       if (event.status === "started") {
