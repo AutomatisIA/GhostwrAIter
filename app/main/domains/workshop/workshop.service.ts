@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { WebContents } from "electron";
 import Database from "better-sqlite3";
 import { IdeasRepository } from "../ideas/ideas.repository";
 import {
@@ -7,6 +8,11 @@ import {
   type SkillRunnerInvocation,
   type SkillRunnerResult
 } from "../execution/skill-runner.service";
+import {
+  emitPhaseSettled,
+  emitPhaseStarted
+} from "../execution/execution-progress-emitter";
+import type { ExecutionPhase } from "../../../shared/types/execution-progress";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   HookOption,
@@ -239,9 +245,12 @@ export class WorkshopService {
     private readonly getFoundationSummary?: () => string | null
   ) {}
 
-  generateDraftFromIdea(ideaId: string): WorkshopSession {
-    const structures = this.getSuggestedStructures(ideaId, "expertise", "awareness");
-    const hooks = this.generateHooks(ideaId, "expertise", structures[0].key);
+  generateDraftFromIdea(ideaId: string, sender?: WebContents): WorkshopSession {
+    // Appel composite : chaque sous-etape reelle emet sa propre paire de bornes
+    // (structure -> hook -> redaction) via le `sender` propage. Pas de paire
+    // composite additionnelle par-dessus (cf. contrat).
+    const structures = this.getSuggestedStructures(ideaId, "expertise", "awareness", sender);
+    const hooks = this.generateHooks(ideaId, "expertise", structures[0].key, sender);
     return this.generateFinalDraft(
       ideaId,
       "expertise",
@@ -250,14 +259,16 @@ export class WorkshopService {
       structures[0].label,
       hooks[0].id,
       hooks[0].text,
-      hooks
+      hooks,
+      sender
     );
   }
 
   getSuggestedStructures(
     ideaId: string,
     typology: PostTypology,
-    objective: PostObjective
+    objective: PostObjective,
+    sender?: WebContents
   ): StructureOption[] {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const invocation: SkillRunnerInvocation = {
@@ -274,7 +285,7 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const result = this.executeSkill(invocation);
+    const result = this.runPhase("structure", invocation, sender);
 
     if (result.status !== "succeeded") {
       throw new Error(result.error?.message ?? result.summary);
@@ -303,7 +314,12 @@ export class WorkshopService {
     throw new Error(result.summary);
   }
 
-  generateHooks(ideaId: string, typology: PostTypology, structureKey: string): HookOption[] {
+  generateHooks(
+    ideaId: string,
+    typology: PostTypology,
+    structureKey: string,
+    sender?: WebContents
+  ): HookOption[] {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const invocation: SkillRunnerInvocation = {
       runId: createId("run"),
@@ -319,7 +335,7 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const result = this.executeSkill(invocation);
+    const result = this.runPhase("hook", invocation, sender);
 
     if (result.status !== "succeeded" || !result.data?.hooks) {
       throw new Error(result.error?.message ?? result.summary);
@@ -343,7 +359,8 @@ export class WorkshopService {
     structureLabel: string,
     selectedHookId: string,
     selectedHookText: string,
-    hooks: HookOption[]
+    hooks: HookOption[],
+    sender?: WebContents
   ): WorkshopSession {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const draftId = createId("draft");
@@ -382,7 +399,7 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const writerResult = this.executeSkill(writerInvocation);
+    const writerResult = this.runPhase("redaction", writerInvocation, sender);
 
     if (writerResult.status !== "succeeded" || !writerResult.data?.draft) {
       throw new Error(writerResult.error?.message ?? writerResult.summary);
@@ -431,7 +448,7 @@ export class WorkshopService {
     return this.getSessionByDraftId(draftId);
   }
 
-  createVariant(draftId: string, variantType: string): WorkshopSession {
+  createVariant(draftId: string, variantType: string, sender?: WebContents): WorkshopSession {
     const draft = this.db
       .prepare(
         `SELECT
@@ -488,7 +505,7 @@ export class WorkshopService {
       attachments: []
     };
 
-    const result = this.executeSkill(invocation);
+    const result = this.runPhase("variante", invocation, sender);
     if (result.status !== "succeeded" || !result.data?.draft) {
       throw new Error(result.error?.message ?? result.summary);
     }
@@ -511,7 +528,7 @@ export class WorkshopService {
     return this.getSessionByDraftId(variantId);
   }
 
-  correctDraft(draftId: string): WorkshopSession {
+  correctDraft(draftId: string, sender?: WebContents): WorkshopSession {
     const draft = this.db
       .prepare(`
         SELECT id, idea_id AS ideaId, headline, body_markdown AS bodyMarkdown,
@@ -553,7 +570,7 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const editorResult = this.executeSkill(editorInvocation);
+    const editorResult = this.runPhase("correction", editorInvocation, sender);
 
     if (editorResult.status !== "succeeded" || !editorResult.data?.draft) {
       throw new Error(editorResult.error?.message ?? editorResult.summary);
@@ -719,6 +736,38 @@ export class WorkshopService {
 
   private executeSkill(invocation: SkillRunnerInvocation): SkillRunnerResult {
     return this.skillRunnerService.execute(invocation);
+  }
+
+  /**
+   * Execute une etape moteur en emettant les bornes de progression
+   * (feature 010, T027) : `started` avant l'appel, puis `completed`/`failed`
+   * apres. L'emission est best-effort (cf. emitter) et n'altere jamais le
+   * resultat metier. Le chemin sync utilise le runner codex (engine "codex").
+   */
+  private runPhase(
+    phase: ExecutionPhase,
+    invocation: SkillRunnerInvocation,
+    sender: WebContents | undefined
+  ): SkillRunnerResult {
+    emitPhaseStarted(sender, { runId: invocation.runId, phase, engine: "codex" });
+    const result = this.executeSkill(invocation);
+    if (result.status === "failed") {
+      emitPhaseSettled(sender, {
+        runId: invocation.runId,
+        phase,
+        engine: "codex",
+        status: "failed",
+        errorCode: result.error?.code
+      });
+    } else {
+      emitPhaseSettled(sender, {
+        runId: invocation.runId,
+        phase,
+        engine: "codex",
+        status: "completed"
+      });
+    }
+    return result;
   }
 
   private buildRunnerContext(pillarLabel: string) {

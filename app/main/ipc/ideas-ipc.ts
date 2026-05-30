@@ -1,5 +1,10 @@
+import type { WebContents } from "electron";
 import Database from "better-sqlite3";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
+import {
+  emitPhaseSettled,
+  emitPhaseStarted
+} from "../domains/execution/execution-progress-emitter";
 import { createStrategyTables, StrategyRepository } from "../domains/strategy/strategy.repository";
 import { createIdeasTables, IdeasRepository } from "../domains/ideas/ideas.repository";
 import { NewsToPostService } from "../domains/news/news-to-post.service";
@@ -44,30 +49,58 @@ export class IdeasService {
     return this.repository.createIdea(input);
   }
 
-  createFromNewsSource(input: NewsSourceInput) {
-    return this.newsToPostService.createDraftFromSource(input);
+  createFromNewsSource(input: NewsSourceInput, sender?: WebContents) {
+    return this.newsToPostService.createDraftFromSource(input, sender);
   }
 
-  async generateFromStrategy() {
+  async generateFromStrategy(sender?: WebContents) {
     const bundle = this.strategyRepository.getActiveStrategyBundle();
-    const result = await this.skillRunnerService.executeAsync({
-      runId: `run_${Date.now()}`,
-      skillName: "linkedin-topic-generator",
-      skillVersion: "1.0.0",
-      context: {},
-      payload: {
-        profileName: bundle.profile.name,
-        positioning: bundle.profile.positioning,
-        pillars: bundle.pillars,
-        icps: bundle.icps,
-        offers: bundle.offers
-      },
-      attachments: []
-    });
+    const runId = `run_${Date.now()}`;
+    emitPhaseStarted(sender, { runId, phase: "idees", engine: "codex" });
+    let result;
+    try {
+      result = await this.skillRunnerService.executeAsync({
+        runId,
+        skillName: "linkedin-topic-generator",
+        skillVersion: "1.0.0",
+        context: {},
+        payload: {
+          profileName: bundle.profile.name,
+          positioning: bundle.profile.positioning,
+          pillars: bundle.pillars,
+          icps: bundle.icps,
+          offers: bundle.offers
+        },
+        attachments: []
+      });
+    } catch (err) {
+      emitPhaseSettled(sender, {
+        runId,
+        phase: "idees",
+        engine: "codex",
+        status: "failed",
+        errorCode: err instanceof Error ? err.name : undefined
+      });
+      throw err;
+    }
 
     if (result.status !== "succeeded" || !result.artifacts?.[0]?.content) {
+      emitPhaseSettled(sender, {
+        runId,
+        phase: "idees",
+        engine: "codex",
+        status: "failed",
+        errorCode: result.error?.code
+      });
       throw new Error(result.error?.message ?? result.summary);
     }
+
+    emitPhaseSettled(sender, {
+      runId,
+      phase: "idees",
+      engine: "codex",
+      status: "completed"
+    });
 
     if (bundle.pillars.length === 0) {
       throw new Error("Strategy must define at least one pillar before generating ideas.");
@@ -122,12 +155,12 @@ export function registerIdeasIpcHandlers(
     ipcRegistrar,
     "ideas:create-from-news-source",
     newsSourceInputSchema,
-    (input) => ideasService.createFromNewsSource(input)
+    (input, sender) => ideasService.createFromNewsSource(input, sender)
   );
   registerValidatedHandler(
     ipcRegistrar,
     "ideas:generate-from-strategy",
     emptyInputSchema,
-    () => ideasService.generateFromStrategy()
+    (_input, sender) => ideasService.generateFromStrategy(sender)
   );
 }

@@ -1,5 +1,6 @@
-import { contextBridge, ipcRenderer } from "electron";
-import type { ExecutionApi } from "@shared/types/execution";
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
+import type { ExecutionApi, OnExecutionProgress } from "@shared/types/execution";
+import type { ExecutionProgressEvent } from "@shared/types/execution-progress";
 import type { CalendarApi } from "@shared/types/calendar";
 import type { IdeasApi } from "@shared/types/ideas";
 import type { LibraryApi } from "@shared/types/library";
@@ -174,6 +175,25 @@ const settings: SettingsApi = {
     unwrap("settings:set-active-engine", ipcRenderer.invoke("settings:set-active-engine", { engine }))
 };
 
+/**
+ * Abonnement au canal additif one-way `execution:progress` (feature 010, T028).
+ *
+ * contextBridge-only : on n'expose PAS `ipcRenderer`, uniquement cette fonction
+ * d'abonnement. On retire l'enveloppe Electron (`IpcRendererEvent`) et on ne
+ * transmet au listener que la charge utile `ExecutionProgressEvent`. Retourne
+ * une fonction de desabonnement qui retire EXACTEMENT le handler enregistre
+ * (meme reference) via `removeListener`, sans fuite.
+ */
+const onExecutionProgress: OnExecutionProgress = (listener) => {
+  const handler = (_event: IpcRendererEvent, payload: ExecutionProgressEvent) => {
+    listener(payload);
+  };
+  ipcRenderer.on("execution:progress", handler);
+  return () => {
+    ipcRenderer.removeListener("execution:progress", handler);
+  };
+};
+
 contextBridge.exposeInMainWorld("linkedinPoster", {
   platform: process.platform,
   appName: "GhostwrAIter",
@@ -184,5 +204,6 @@ contextBridge.exposeInMainWorld("linkedinPoster", {
   library,
   calendar,
   execution,
-  settings
+  settings,
+  onExecutionProgress
 });

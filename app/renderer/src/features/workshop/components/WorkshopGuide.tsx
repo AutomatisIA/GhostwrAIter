@@ -1,4 +1,7 @@
 import type { HookOption, PostObjective, PostTypology, StructureOption } from "@shared/types/workshop";
+import { Card, Stepper } from "../../../design-system/primitives";
+import type { StepDescriptor } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
 import { STEP_LABELS, TYPOLOGIES, formatObjectiveLabel, formatTypologyDescription } from "../constants";
 
 type WorkshopGuideProps = {
@@ -10,6 +13,26 @@ type WorkshopGuideProps = {
   selectedHook: HookOption | undefined;
 };
 
+// Le `Stepper` rend son propre marqueur numéroté (ou ✓). On retire donc le
+// préfixe « N. » des libellés pour éviter un double numéro à l'affichage.
+const STEPPER_STEPS: StepDescriptor[] = STEP_LABELS.map((label, index) => ({
+  key: `step-${index + 1}`,
+  label: label.replace(/^\d+\.\s*/, "")
+}));
+
+function renderStructureLabel(label: string) {
+  return label.split(/\s*->\s*/).map((part, i, arr) => (
+    <span key={i}>
+      {part}
+      {i < arr.length - 1 ? (
+        <span className="workshop-structure-arrow" aria-hidden="true">
+          {" › "}
+        </span>
+      ) : null}
+    </span>
+  ));
+}
+
 export function WorkshopGuide({
   step,
   status,
@@ -20,58 +43,57 @@ export function WorkshopGuide({
 }: WorkshopGuideProps) {
   return (
     <aside className="workshop-guide">
-      <article className="editor-card">
+      <Card elevation={2} className="workshop-guide-card">
         <span className="status-label">Parcours de production</span>
         <strong>{STEP_LABELS[step - 1]}</strong>
         <p>
-          L'atelier te montre a chaque etape ce qui a deja ete choisi et ce qu'il
-          reste a decider avant le draft final.
+          L'atelier te montre à chaque étape ce qui a déjà été choisi et ce qu'il
+          reste à décider avant le draft final.
         </p>
-        <div className="stepper-nav">
-          {STEP_LABELS.map((label, index) => (
-            <div key={label} className={`step-item ${step >= index + 1 ? "active" : ""}`}>
-              {label}
-            </div>
-          ))}
-        </div>
-      </article>
+        {/* Stepper : etats distincts completed/current/upcoming, aria-current.
+            currentIndex est 0-base alors que `step` est 1-base. */}
+        <Stepper steps={STEPPER_STEPS} currentIndex={step - 1} />
+      </Card>
 
-      <article className="editor-card">
-        <span className="status-label">Resume courant</span>
+      <Card elevation={1} className="workshop-guide-card">
+        <span className="status-label">Résumé courant</span>
         <div className="workshop-summary">
           <div>
-            <span className="status-label">Typologie retenue</span>
+            <span className="status-label">
+              Typologie retenue <InfoHint term="typologie" />
+            </span>
             <strong>{TYPOLOGIES.find((item) => item.value === typology)?.label}</strong>
             <p>{formatTypologyDescription(typology)}</p>
           </div>
           <div>
-            <span className="status-label">Objectif retenu</span>
+            <span className="status-label">
+              Objectif retenu <InfoHint term="objectif" />
+            </span>
             <strong>{formatObjectiveLabel(objective)}</strong>
           </div>
           <div>
-            <span className="status-label">Structure</span>
+            <span className="status-label">
+              Structure <InfoHint term="structure" />
+            </span>
             <strong>
               {selectedStructure?.label
-                ? selectedStructure.label.split(/\s*->\s*/).map((part, i, arr) => (
-                    <span key={i}>
-                      {part}
-                      {i < arr.length - 1 ? <span style={{ color: "var(--color-accent-sky)", margin: "0 6px" }}>›</span> : null}
-                    </span>
-                  ))
+                ? renderStructureLabel(selectedStructure.label)
                 : "Pas encore choisie"}
             </strong>
           </div>
           <div>
-            <span className="status-label">Accroche</span>
+            <span className="status-label">
+              Accroche <InfoHint term="accroche" />
+            </span>
             <strong>{selectedHook?.text ?? "Pas encore choisie"}</strong>
           </div>
         </div>
-      </article>
+      </Card>
 
-      <article className="editor-card">
-        <span className="status-label">Etat actuel</span>
+      <Card elevation={1} className="workshop-guide-card">
+        <span className="status-label">État actuel</span>
         <p className="form-status">{status}</p>
-      </article>
+      </Card>
     </aside>
   );
 }

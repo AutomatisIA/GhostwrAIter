@@ -4,22 +4,22 @@ export const TYPOLOGIES: { value: PostTypology; label: string; description: stri
   {
     value: "expertise",
     label: "Expertise",
-    description: "Partage un savoir-faire technique ou une methode."
+    description: "Partage un savoir-faire technique ou une méthode."
   },
   {
     value: "contrarian",
     label: "Contrarien",
-    description: "Prend le contre-pied d'une idee recue sur le marche."
+    description: "Prend le contre-pied d'une idée reçue sur le marché."
   },
   {
     value: "case_study",
     label: "Cas Client",
-    description: "Analyse un probleme reel et les resultats obtenus."
+    description: "Analyse un problème réel et les résultats obtenus."
   },
   {
     value: "tutorial",
     label: "Tuto / Guide",
-    description: "Donne des etapes actionnables pour resoudre un probleme."
+    description: "Donne des étapes actionnables pour résoudre un problème."
   },
   {
     value: "thought_leadership",
@@ -29,8 +29,8 @@ export const TYPOLOGIES: { value: PostTypology; label: string; description: stri
 ];
 
 export const OBJECTIVES: { value: PostObjective; label: string }[] = [
-  { value: "awareness", label: "Visibilite" },
-  { value: "authority", label: "Autorite" },
+  { value: "awareness", label: "Visibilité" },
+  { value: "authority", label: "Autorité" },
   { value: "conversion", label: "Conversion" },
   { value: "engagement", label: "Engagement" }
 ];
@@ -55,14 +55,14 @@ export function getQualityFeedback(score: number): { title: string; message: str
     return {
       title: "Draft encore fragile",
       message:
-        "Le texte a une base exploitable, mais il reste trop generique ou trop peu specifique pour etre publie tel quel."
+        "Le texte a une base exploitable, mais il reste trop générique ou trop peu spécifique pour être publié tel quel."
     };
   }
   if (score < 0.85) {
     return {
-      title: "Base correcte a renforcer",
+      title: "Base correcte à renforcer",
       message:
-        "Le draft tient debout, mais il merite encore un passage de concret, d'exemples ou de tension avant publication."
+        "Le draft tient debout, mais il mérite encore un passage de concret, d'exemples ou de tension avant publication."
     };
   }
   return {

@@ -4,6 +4,15 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StrategyScreen } from "../../app/renderer/src/features/strategy/StrategyScreen";
+import { ToastProvider } from "../../app/renderer/src/feedback/ToastProvider";
+
+function renderStrategyScreen() {
+  return render(
+    <ToastProvider>
+      <StrategyScreen />
+    </ToastProvider>
+  );
+}
 
 const baseBundle = {
   profile: {
@@ -85,7 +94,7 @@ describe("StrategyScreen", () => {
 
   it("loads profile fields on mount in the default Profil tab", async () => {
     mockStrategy();
-    render(<StrategyScreen />);
+    renderStrategyScreen();
 
     expect(await screen.findByDisplayValue("Philippe")).toBeTruthy();
     expect(screen.getByDisplayValue("Consultant IA PME")).toBeTruthy();
@@ -94,10 +103,10 @@ describe("StrategyScreen", () => {
   it("shows offers when switching to the Offres tab", async () => {
     const user = userEvent.setup();
     mockStrategy();
-    render(<StrategyScreen />);
+    renderStrategyScreen();
     await screen.findByDisplayValue("Philippe");
 
-    await user.click(screen.getByRole("button", { name: "Offres" }));
+    await user.click(screen.getByRole("tab", { name: "Offres" }));
     expect(await screen.findByDisplayValue("Audit IA PME")).toBeTruthy();
   });
 
@@ -105,7 +114,7 @@ describe("StrategyScreen", () => {
     const user = userEvent.setup();
     const saveBundle = vi.fn().mockImplementation(async (p: unknown) => p);
     mockStrategy({ saveBundle });
-    render(<StrategyScreen />);
+    renderStrategyScreen();
 
     const positioningInput = await screen.findByLabelText("Positionnement");
     await user.clear(positioningInput);
@@ -131,9 +140,9 @@ describe("StrategyScreen", () => {
       summaryMarkdown: "Positionnement: Consultant IA PME\nPilier: Adoption IA"
     });
     mockStrategy({ generateFoundation });
-    render(<StrategyScreen />);
+    renderStrategyScreen();
 
-    await user.click(await screen.findByRole("button", { name: "Socle éditorial" }));
+    await user.click(await screen.findByRole("tab", { name: /Socle éditorial/ }));
     await user.click(screen.getByRole("button", { name: "Générer le socle éditorial" }));
 
     await waitFor(() => {
@@ -148,9 +157,9 @@ describe("StrategyScreen", () => {
     mockStrategy({
       generateFoundation: vi.fn().mockRejectedValue(new Error("Invalid contract"))
     });
-    render(<StrategyScreen />);
+    renderStrategyScreen();
 
-    await user.click(await screen.findByRole("button", { name: "Socle éditorial" }));
+    await user.click(await screen.findByRole("tab", { name: /Socle éditorial/ }));
     await user.click(screen.getByRole("button", { name: "Générer le socle éditorial" }));
 
     expect(await screen.findByText(/Invalid contract/)).toBeTruthy();

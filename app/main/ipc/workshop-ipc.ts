@@ -1,3 +1,4 @@
+import type { WebContents } from "electron";
 import Database from "better-sqlite3";
 import { SkillRunnerService } from "../domains/execution/skill-runner.service";
 import { IdeasRepository } from "../domains/ideas/ideas.repository";
@@ -49,16 +50,26 @@ export class WorkshopRuntimeService {
     return this.service.getSessionByIdeaId(ideaId);
   }
 
-  generateFromIdea(ideaId: string) {
-    return this.service.generateDraftFromIdea(ideaId);
+  generateFromIdea(ideaId: string, sender?: WebContents) {
+    return this.service.generateDraftFromIdea(ideaId, sender);
   }
 
-  getSuggestedStructures(ideaId: string, typology: PostTypology, objective: PostObjective) {
-    return this.service.getSuggestedStructures(ideaId, typology, objective);
+  getSuggestedStructures(
+    ideaId: string,
+    typology: PostTypology,
+    objective: PostObjective,
+    sender?: WebContents
+  ) {
+    return this.service.getSuggestedStructures(ideaId, typology, objective, sender);
   }
 
-  generateHooks(ideaId: string, typology: PostTypology, structureKey: string) {
-    return this.service.generateHooks(ideaId, typology, structureKey);
+  generateHooks(
+    ideaId: string,
+    typology: PostTypology,
+    structureKey: string,
+    sender?: WebContents
+  ) {
+    return this.service.generateHooks(ideaId, typology, structureKey, sender);
   }
 
   generateFinalDraft(
@@ -69,7 +80,8 @@ export class WorkshopRuntimeService {
     structureLabel: string,
     selectedHookId: string,
     selectedHookText: string,
-    hooks: HookOption[]
+    hooks: HookOption[],
+    sender?: WebContents
   ) {
     return this.service.generateFinalDraft(
       ideaId,
@@ -79,16 +91,17 @@ export class WorkshopRuntimeService {
       structureLabel,
       selectedHookId,
       selectedHookText,
-      hooks
+      hooks,
+      sender
     );
   }
 
-  correctDraft(draftId: string) {
-    return this.service.correctDraft(draftId);
+  correctDraft(draftId: string, sender?: WebContents) {
+    return this.service.correctDraft(draftId, sender);
   }
 
-  createVariant(draftId: string, variantType: string) {
-    return this.service.createVariant(draftId, variantType);
+  createVariant(draftId: string, variantType: string, sender?: WebContents) {
+    return this.service.createVariant(draftId, variantType, sender);
   }
 
   updateDraftText(draftId: string, headline: string, bodyMarkdown: string) {
@@ -110,21 +123,21 @@ export function registerWorkshopIpcHandlers(
     ipcRegistrar,
     "workshop:generate-from-idea",
     ideaIdSchema,
-    (ideaId) => workshopService.generateFromIdea(ideaId)
+    (ideaId, sender) => workshopService.generateFromIdea(ideaId, sender)
   );
   registerValidatedTupleHandler<[string, PostTypology, PostObjective], unknown>(
     ipcRegistrar,
     "workshop:get-suggested-structures",
     suggestedStructuresTupleSchema,
-    (ideaId, typology, objective) =>
-      workshopService.getSuggestedStructures(ideaId, typology, objective)
+    (ideaId, typology, objective, sender) =>
+      workshopService.getSuggestedStructures(ideaId, typology, objective, sender)
   );
   registerValidatedTupleHandler<[string, PostTypology, string], unknown>(
     ipcRegistrar,
     "workshop:generate-hooks",
     generateHooksTupleSchema,
-    (ideaId, typology, structureKey) =>
-      workshopService.generateHooks(ideaId, typology, structureKey)
+    (ideaId, typology, structureKey, sender) =>
+      workshopService.generateHooks(ideaId, typology, structureKey, sender)
   );
   registerValidatedTupleHandler<
     [
@@ -150,7 +163,8 @@ export function registerWorkshopIpcHandlers(
       structureLabel,
       selectedHookId,
       selectedHookText,
-      hooks
+      hooks,
+      sender
     ) =>
       workshopService.generateFinalDraft(
         ideaId,
@@ -160,20 +174,21 @@ export function registerWorkshopIpcHandlers(
         structureLabel,
         selectedHookId,
         selectedHookText,
-        hooks
+        hooks,
+        sender
       )
   );
   registerValidatedHandler(
     ipcRegistrar,
     "workshop:correct-draft",
     draftIdSchema,
-    (draftId) => workshopService.correctDraft(draftId)
+    (draftId, sender) => workshopService.correctDraft(draftId, sender)
   );
   registerValidatedTupleHandler<[string, string], unknown>(
     ipcRegistrar,
     "workshop:create-variant",
     createVariantTupleSchema,
-    (draftId, variantType) => workshopService.createVariant(draftId, variantType)
+    (draftId, variantType, sender) => workshopService.createVariant(draftId, variantType, sender)
   );
   // `correctDraftTupleSchema` is intentionally exported for symmetry and
   // potential future use; `correct-draft` uses the single-input variant

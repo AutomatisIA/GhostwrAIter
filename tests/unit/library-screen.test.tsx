@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LibraryScreen } from "../../app/renderer/src/features/library/LibraryScreen";
+import { ToastProvider } from "../../app/renderer/src/feedback/ToastProvider";
 
 function mockEntry(overrides: Record<string, unknown> = {}) {
   return {
@@ -62,9 +63,11 @@ describe("LibraryScreen", () => {
     };
 
     render(
-      <MemoryRouter>
-        <LibraryScreen />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
+          <LibraryScreen />
+        </MemoryRouter>
+      </ToastProvider>
     );
 
     expect(await screen.findByText("Le premier draft")).toBeTruthy();
@@ -139,9 +142,11 @@ describe("LibraryScreen", () => {
     };
 
     render(
-      <MemoryRouter>
-        <LibraryScreen />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
+          <LibraryScreen />
+        </MemoryRouter>
+      </ToastProvider>
     );
 
     expect(await screen.findByText("Draft planifie")).toBeTruthy();

@@ -1,14 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
+import { motion } from "motion/react";
 import type { CliEngineStatus, CliEngineName } from "@shared/types/settings";
+import { Button, Card, Skeleton, useToast } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
+import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
 
 function statusBadge(installState: CliEngineStatus["installState"]) {
   switch (installState) {
     case "authenticated":
-      return <span className="engine-badge engine-badge--ok">{"\u2705"} Connecte</span>;
+      return <span className="engine-badge engine-badge--ok">{"✅"} Connecté</span>;
     case "installed":
-      return <span className="engine-badge engine-badge--warn">{"\u26A0\uFE0F"} Installe</span>;
+      return <span className="engine-badge engine-badge--warn">{"⚠️"} Installé</span>;
     case "not-installed":
-      return <span className="engine-badge engine-badge--off">{"\u274C"} Non installe</span>;
+      return <span className="engine-badge engine-badge--off">{"❌"} Non installé</span>;
   }
 }
 
@@ -23,22 +27,21 @@ function CopyButton({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <button
-      type="button"
-      className="btn-copy"
-      onClick={handleCopy}
-      title="Copier"
-    >
-      {copied ? "Copie !" : "Copier"}
+    <button type="button" className="btn-copy" onClick={handleCopy} title="Copier">
+      {copied ? "Copié !" : "Copier"}
     </button>
   );
 }
 
 export function EnginePanel() {
+  const toast = useToast();
   const [engines, setEngines] = useState<CliEngineStatus[]>([]);
   const [activeEngine, setActiveEngine] = useState<CliEngineName | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const container = useMotionVariants(staggerContainer);
+  const item = useMotionVariants(fadeInUp);
 
   const refresh = useCallback(() => {
     Promise.all([
@@ -48,6 +51,7 @@ export function EnginePanel() {
       .then(([detected, active]) => {
         setEngines(detected.engines);
         setActiveEngine(active.engine);
+        setError(null);
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -61,98 +65,107 @@ export function EnginePanel() {
   }, [refresh]);
 
   const handleSelect = useCallback(
-    (name: CliEngineName) => {
+    (name: CliEngineName, displayName: string) => {
       window.linkedinPoster.settings
         .setActiveEngine(name)
         .then((selection) => {
           setActiveEngine(selection.engine);
+          toast.show({ kind: "success", message: `${displayName} est maintenant votre moteur IA actif.` });
           refresh();
         })
         .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : "Impossible de changer le moteur.");
+          const message = err instanceof Error ? err.message : "Impossible de changer le moteur.";
+          toast.show({ kind: "error", message });
         });
     },
-    [refresh]
+    [refresh, toast]
   );
 
   if (error) {
-    return <p>{error}</p>;
+    return (
+      <Card elevation={1} className="settings-engine-error" role="alert">
+        <strong>Moteurs IA indisponibles</strong>
+        <p>{error}</p>
+        <Button variant="secondary" onClick={refresh}>
+          Réessayer
+        </Button>
+      </Card>
+    );
   }
 
   if (loading) {
     return (
-      <div className="ideas-modes">
-        <article className="skeleton-card" style={{ minHeight: 160, borderRadius: 18 }} aria-busy="true" />
-        <article className="skeleton-card" style={{ minHeight: 160, borderRadius: 18 }} aria-busy="true" />
-        <article className="skeleton-card" style={{ minHeight: 160, borderRadius: 18 }} aria-busy="true" />
+      <div className="settings-engine-grid">
+        <Skeleton variant="card" />
+        <Skeleton variant="card" />
+        <Skeleton variant="card" />
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      <p style={{ color: "var(--color-text-secondary)", margin: 0, fontSize: "0.95rem", lineHeight: 1.5 }}>
-        GhostwrAIter utilise un assistant IA local (Claude, GPT ou Gemini) pour generer vos contenus.
-        Chaque moteur fonctionne via son CLI officiel — installez-le, connectez-vous, puis selectionnez-le ci-dessous.
+    <div className="settings-engine">
+      <p className="settings-engine-intro">
+        GhostwrAIter utilise un <strong>moteur IA</strong>
+        <InfoHint term="moteur-ia" /> local (Claude, GPT ou Gemini) pour générer vos contenus.
+        Chaque moteur fonctionne via son outil officiel : installez-le, connectez votre compte
+        <InfoHint term="oauth" />, puis sélectionnez-le ci-dessous.
       </p>
 
-      <div className="ideas-modes">
+      <motion.div
+        className="settings-engine-grid"
+        variants={container}
+        initial="hidden"
+        animate="visible"
+      >
         {engines.map((engine) => {
           const isActive = engine.name === activeEngine;
           const canSelect = engine.installState === "authenticated";
+          const isAuthenticated = engine.installState === "authenticated";
 
           return (
-            <div
-              key={engine.name}
-              className={`idea-card${isActive ? " idea-card--selected" : ""}`}
-              style={{
-                opacity: engine.installState === "not-installed" ? 0.7 : 1,
-                textAlign: "left"
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <strong>{engine.displayName}</strong>
-                {statusBadge(engine.installState)}
-              </div>
-
-              <span style={{ color: "var(--color-text-secondary)", fontSize: "0.85em", display: "block", marginTop: "4px" }}>
-                {engine.subscriptionLabel}
-              </span>
-
-              <div
-                style={{
-                  marginTop: "12px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                  opacity: engine.installState === "authenticated" ? 0.5 : 1
-                }}
+            <motion.div key={engine.name} variants={item}>
+              <Card
+                elevation={isActive ? 3 : 2}
+                accent={isActive}
+                className={`settings-engine-card${isActive ? " settings-engine-card--active" : ""}`}
+                data-disabled={engine.installState === "not-installed" ? "true" : undefined}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <code className="engine-command">{engine.installCommand}</code>
-                  <CopyButton text={engine.installCommand} />
+                <div className="settings-engine-card-head">
+                  <strong>{engine.displayName}</strong>
+                  {statusBadge(engine.installState)}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <code className="engine-command">{engine.loginCommand}</code>
-                  <CopyButton text={engine.loginCommand} />
-                </div>
-              </div>
 
-              <div style={{ marginTop: "12px" }}>
-                <button
-                  type="button"
-                  className="lib-card-action"
-                  disabled={!canSelect || isActive}
-                  onClick={() => handleSelect(engine.name)}
-                  style={{ fontWeight: 700, color: canSelect && !isActive ? "var(--color-accent)" : undefined }}
-                >
-                  {isActive ? "Actif" : "Selectionner"}
-                </button>
-              </div>
-            </div>
+                <span className="settings-engine-sub">{engine.subscriptionLabel}</span>
+
+                {!isAuthenticated ? (
+                  <div className="settings-engine-commands">
+                    <div className="settings-engine-command-row">
+                      <code className="engine-command">{engine.installCommand}</code>
+                      <CopyButton text={engine.installCommand} />
+                    </div>
+                    <div className="settings-engine-command-row">
+                      <code className="engine-command">{engine.loginCommand}</code>
+                      <CopyButton text={engine.loginCommand} />
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="settings-engine-card-action">
+                  <Button
+                    variant={isActive ? "secondary" : "primary"}
+                    size="sm"
+                    disabled={!canSelect || isActive}
+                    onClick={() => handleSelect(engine.name, engine.displayName)}
+                  >
+                    {isActive ? "Actif" : "Sélectionner"}
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }

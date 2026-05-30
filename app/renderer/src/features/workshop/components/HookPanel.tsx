@@ -1,4 +1,8 @@
+import { motion } from "motion/react";
 import type { HookOption } from "@shared/types/workshop";
+import { Button, Card, Skeleton } from "../../../design-system/primitives";
+import { InfoHint } from "../../../help";
+import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
 
 type HookPanelProps = {
   hooks: HookOption[];
@@ -19,52 +23,69 @@ export function HookPanel({
   isLoading,
   isLoadingNext
 }: HookPanelProps) {
+  const container = useMotionVariants(staggerContainer);
+  const item = useMotionVariants(fadeInUp);
+
   return (
     <div className="workshop-step">
-      <h3>Choisis ton accroche (Hook)</h3>
+      <h3>
+        Choisis ton accroche <InfoHint term="accroche" />
+      </h3>
       <p className="step-description">
-        L'accroche sert a faire entrer le lecteur dans le sujet. Le score
-        donne un signal de potentiel, pas une verite absolue.
+        L'accroche sert à faire entrer le lecteur dans le sujet. Le score
+        donne un signal de potentiel, pas une vérité absolue.
       </p>
-      <div className="list-selection">
-        {isLoading ? (
-          <>
-            <article className="selection-card list-card skeleton-card" aria-busy="true" />
-            <article className="selection-card list-card skeleton-card" aria-busy="true" />
-            <article className="selection-card list-card skeleton-card" aria-busy="true" />
-          </>
-        ) : (
-          hooks.map((h) => (
-            <article
-              key={h.id}
-              className={`selection-card list-card ${selectedHookId === h.id ? "selected" : ""}`}
-              onClick={() => onSelect(h.id)}
-            >
-              <div className="status-label">{h.family}</div>
-              <p>{h.text}</p>
-              <div className="score-badge">{Math.round(h.score * 100)}%</div>
-            </article>
-          ))
-        )}
-      </div>
+      {isLoading ? (
+        <div className="list-selection" aria-busy="true" aria-label="Chargement des accroches">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </div>
+      ) : (
+        <motion.div
+          className="list-selection"
+          variants={container}
+          initial="hidden"
+          animate="visible"
+        >
+          {hooks.map((h) => {
+            const selected = selectedHookId === h.id;
+            return (
+              <motion.div key={h.id} variants={item}>
+                <Card
+                  interactive
+                  elevation={selected ? 2 : 1}
+                  className={`selection-card list-card ${selected ? "selected" : ""}`}
+                  aria-pressed={selected}
+                  onClick={() => onSelect(h.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSelect(h.id);
+                    }
+                  }}
+                >
+                  <div className="status-label">{h.family}</div>
+                  <p>{h.text}</p>
+                  <div className="score-badge">{Math.round(h.score * 100)}%</div>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      )}
       <div className="form-actions">
-        <button type="button" className="secondary-button" onClick={onBack}>
+        <Button variant="ghost" onClick={onBack}>
           Retour
-        </button>
-        <button
-          className="primary-button"
+        </Button>
+        <Button
+          variant="primary"
           onClick={onNext}
+          loading={isLoadingNext}
           disabled={isLoading || isLoadingNext || hooks.length === 0}
         >
-          {isLoadingNext ? (
-            <>
-              <span className="spinner-inline" aria-hidden="true" />
-              Generation en cours...
-            </>
-          ) : (
-            "Generer le draft final"
-          )}
-        </button>
+          {isLoadingNext ? "Génération en cours…" : "Générer le draft final"}
+        </Button>
       </div>
     </div>
   );

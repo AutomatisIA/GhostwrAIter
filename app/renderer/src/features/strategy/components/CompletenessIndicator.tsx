@@ -24,7 +24,7 @@ export function CompletenessIndicator({
         aria-valuemin={0}
         aria-valuemax={SEGMENT_COUNT}
         aria-valuenow={litSegments}
-        aria-label={`Section remplie a ${litSegments} sur ${SEGMENT_COUNT}`}
+        aria-label={`Section remplie à ${litSegments} sur ${SEGMENT_COUNT}`}
       >
         {Array.from({ length: SEGMENT_COUNT }, (_, index) => (
           <span
@@ -35,7 +35,7 @@ export function CompletenessIndicator({
       </div>
       {critical ? (
         <span className="completeness-badge" role="status">
-          Section incomplete : impactera la qualite de {impactedSkill}
+          Section incomplète : impactera la qualité de {impactedSkill}
         </span>
       ) : null}
     </div>
