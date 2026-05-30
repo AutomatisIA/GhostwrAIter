@@ -126,6 +126,17 @@ describe("useAiProgress", () => {
     expect(result.current.currentIndex).toBe(WORKSHOP_PIPELINE.indexOf("redaction"));
   });
 
+  it("retombe sur currentIndex 0 pour une phase hors du pipeline (indexOf -1)", () => {
+    installFakeChannel();
+    // `foundation` n'appartient pas au pipeline atelier : `indexOf` renvoie -1.
+    // Le repli explicite doit donner 0, jamais un index negatif.
+    expect(WORKSHOP_PIPELINE.includes("foundation" as never)).toBe(false);
+    const { result } = renderHook(() =>
+      useAiProgress({ active: true, activePhase: "foundation" })
+    );
+    expect(result.current.currentIndex).toBe(0);
+  });
+
   it("incremente elapsedMs independamment pendant que l'operation est active", () => {
     installFakeChannel();
     const { result } = renderHook(() => useAiProgress({ active: true }));

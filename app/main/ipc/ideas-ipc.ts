@@ -55,6 +55,13 @@ export class IdeasService {
 
   async generateFromStrategy(sender?: WebContents) {
     const bundle = this.strategyRepository.getActiveStrategyBundle();
+    // Validation fail-fast : on refuse de lancer l'IA (et donc d'émettre un
+    // évènement `started` sur le canal de progression) si la stratégie n'a
+    // aucun pilier. Placée AVANT toute émission, cette garde évite un faux
+    // signal de succès sur le canal de progression.
+    if (bundle.pillars.length === 0) {
+      throw new Error("Strategy must define at least one pillar before generating ideas.");
+    }
     const runId = `run_${Date.now()}`;
     emitPhaseStarted(sender, { runId, phase: "idees", engine: "codex" });
     let result;
@@ -101,10 +108,6 @@ export class IdeasService {
       engine: "codex",
       status: "completed"
     });
-
-    if (bundle.pillars.length === 0) {
-      throw new Error("Strategy must define at least one pillar before generating ideas.");
-    }
 
     const lines = (result.artifacts?.[0]?.content ?? "")
       .split("\n")

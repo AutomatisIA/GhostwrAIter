@@ -82,6 +82,14 @@ export function GuidedTour({ open, onClose }: GuidedTourProps) {
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
       const active = document.activeElement;
+      // Garde : si le focus est hors du dialogue (ou nul), on le ramène sur le
+      // premier élément focusable plutôt que de comparer un `activeElement`
+      // étranger à `first`/`last`. Même protection que ConfirmDialog.
+      if (!active || !dialog.contains(active)) {
+        event.preventDefault();
+        first.focus();
+        return;
+      }
       if (event.shiftKey && active === first) {
         event.preventDefault();
         last.focus();

@@ -14,6 +14,7 @@ import { StrategyScreen } from "../features/strategy/StrategyScreen";
 import { CreateScreen } from "../features/create/CreateScreen";
 import { CockpitScreen } from "../features/cockpit/CockpitScreen";
 import { applyTheme } from "./theme";
+import { isTourSeen } from "./tour-seen";
 import { ToastProvider } from "../feedback/ToastProvider";
 import {
   GUIDED_TOUR_SEEN_KEY,
@@ -105,7 +106,7 @@ function AppShell() {
         const seenResult = await window.linkedinPoster.settings.getPreference(
           GUIDED_TOUR_SEEN_KEY
         );
-        seen = seenResult.value != null;
+        seen = isTourSeen(seenResult.value);
       } catch {
         // Flag illisible : on s'abstient (signal gate indisponible).
         return;

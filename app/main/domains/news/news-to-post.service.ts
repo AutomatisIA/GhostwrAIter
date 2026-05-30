@@ -63,13 +63,6 @@ export class NewsToPostService {
       throw new Error(result.error?.message ?? result.summary);
     }
 
-    emitPhaseSettled(sender, {
-      runId,
-      phase: "news",
-      engine: "codex",
-      status: "completed"
-    });
-
     this.db
       .prepare(`
         INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status, source_draft_id)
@@ -119,6 +112,15 @@ export class NewsToPostService {
       startedAt: createdAt,
       finishedAt: createdAt,
       createdAt
+    });
+
+    // "completed" emis apres la persistance reussie : si une ecriture echoue,
+    // l'utilisateur ne voit pas un faux signal de succes.
+    emitPhaseSettled(sender, {
+      runId,
+      phase: "news",
+      engine: "codex",
+      status: "completed"
     });
 
     return {

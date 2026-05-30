@@ -4,9 +4,11 @@ import {
   IdeasService,
   registerIdeasIpcHandlers
 } from "../../app/main/ipc/ideas-ipc";
+import * as progressEmitter from "../../app/main/domains/execution/execution-progress-emitter";
+import { StrategyRepository } from "../../app/main/domains/strategy/strategy.repository";
 import type { IpcResult } from "../../app/main/ipc/register-validated-handler";
 import type { IdeaRecord } from "../../app/shared/types/ideas";
-import { createStrictSkillRunnerService } from "./helpers/fake-codex";
+import { createStrategyBundleFixture, createStrictSkillRunnerService } from "./helpers/fake-codex";
 
 type CapturedHandler = (
   event: unknown,
@@ -193,6 +195,24 @@ describe("ideas IPC", () => {
       if (!result.ok) {
         expect(result.error.code).toBe("IPC_INPUT_INVALID");
       }
+    });
+
+    it("fails fast on an empty-pillars strategy without emitting a started phase", async () => {
+      // Stratégie persistée mais sans pilier : la garde fail-fast doit lever
+      // AVANT toute émission sur le canal de progression (pas de faux signal de
+      // démarrage, donc pas de faux `completed` derrière).
+      const strategyRepository = new StrategyRepository(db);
+      const fixture = createStrategyBundleFixture();
+      strategyRepository.saveStrategyBundle({ ...fixture, pillars: [] });
+
+      const startedSpy = vi.spyOn(progressEmitter, "emitPhaseStarted");
+      const settledSpy = vi.spyOn(progressEmitter, "emitPhaseSettled");
+
+      await expect(service.generateFromStrategy()).rejects.toThrow(
+        /at least one pillar/i
+      );
+      expect(startedSpy).not.toHaveBeenCalled();
+      expect(settledSpy).not.toHaveBeenCalled();
     });
 
     it("returns IPC_HANDLER_ERROR when the service throws", async () => {

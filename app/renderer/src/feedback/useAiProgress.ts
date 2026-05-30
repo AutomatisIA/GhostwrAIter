@@ -163,7 +163,12 @@ export function useAiProgress(options: UseAiProgressOptions): AiProgressState {
   // La phase locale prime sur la phase du canal (cf. activePhase) : elle est
   // disponible PENDANT l'attente, contrairement a l'evenement groupe.
   const effectivePhase = options.activePhase ?? phase;
-  const currentIndex = effectivePhase ? Math.max(0, pipeline.indexOf(effectivePhase)) : 0;
+  // Position dans le pipeline. Une phase hors pipeline (`indexOf` renvoie -1)
+  // n'est pas une position valide : on retombe explicitement sur 0 plutôt que
+  // de laisser un -1 se propager. Le `>= 0` rend ce repli lisible (contrairement
+  // à un `Math.max(0, …)` qui masquerait silencieusement le cas hors pipeline).
+  const phaseIndex = effectivePhase ? pipeline.indexOf(effectivePhase) : -1;
+  const currentIndex = phaseIndex >= 0 ? phaseIndex : 0;
   const intentLabel = effectivePhase ? phaseToIntentLabel(effectivePhase) : "";
 
   return {
