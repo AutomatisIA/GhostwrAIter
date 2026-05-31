@@ -1,9 +1,18 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   EditorialDoctrineParseError,
   loadEditorialDoctrineFromFile,
   parseEditorialDoctrine
 } from "../../scripts/eval-editorial-doctrine-parser.mjs";
+
+// docs/editorial-doctrine.md est un document editorial STRATEGIQUE local-only
+// (gitignore : "never published") ; il est absent du checkout CI. La logique du
+// parseur est entierement couverte par les fixtures inline ci-dessous ; le test
+// d integration sur le vrai fichier ne s execute donc que la ou il existe.
+const REAL_DOCTRINE_PATH = resolve(process.cwd(), "docs", "editorial-doctrine.md");
+const hasRealDoctrine = existsSync(REAL_DOCTRINE_PATH);
 
 const wellFormed = `# Editorial doctrine
 
@@ -171,7 +180,7 @@ describe("parseEditorialDoctrine — number regex behavior", () => {
 });
 
 describe("loadEditorialDoctrineFromFile — sanity loop", () => {
-  it("loads the real docs/editorial-doctrine.md and returns a valid structure", () => {
+  it.skipIf(!hasRealDoctrine)("loads the real docs/editorial-doctrine.md and returns a valid structure", () => {
     const doctrine = loadEditorialDoctrineFromFile();
     expect(doctrine.bannedOpenings.length).toBeGreaterThan(0);
     expect(doctrine.bannedMetaPhrases.length).toBeGreaterThan(0);
