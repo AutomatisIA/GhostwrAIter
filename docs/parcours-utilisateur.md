@@ -1,208 +1,80 @@
-# Parcours Utilisateur
+# Parcours utilisateur
 
 ## Objectif du document
 
-Expliquer comment utiliser l'application sans connaitre le projet, ni Electron, ni Codex.
+Expliquer comment utiliser GhostwrAIter sans rien connaître du projet, ni des outils techniques qui tournent dessous. Le vocabulaire métier (pilier, accroche, ICP…) est expliqué directement dans l'application : survolez les petites pastilles d'aide à côté des champs.
 
 ## Ce que l'outil fait vraiment
 
-GhostwrAIter ne sert pas a "demander un post a une IA".
+GhostwrAIter ne se résume pas à « demander un post à une IA ». Il vous aide à passer, étape par étape, d'une idée à un post LinkedIn prêt à publier, en gardant toujours la main : rien n'est publié sans votre validation.
 
-Il sert a piloter un systeme editorial local:
+Le parcours conseillé tient en trois temps :
 
-- clarifier une strategie
-- capturer des sujets
-- transformer une idee en draft
-- reutiliser les contenus utiles
-- planifier ce qui doit sortir
+1. **Stratégie** : vous décrivez qui vous visez, vos thèmes et votre façon de vous exprimer.
+2. **Créer** : vous transformez vos idées en posts, avec l'aide de l'assistant.
+3. **Bibliothèque** : vous retrouvez, retravaillez et planifiez vos posts.
 
-## Parcours recommande
+Le **Cockpit** est votre point de départ (vue d'ensemble), et les **Paramètres** regroupent l'apparence, le moteur IA et vos données.
 
-### 1. Ouvrir `Strategie`
+## L'écran d'accueil : le Cockpit
 
-But:
+À chaque ouverture, le Cockpit montre où vous en êtes et ce qu'il reste à faire. Les cartes du haut résument votre avancement (stratégie posée, posts en cours, publications planifiées) et vous emmènent directement vers l'écran concerné. Revenez-y quand vous voulez une vue d'ensemble.
 
-- donner a l'application de quoi comprendre qui ecrit, pour qui, et avec quelle ligne editoriale
+## 1. Ouvrir « Stratégie »
 
-Ce qu'il faut remplir au minimum:
+**But :** donner à l'application de quoi comprendre qui écrit, pour qui, et avec quelle ligne éditoriale. C'est ce qui permet d'écrire des posts qui vous ressemblent plutôt que des textes génériques.
 
-- nom
-- positionnement
-- bio
-- resume d'expertise
-- une offre
-- un pilier editorial
-- une regle anti-style
+Ce que vous renseignez :
 
-Pourquoi c'est important:
+- **Votre profil** : nom, positionnement, ce que vous faites.
+- **Vos offres** : ce que vous proposez.
+- **Vos clients idéaux (ICP)** : les personnes que vous cherchez à toucher, leurs problèmes, leurs attentes.
+- **Vos piliers** : les deux à quatre grands thèmes autour desquels vous publiez.
+- **Votre voix** : les règles de ton à respecter (et celles à éviter).
 
-- sans cela, les contenus restent trop generiques
+Chaque section indique si elle est renseignée. Vous n'êtes jamais obligé d'atteindre un nombre fixe : quatre offres, c'est quatre offres, pas « 4 sur 5 ».
 
-### 2. Ouvrir `Idees`
+À partir de ces informations, l'application peut générer un **socle éditorial** : un résumé de votre ligne qui sert de référence à toutes les générations suivantes.
 
-But:
+## 2. Ouvrir « Créer »
 
-- creer le backlog editorial
+**But :** transformer une idée en post, étape par étape, avec l'aide de l'assistant.
 
-3 points d'entree:
+Deux façons de démarrer une idée :
 
-- idee manuelle
-- source de veille
-- generation depuis la strategie
+- **Générer des idées** à partir de votre stratégie : l'application propose des sujets cohérents avec vos piliers.
+- **Transformer une veille** : vous collez un article ou une actualité, l'application en tire un angle de post.
 
-Quand utiliser chaque entree:
+Une fois l'idée choisie, l'assistant vous accompagne :
 
-- idee manuelle:
-  quand tu as deja un angle
-- veille:
-  quand une info externe doit etre transformee en prise de position
-- generation strategie:
-  quand tu veux remplir le backlog a partir du socle editorial
+1. **Cadrage** : on précise la typologie et l'objectif du post.
+2. **Structure** : on choisit une trame adaptée.
+3. **Accroche** : on sélectionne la première phrase qui crée l'envie de lire.
+4. **Rédaction** : l'application produit un brouillon complet.
 
-### 3. Ouvrir `Atelier`
+À chaque étape, vous voyez ce que fait l'assistant (un indicateur de progression vous tient informé), et vous gardez le contrôle : vous validez, vous corrigez, vous demandez une variante. L'écran « Créer » n'est pas un bouton magique : c'est un atelier qui vous laisse décider.
 
-But:
+## 3. Ouvrir « Bibliothèque »
 
-- transformer une idee en post
+**But :** retrouver et organiser tout ce que vous avez produit.
 
-Etapes:
+On y trouve :
 
-1. choisir le cadrage
-2. choisir la structure
-3. choisir l'accroche
-4. generer le draft
-5. corriger si besoin
+- vos **brouillons** ;
+- les **variantes** d'un post (plusieurs angles d'un même sujet) ;
+- les posts **planifiés** pour publication.
 
-Ce qu'il faut comprendre:
+Vous pouvez rouvrir un post pour le modifier, en créer une variante, ou le placer dans le planning à une date donnée. La vue planning vous montre ce qui doit sortir et quand.
 
-- l'atelier n'est pas un simple bouton magique
-- chaque etape rend visible une decision editoriale
+## L'écran « Paramètres »
 
-### 4. Ouvrir `Bibliotheque`
+On y règle :
 
-But:
+- le **thème** (clair, sombre, ou suivant votre système) ;
+- le **moteur IA** utilisé pour les générations et son état de connexion ;
+- vos **données** locales ;
+- et on peut y **relancer la visite guidée** à tout moment.
 
-- capitaliser ce qui a deja ete produit
+## En résumé
 
-Ce qu'on y fait:
-
-- retrouver un draft
-- le filtrer
-- creer une variante
-- l'envoyer au calendrier
-
-Pourquoi cette page existe:
-
-- un bon draft doit devenir une ressource, pas un texte jete
-
-### 5. Ouvrir `Calendrier`
-
-But:
-
-- donner une date a un draft
-
-Ce que cela change:
-
-- le draft sort du statut "idee interessante"
-- il entre dans une logique de cadence
-
-### 6. Ouvrir `Runner`
-
-But:
-
-- verifier si Codex est disponible
-- comprendre les derniers runs
-
-Quand y aller:
-
-- si une generation echoue
-- si tu veux confirmer que le runner est bien actif
-- si tu veux lire ce que le systeme a reussi ou refuse
-
-### 7. Ouvrir `Parametres`
-
-But:
-
-- exploiter l'application dans le temps
-
-Actions:
-
-- exporter le workspace
-- purger les logs
-
-## Ce qu'est une bonne entree
-
-### Bonne idee
-
-- titre precis
-- angle defendable
-- consequence metier claire
-
-Exemple:
-
-- titre: `Une PME n a pas besoin de 20 cas d usage IA. Elle a besoin des 3 bons.`
-- angle: `Multiplier les idees donne une impression de mouvement, mais sans priorisation on ajoute surtout du bruit, des attentes et du travail de coordination.`
-
-### Mauvaise idee
-
-- theme vague
-- angle trop large
-- pas de consequence business
-
-Exemple:
-
-- titre: `L IA en entreprise`
-- angle: `Sujet important pour les entreprises`
-
-## Ce qu'est une bonne source de veille
-
-Une bonne source contient au moins:
-
-- un fait identifiable
-- un contexte
-- une implication concrete
-
-Une mauvaise source:
-
-- reste trop vague
-- ne dit pas ce qui change reellement
-- forcerait l'application a inventer un angle
-
-## Ce qu'il faut attendre de l'application
-
-### Ce que l'application doit faire
-
-- rendre visible le workflow editorial
-- refuser une sortie trop faible
-- conserver la memoire des contenus
-- rendre les erreurs explicites
-
-### Ce qu'elle ne doit pas faire
-
-- inventer des faits
-- produire un post faible "pour depanner"
-- masquer une erreur de runner
-
-## Signaux de bonne utilisation
-
-- la strategie est renseignee
-- les idees ont un angle concret
-- le draft final parle de consequence, pas seulement d'opinion
-- les variantes ont un vrai angle alternatif
-- le calendrier contient des drafts reellement exploitables
-
-## Signaux d'alerte
-
-- les hooks se ressemblent tous
-- les posts pourraient etre signes par n'importe qui
-- la source de veille est refusee souvent
-- les variantes ressemblent trop au texte source
-- le runner renvoie des erreurs de contrat ou d'indisponibilite
-
-## Si une generation echoue
-
-1. Aller dans `Runner`
-2. Lire le message d'erreur
-3. Verifier si Codex est disponible
-4. Verifier si l'entree fournie etait assez concrete
-5. Reprendre l'angle ou la strategie si besoin
+Stratégie d'abord, pour poser le cap. Créer ensuite, pour produire. Bibliothèque enfin, pour retrouver, retravailler et planifier. Le Cockpit garde la vue d'ensemble, les Paramètres règlent le reste. À chaque étape, vous restez décideur : l'application propose, vous validez.
