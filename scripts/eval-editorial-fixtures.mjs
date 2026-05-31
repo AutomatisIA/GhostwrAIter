@@ -1,6 +1,15 @@
 // Editorial benchmark fixture catalogue + strategy bundle.
 // 12 fixtures organised in four canonical types of three each per Annex C of the cabinet brief.
 // Imported by scripts/eval-editorial-quality.mjs.
+//
+// Chaque payload de fixture est EXACTEMENT l entree acceptee par la methode
+// d entree du skill cible (validee par Zod ci-dessous, strict). Les fixtures
+// de type D (post-editor) sont conservees pour reference mais DESCOPEES du
+// run executable : l API publique n expose aucun moyen d injecter un brouillon
+// arbitraire a corriger (correctDraft ne re-corrige qu un brouillon genere et
+// persiste). Voir DESCOPED_SKILLS / DESCOPE_REASON.
+
+import { z } from "zod";
 
 export const strategyBundle = {
   profile: {
@@ -60,12 +69,12 @@ export const strategyBundle = {
 
 // Fixture identifiers follow the convention <TypeLetter><Index> (A1, A2, A3, B1, ..., D3).
 // Each fixture targets exactly one skill per the spec FR-011 / FR-012 mapping.
-// Type A and Type C → linkedin-post-writer.
-// Type B → linkedin-news-to-post.
-// Type D → linkedin-post-editor.
+// Type A and Type C -> linkedin-post-writer (entree : ideas.createIdea).
+// Type B -> linkedin-news-to-post (entree : ideas.createFromNewsSource).
+// Type D -> linkedin-post-editor (DESCOPE, cf. en-tete).
 
 export const fixtures = [
-  // Type A — manual leadership ideas (post-writer)
+  // Type A - manual leadership ideas (post-writer)
   {
     id: "A1",
     type: "A",
@@ -75,8 +84,7 @@ export const fixtures = [
       title: "On parle beaucoup de prompts. Pas assez de process.",
       angle:
         "En PME, le blocage vient souvent du workflow, des validations et des droits, pas du prompt lui-meme.",
-      pillarLabel: "Cadrage",
-      persona: "Dirigeants de PME"
+      pillarLabel: "Cadrage"
     }
   },
   {
@@ -88,8 +96,7 @@ export const fixtures = [
       title: "Une PME n a pas besoin de 20 cas d usage IA. Elle a besoin des 3 bons.",
       angle:
         "Multiplier les idees donne une impression de mouvement, mais sans priorisation on ajoute surtout du bruit, des attentes et du travail de coordination.",
-      pillarLabel: "ROI IA",
-      persona: "Dirigeants de PME"
+      pillarLabel: "ROI IA"
     }
   },
   {
@@ -101,22 +108,20 @@ export const fixtures = [
       title: "Automatisation VS Agent IA autonome",
       angle:
         "Automatisation = fiable, predicible, faible cout. Agents = plus souples, mais plus couteux a cadrer, superviser et fiabiliser.",
-      pillarLabel: "ROI IA",
-      persona: "Dirigeants de PME"
+      pillarLabel: "ROI IA"
     }
   },
 
-  // Type B — external news / article (news-to-post)
+  // Type B - external news / article (news-to-post)
   {
     id: "B1",
     type: "B",
     label: "Annonce GPT entreprise",
     skill: "linkedin-news-to-post",
     payload: {
-      title: "OpenAI annonce une nouvelle option entreprise",
-      sourceText:
-        "OpenAI a annonce une nouvelle option de deploiement entreprise avec gouvernance des donnees, controles d acces et journalisation. La promesse: faciliter l adoption pour les organisations regulees, sans changer le modele sous-jacent. Les premiers clients evoquent une mise en place de plusieurs semaines, principalement pour cadrer les usages internes et former les equipes.",
-      pillarLabel: "Adoption IA"
+      sourceTitle: "OpenAI annonce une nouvelle option entreprise",
+      sourceSummary:
+        "OpenAI a annonce une nouvelle option de deploiement entreprise avec gouvernance des donnees, controles d acces et journalisation. La promesse: faciliter l adoption pour les organisations regulees, sans changer le modele sous-jacent. Les premiers clients evoquent une mise en place de plusieurs semaines, principalement pour cadrer les usages internes et former les equipes."
     }
   },
   {
@@ -125,10 +130,9 @@ export const fixtures = [
     label: "Etude penurie talents",
     skill: "linkedin-news-to-post",
     payload: {
-      title: "Une etude pointe la penurie de competences IA",
-      sourceText:
-        "Une etude publiee cette semaine indique que pres de 60 pourcent des PME francaises declarent ne pas disposer en interne des competences pour evaluer un projet IA. Resultat: les premiers projets sont sous-traites sans cadrage prealable, ce qui produit des deceptions dans la moitie des cas selon le meme echantillon.",
-      pillarLabel: "Cadrage"
+      sourceTitle: "Une etude pointe la penurie de competences IA",
+      sourceSummary:
+        "Une etude publiee cette semaine indique que pres de 60 pourcent des PME francaises declarent ne pas disposer en interne des competences pour evaluer un projet IA. Resultat: les premiers projets sont sous-traites sans cadrage prealable, ce qui produit des deceptions dans la moitie des cas selon le meme echantillon."
     }
   },
   {
@@ -137,14 +141,13 @@ export const fixtures = [
     label: "Reglement IA Acte europeen",
     skill: "linkedin-news-to-post",
     payload: {
-      title: "AI Act: phase d application progressive",
-      sourceText:
-        "L AI Act europeen entre en application progressive. Les usages a haut risque doivent demontrer un cadre de gouvernance, une tracabilite et un controle humain. Pour une PME, l enjeu n est pas de tout reclasser mais d identifier rapidement les usages qui basculent dans cette categorie.",
-      pillarLabel: "Adoption IA"
+      sourceTitle: "AI Act: phase d application progressive",
+      sourceSummary:
+        "L AI Act europeen entre en application progressive. Les usages a haut risque doivent demontrer un cadre de gouvernance, une tracabilite et un controle humain. Pour une PME, l enjeu n est pas de tout reclasser mais d identifier rapidement les usages qui basculent dans cette categorie."
     }
   },
 
-  // Type C — anonymized client case (post-writer)
+  // Type C - anonymized client case (post-writer)
   {
     id: "C1",
     type: "C",
@@ -154,12 +157,7 @@ export const fixtures = [
       title: "Quand un pilote IA n a pas de sponsor",
       angle:
         "Cas vecu chez un industriel: trois pilotes IA sans dirigeant proprietaire ont produit des prototypes orphelins. Apres recadrage et nomination d un sponsor unique, deux des trois ont ete relances avec un objectif chiffre.",
-      pillarLabel: "Cadrage",
-      persona: "Dirigeants de PME",
-      clientContext: "Industriel 80 personnes, Grand-Est",
-      problem: "Trois pilotes IA sans sponsor, peu d adoption",
-      intervention: "Audit + nomination d un sponsor unique + relance ciblee",
-      outcome: "Deux pilotes reactives avec objectif chiffre, le troisieme arrete sans regret"
+      pillarLabel: "Cadrage"
     }
   },
   {
@@ -171,12 +169,7 @@ export const fixtures = [
       title: "Confidentialite et IA dans un cabinet d avocats",
       angle:
         "Le client voulait deployer un assistant IA generative sur ses dossiers internes. L analyse de sensibilite a impose un environnement isole et un workflow d anonymisation prealable, ce qui a allonge le delai de mise en production de plusieurs semaines.",
-      pillarLabel: "Adoption IA",
-      persona: "Dirigeants de PME",
-      clientContext: "Cabinet d avocats, 25 collaborateurs",
-      problem: "Risque de fuite de donnees clients sur dossiers en cours",
-      intervention: "Choix d un environnement isole + pipeline d anonymisation prealable",
-      outcome: "Mise en production retardee mais conforme; usage interne valide"
+      pillarLabel: "Adoption IA"
     }
   },
   {
@@ -188,16 +181,11 @@ export const fixtures = [
       title: "Mesurer le ROI reel d un assistant IA en service client",
       angle:
         "Le distributeur voulait quantifier l effet d un assistant IA sur son service client. La mesure a porte sur le temps de premiere reponse, le taux de bonne resolution et le cout par ticket. Le gain net s est revele plus modeste que les chiffres marketing publies dans la presse.",
-      pillarLabel: "ROI IA",
-      persona: "Dirigeants de PME",
-      clientContext: "Distributeur regional, 120 personnes",
-      problem: "Promesse marketing ambigue sur l impact d un assistant IA",
-      intervention: "Mesure controlee sur 6 semaines avec 3 indicateurs operationnels",
-      outcome: "Gain net plus modeste que les chiffres marketing, mais reel et reproductible"
+      pillarLabel: "ROI IA"
     }
   },
 
-  // Type D — existing draft to correct (post-editor)
+  // Type D - existing draft to correct (post-editor) - DESCOPE du run executable.
   {
     id: "D1",
     type: "D",
@@ -237,10 +225,11 @@ Variante orientee angle complementaire: si votre besoin est repetitif et stable,
   {
     id: "D3",
     type: "D",
-    label: "Draft court mais pertinent",
+    label: "Draft conseil editeur IA",
     skill: "linkedin-post-editor",
     payload: {
-      qualityIssue: "Court mais valide, simple polish demande",
+      qualityIssue:
+        "Liste seche sans contexte, ton donneur de lecons, manque de nuance et d ancrage concret",
       draftMarkdown: `Une PME m a demande hier comment evaluer un editeur IA.
 
 Ma reponse en trois lignes:
@@ -253,12 +242,44 @@ Le reste est marketing.`
   }
 ];
 
+// Skills dont les fixtures sont validees pour la forme mais NON executees par
+// le harnais (pas de chemin d entree public). Signale explicitement dans le
+// rapport (jamais de troncature silencieuse).
+export const DESCOPED_SKILLS = ["linkedin-post-editor"];
+export const DESCOPE_REASON =
+  "Aucune API publique n injecte un brouillon arbitraire a corriger (correctDraft ne re-corrige qu un brouillon genere et persiste).";
+
 const ID_PATTERN = /^[A-D][1-9][0-9]?$/;
-const REQUIRED_FIELDS_BY_TYPE = {
-  A: ["title", "angle", "pillarLabel", "persona"],
-  B: ["title", "sourceText", "pillarLabel"],
-  C: ["clientContext", "problem", "intervention", "outcome", "pillarLabel"],
-  D: ["draftMarkdown", "qualityIssue"]
+
+// Schemas Zod qui DOIVENT refleter app/shared/schemas/ideas.ts (source de
+// verite). Toute derive du contrat d entree d un skill est signalee ici avant
+// l execution. Le schema editeur valide la forme de fixture (descopee).
+const ideaInputSchema = z
+  .object({
+    title: z.string().min(1, "title is required"),
+    angle: z.string().min(1, "angle is required"),
+    pillarLabel: z.string().min(1, "pillarLabel is required")
+  })
+  .strict();
+
+const newsSourceInputSchema = z
+  .object({
+    sourceTitle: z.string().min(1, "sourceTitle is required"),
+    sourceSummary: z.string().min(1, "sourceSummary is required")
+  })
+  .strict();
+
+const editorFixtureSchema = z
+  .object({
+    qualityIssue: z.string().min(1, "qualityIssue is required"),
+    draftMarkdown: z.string().min(1, "draftMarkdown is required")
+  })
+  .strict();
+
+const SCHEMA_BY_SKILL = {
+  "linkedin-post-writer": ideaInputSchema,
+  "linkedin-news-to-post": newsSourceInputSchema,
+  "linkedin-post-editor": editorFixtureSchema
 };
 
 export function validateFixtures() {
@@ -275,21 +296,28 @@ export function validateFixtures() {
         `Fixture id "${fixture.id}" does not start with declared type "${fixture.type}"`
       );
     }
-    counts[fixture.type] += 1;
-    const required = REQUIRED_FIELDS_BY_TYPE[fixture.type];
-    for (const field of required) {
-      if (
-        fixture.payload?.[field] === undefined ||
-        fixture.payload?.[field] === null ||
-        fixture.payload?.[field] === ""
-      ) {
-        throw new Error(`Fixture ${fixture.id} (type ${fixture.type}) is missing field "${field}"`);
-      }
+    counts[fixture.type] = (counts[fixture.type] ?? 0) + 1;
+
+    const schema = SCHEMA_BY_SKILL[fixture.skill];
+    if (!schema) {
+      throw new Error(`Fixture ${fixture.id}: unknown skill "${fixture.skill}" (no input schema)`);
+    }
+    const parsed = schema.safeParse(fixture.payload);
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      const path = first?.path?.join(".") || "(payload)";
+      throw new Error(
+        `Fixture ${fixture.id} (skill ${fixture.skill}) violates input contract at "${path}": ${
+          first?.message ?? "invalid payload"
+        }`
+      );
     }
   }
   for (const type of ["A", "B", "C", "D"]) {
     if (counts[type] !== 3) {
-      throw new Error(`Fixture catalogue must have exactly 3 fixtures per type, got ${counts[type]} for type ${type}`);
+      throw new Error(
+        `Fixture catalogue must have exactly 3 fixtures per type, got ${counts[type]} for type ${type}`
+      );
     }
   }
 }

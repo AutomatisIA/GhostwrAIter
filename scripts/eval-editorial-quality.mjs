@@ -7,12 +7,18 @@
 //
 // Local-only — never wired to GitHub Actions CI per FR-017.
 
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { _electron as electron } from "playwright";
-import { strategyBundle, fixtures, validateFixtures } from "./eval-editorial-fixtures.mjs";
+import {
+  strategyBundle,
+  fixtures,
+  validateFixtures,
+  DESCOPED_SKILLS,
+  DESCOPE_REASON
+} from "./eval-editorial-fixtures.mjs";
 import { gradeOutput } from "./eval-editorial-grader.mjs";
 import { loadEditorialDoctrineFromFile } from "./eval-editorial-doctrine-parser.mjs";
 
@@ -89,6 +95,12 @@ function writeMarkdownReport(reportDir, timestamp, report) {
   lines.push(`- Quality score threshold: ${report.metadata.grader.qualityScoreThreshold}`);
   lines.push(`- Doctrine file: ${report.metadata.doctrineFile}`);
   lines.push(`- Interrupted: ${report.metadata.interrupted}`);
+  if (report.metadata.descopedFixtures && report.metadata.descopedFixtures.length > 0) {
+    lines.push(
+      `- Descoped fixtures (non executees): ${report.metadata.descopedFixtures.join(", ")}`
+    );
+    lines.push(`- Descope reason: ${report.metadata.descopeReason}`);
+  }
   lines.push("");
   lines.push("## Summary");
   lines.push("");
@@ -192,11 +204,7 @@ async function exerciseFixture(page, fixture) {
       }, fixture.payload);
     } else if (fixture.skill === "linkedin-news-to-post") {
       rawOutput = await page.evaluate(async (input) => {
-        return await globalThis.window.linkedinPoster.ideas.transformNews(input);
-      }, fixture.payload);
-    } else if (fixture.skill === "linkedin-post-editor") {
-      rawOutput = await page.evaluate(async (input) => {
-        return await globalThis.window.linkedinPoster.workshop.editDraft(input);
+        return await globalThis.window.linkedinPoster.ideas.createFromNewsSource(input);
       }, fixture.payload);
     } else {
       throw new Error(`Unsupported fixture skill: ${fixture.skill}`);
@@ -226,6 +234,16 @@ async function main() {
   let exitCode = 0;
   const filter = parseArgs(process.argv.slice(2));
 
+  // Pre-requis : l app packagee doit exister (le harnais lance dist-electron).
+  const mainEntry = join(process.cwd(), "dist-electron", "main", "index.js");
+  if (!existsSync(mainEntry)) {
+    console.error(
+      `Application non compilee : ${mainEntry} introuvable.\n` +
+        `Lancez d abord \`npm run build\`, puis relancez \`node scripts/eval-editorial-quality.mjs\`.`
+    );
+    process.exit(3);
+  }
+
   let doctrine;
   try {
     doctrine = loadEditorialDoctrineFromFile();
@@ -244,6 +262,20 @@ async function main() {
   const inScope = selectFixtures(filter);
   if (inScope.length === 0) {
     console.error(`No fixtures matched the filter ${JSON.stringify(filter)}`);
+    process.exit(3);
+  }
+
+  // Partition : les fixtures dont le skill est descope sont signalees mais non
+  // executees (aucun chemin d entree public). Jamais de troncature silencieuse.
+  const runnable = inScope.filter((f) => !DESCOPED_SKILLS.includes(f.skill));
+  const descoped = inScope.filter((f) => DESCOPED_SKILLS.includes(f.skill));
+  for (const f of descoped) {
+    console.log(`Fixture ${f.id} (${f.type}): DESCOPE (${f.skill}) - ${DESCOPE_REASON}`);
+  }
+  if (runnable.length === 0) {
+    console.error(
+      `Aucune fixture executable apres descope (${descoped.length} descopee(s)). ${DESCOPE_REASON}`
+    );
     process.exit(3);
   }
 
@@ -271,7 +303,7 @@ async function main() {
       await globalThis.window.linkedinPoster.strategy.saveBundle(bundle);
     }, strategyBundle);
 
-    for (const fixture of inScope) {
+    for (const fixture of runnable) {
       const startedAt = new Date().toISOString();
       const { rawOutput, durationMs } = await exerciseFixture(page, fixture);
       const grading = gradeOutput(rawOutput, doctrine, GRADING_CONFIG);
@@ -308,7 +340,9 @@ async function main() {
       runFinishedAt,
       durationMs,
       codexCliVersion: codexVersion,
-      fixtureCount: inScope.length,
+      fixtureCount: runnable.length,
+      descopedFixtures: descoped.map((f) => f.id),
+      descopeReason: descoped.length > 0 ? DESCOPE_REASON : null,
       grader: GRADING_CONFIG,
       doctrineFile: "docs/editorial-doctrine.md",
       interrupted

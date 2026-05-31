@@ -7,6 +7,10 @@
 const SENTENCE_BOUNDARY = /[.!?]/;
 const EXCERPT_LIMIT = 200;
 
+// Lit la forme RÉELLE retournée par les services (generateFinalDraft,
+// createFromNewsSource, correctDraft) : un objet de session avec `draft` au
+// niveau racine, portant headline / bodyMarkdown. Aucun wrapper `.data`.
+// Voir app/shared/types/{workshop,ideas}.ts.
 function normalizeSkillOutput(output) {
   if (!output || typeof output !== "object") {
     return { headline: "", body: "" };
@@ -15,18 +19,10 @@ function normalizeSkillOutput(output) {
     return { headline: "", body: "" };
   }
 
-  const data = output.data ?? {};
-
-  if (data.editedDraft && typeof data.editedDraft === "object") {
+  if (output.draft && typeof output.draft === "object") {
     return {
-      headline: String(data.editedDraft.headline ?? ""),
-      body: String(data.editedDraft.bodyMarkdown ?? "")
-    };
-  }
-  if (data.draft && typeof data.draft === "object") {
-    return {
-      headline: String(data.draft.headline ?? ""),
-      body: String(data.draft.bodyMarkdown ?? "")
+      headline: String(output.draft.headline ?? ""),
+      body: String(output.draft.bodyMarkdown ?? "")
     };
   }
   return { headline: "", body: "" };
@@ -82,15 +78,12 @@ function quoteExcerpt(body, max = EXCERPT_LIMIT) {
   return trimmed.length <= max ? trimmed : trimmed.slice(0, max) + "...";
 }
 
+// La note de qualité est portée par `draft.qualityScore` (number) dans la
+// forme réelle de session. Voir app/shared/types/workshop.ts (WorkshopDraft).
 function extractQualityScore(output) {
-  const data = output.data ?? {};
-  if (typeof data.qualityScore === "number") return data.qualityScore;
-  const signals = data.qualitySignals;
-  if (signals && typeof signals === "object") {
-    const values = [signals.clarity, signals.specificity, signals.antiHypeAlignment]
-      .filter((v) => typeof v === "number");
-    if (values.length === 0) return null;
-    return values.reduce((sum, v) => sum + v, 0) / values.length;
+  const draft = output.draft;
+  if (draft && typeof draft === "object" && typeof draft.qualityScore === "number") {
+    return draft.qualityScore;
   }
   return null;
 }
