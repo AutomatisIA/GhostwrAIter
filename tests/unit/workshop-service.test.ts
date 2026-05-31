@@ -103,6 +103,26 @@ describe("workshop service", () => {
     expect(session.run.skillName).toBe("linkedin-post-writer");
   });
 
+  it("crée un brouillon depuis un texte fourni, persiste et corrigeable par l'éditeur", () => {
+    const session = workshopService.createDraftFromContent({
+      pillarLabel: "Methodes",
+      headline: "Brouillon importe a ameliorer",
+      bodyMarkdown: "Texte initial faible, a corriger par l'editeur."
+    });
+
+    expect(session.draft.id).toBeTruthy();
+    expect(session.draft.headline).toBe("Brouillon importe a ameliorer");
+    expect(session.draft.bodyMarkdown).toBe("Texte initial faible, a corriger par l'editeur.");
+    // La session porte un `run` bien forme (trace de provenance d import), jamais undefined.
+    expect(session.run).toBeDefined();
+    expect(session.run.skillName).toBe("manual-import");
+
+    // Le brouillon est reellement persiste : l'editeur peut le corriger par son id.
+    const corrected = workshopService.correctDraft(session.draft.id);
+    expect(corrected.draft.id).toBeTruthy();
+    expect(corrected.run.skillName).toBe("linkedin-post-editor");
+  });
+
   it("generates a draft, hooks and an execution run from an idea (legacy mode)", () => {
     const idea = ideasRepository.createIdea({
       title: "Le vrai frein a l'IA en PME",

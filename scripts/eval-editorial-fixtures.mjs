@@ -194,13 +194,13 @@ export const fixtures = [
     payload: {
       qualityIssue:
         "Ouverture molle, formulations creuses, pas d element concret, repete le titre dans la premiere phrase",
-      draftMarkdown: `Le vrai probleme avec l IA en PME, c'est qu'on en parle tout le temps sans agir.
+      draftMarkdown: `Le vrai probleme avec l IA en PME, c'est qu'on en parle tout le temps sans jamais vraiment agir concretement sur le terrain.
 
-Dans beaucoup de PME, les dirigeants se demandent par ou commencer. En realite, le sujet n est pas l outil, c est la methode. Sur le terrain, on voit toujours les memes blocages.
+Dans beaucoup de PME, les dirigeants se demandent par ou commencer, comment s y prendre, et surtout pourquoi ca semble si complique alors que tout le monde en parle. En realite, le sujet n est pas vraiment l outil, c est plutot la methode et l etat d esprit. Sur le terrain, on voit toujours un peu les memes blocages revenir, encore et encore, sans qu on sache vraiment les nommer.
 
-Il faut prendre du recul, structurer sa demarche, et avancer pas a pas. La cle, c est la methode.
+Il faut prendre du recul, structurer sa demarche, avancer pas a pas, rester aligne avec ses objectifs et ne pas se precipiter. La cle, au fond, c est la methode, la patience et un peu de bon sens. Tout le monde peut y arriver s il s en donne les moyens et accepte de faire les choses dans le bon ordre, sereinement.
 
-Et vous, quelle methode utilisez-vous ?`
+Et vous, quelle methode utilisez-vous au quotidien ?`
     }
   },
   {
@@ -230,22 +230,22 @@ Variante orientee angle complementaire: si votre besoin est repetitif et stable,
     payload: {
       qualityIssue:
         "Liste seche sans contexte, ton donneur de lecons, manque de nuance et d ancrage concret",
-      draftMarkdown: `Une PME m a demande hier comment evaluer un editeur IA.
+      draftMarkdown: `Une PME m a demande hier comment evaluer un editeur IA. Voici ce que vous devez faire, point par point, sans discuter.
 
-Ma reponse en trois lignes:
-1. Demandez un audit de leurs process de fiabilisation, pas une demo.
-2. Verifiez le cadrage qu ils proposent en kickoff.
-3. Refusez tout engagement sans plan de supervision documente.
+D abord, il faut absolument demander un audit complet de leurs process de fiabilisation, surtout pas une simple demo commerciale qui ne prouve rien. Ensuite, vous devez verifier le cadrage qu ils proposent des le kickoff, parce que sans cadrage serieux, vous allez droit dans le mur, c est certain. Troisiemement, refusez systematiquement tout engagement qui n inclut pas un plan de supervision documente et signe.
 
-Le reste est marketing.`
+Et franchement, si l editeur ne sait pas repondre clairement a ces trois points, passez votre chemin immediatement, ne perdez pas votre temps. Trop de dirigeants se laissent encore avoir par de belles promesses et des slides marketing. Soyez exigeants, posez les bonnes questions, et n acceptez jamais l a-peu-pres.
+
+Le reste, tout le reste, ce n est que du marketing et du vent.`
     }
   }
 ];
 
-// Skills dont les fixtures sont validees pour la forme mais NON executees par
-// le harnais (pas de chemin d entree public). Signale explicitement dans le
-// rapport (jamais de troncature silencieuse).
-export const DESCOPED_SKILLS = ["linkedin-post-editor"];
+// Mecanisme de descope (skills validees pour la forme mais NON executees,
+// signalees dans le rapport, jamais tronquees en silence). Vide depuis la
+// feature 012 : `workshop.createDraftFromContent` injecte un brouillon, donc
+// l editeur (type D) est desormais exerce de bout en bout.
+export const DESCOPED_SKILLS = [];
 export const DESCOPE_REASON =
   "Aucune API publique n injecte un brouillon arbitraire a corriger (correctDraft ne re-corrige qu un brouillon genere et persiste).";
 

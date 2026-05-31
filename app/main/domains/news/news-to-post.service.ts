@@ -63,6 +63,12 @@ export class NewsToPostService {
       throw new Error(result.error?.message ?? result.summary);
     }
 
+    // Le skill linkedin-news-to-post ne renvoie PAS de hooks (contrat
+    // {data:{draft, qualitySignals}}) : l accroche est dans le corps. On tolere
+    // donc l absence de `hooks` (defaut tableau vide) au lieu de planter sur une
+    // iteration de `undefined`. Bug revele par l eval (fixtures B), corrige ici.
+    const skillHooks = result.data.hooks ?? [];
+
     this.db
       .prepare(`
         INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status, source_draft_id)
@@ -77,7 +83,7 @@ export class NewsToPostService {
         createdAt
       );
 
-    for (const hook of result.data.hooks) {
+    for (const hook of skillHooks) {
       this.db
         .prepare("INSERT INTO hooks (id, draft_id, text) VALUES (?, ?, ?)")
         .run(createId("hook"), draftId, hook.text);
@@ -121,7 +127,7 @@ export class NewsToPostService {
         bodyMarkdown: result.data.draft.bodyMarkdown,
         qualityScore: result.data.qualitySignals.clarity
       },
-      hooks: result.data.hooks.map((hook, index) => ({
+      hooks: skillHooks.map((hook, index) => ({
         id: `hook_${index}`,
         text: hook.text
       })),

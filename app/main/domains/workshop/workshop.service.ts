@@ -22,7 +22,7 @@ import type {
   WorkshopSession
 } from "../../../shared/types/workshop";
 import { createId } from "../../shared/create-id";
-import { recordExecutionRun } from "../execution/execution-runs.repository";
+import { insertExecutionRun, recordExecutionRun } from "../execution/execution-runs.repository";
 
 type WorkshopColumnSpec = {
   readonly table: "drafts" | "execution_runs";
@@ -534,6 +534,96 @@ export class WorkshopService {
     this.syncDraftTags(variantId, idea.title, idea.angle, idea.pillarLabel, true);
 
     return this.getSessionByDraftId(variantId);
+  }
+
+  /**
+   * Cree un brouillon a partir d un texte fourni (post importe a ameliorer) et
+   * le persiste comme tout autre brouillon, de sorte que `correctDraft` puisse
+   * ensuite l ameliorer par son id. Sert au parcours "importer un post existant
+   * pour le retravailler" et permet a l evaluation editoriale d exercer le skill
+   * post-editor sur des brouillons controles (cas de test reproductibles).
+   */
+  createDraftFromContent(input: {
+    pillarLabel: string;
+    headline: string;
+    bodyMarkdown: string;
+  }): WorkshopSession {
+    const idea = this.ideasRepository.createIdea({
+      title: input.headline,
+      angle: "Brouillon importe pour correction",
+      pillarLabel: input.pillarLabel
+    });
+    const draftId = createId("draft");
+    const runId = createId("run");
+    const createdAt = new Date().toISOString();
+    // Note neutre : un brouillon importe n est pas encore evalue par un skill.
+    const qualityScore = 0.5;
+
+    // L editeur (post-editor) exige un contexte de production complet
+    // (typologie, objectif, structure, accroche) pour pouvoir le PRESERVER lors
+    // de la correction. Un brouillon importe n en a pas : on fournit des valeurs
+    // par defaut sures. L accroche par defaut est la premiere ligne non vide du
+    // corps (de facto l ouverture a preserver), bornee pour ne pas confondre tout
+    // un post mono-ligne avec son accroche.
+    const HOOK_MAX_LENGTH = 200;
+    const firstLine =
+      input.bodyMarkdown
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.length > 0) ?? input.headline;
+    const typology: PostTypology = "expertise";
+    const objective: PostObjective = "awareness";
+    const structureKey = "belief-terrain-reality";
+    const structureLabel = "Croyance -> terrain -> realite";
+    const selectedHookText = firstLine.slice(0, HOOK_MAX_LENGTH);
+
+    this.db
+      .prepare(`
+        INSERT INTO drafts (
+          id, idea_id, headline, body_markdown, quality_score, created_at, status,
+          typology, objective, structure_key, structure_label, selected_hook_text
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)
+      `)
+      .run(
+        draftId,
+        idea.id,
+        input.headline,
+        input.bodyMarkdown,
+        qualityScore,
+        createdAt,
+        typology,
+        objective,
+        structureKey,
+        structureLabel,
+        selectedHookText
+      );
+
+    this.recordDraftVersion(draftId, input.bodyMarkdown, qualityScore, "manual_edit", createdAt);
+    this.syncDraftTags(draftId, idea.title, idea.angle, idea.pillarLabel, false);
+
+    // Trace de provenance : pas une execution de skill, mais un import. Garantit
+    // que la session retournee porte un `run` bien forme (le type WorkshopSession
+    // l exige) plutot qu un `run` undefined pour un brouillon sans execution.
+    insertExecutionRun(this.db, {
+      id: runId,
+      ideaId: idea.id,
+      draftId,
+      skillName: "manual-import",
+      skillVersion: "1.0.0",
+      status: "succeeded",
+      summary: "Brouillon importe pour correction",
+      inputJson: JSON.stringify({ pillarLabel: input.pillarLabel, headline: input.headline }),
+      outputJson: JSON.stringify({ draftId }),
+      outputMarkdown: input.bodyMarkdown,
+      errorMessage: null,
+      logPath: null,
+      startedAt: createdAt,
+      finishedAt: createdAt,
+      createdAt
+    });
+
+    return this.getSessionByDraftId(draftId);
   }
 
   correctDraft(draftId: string, sender?: WebContents): WorkshopSession {
