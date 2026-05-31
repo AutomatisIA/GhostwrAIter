@@ -46,4 +46,37 @@ describe("news to post service", () => {
     expect(result.draft.headline).toContain("copilotes IA");
     expect(result.run.skillName).toBe("linkedin-news-to-post");
   });
+
+  it("réussit quand le skill ne renvoie pas de hooks (contrat reel news-to-post)", () => {
+    // Regression (bug revele par l eval, fixtures B) : le skill news-to-post
+    // renvoie {data:{draft, qualitySignals}} SANS hooks. Le service ne doit pas
+    // planter sur l iteration d un `hooks` absent.
+    const hooklessRunner = {
+      execute: () => ({
+        status: "succeeded",
+        summary: "ok",
+        data: {
+          draft: { headline: "Titre veille", bodyMarkdown: "Corps de veille." },
+          qualitySignals: { clarity: 0.82, specificity: 0.8, antiHypeAlignment: 0.85 }
+          // pas de cle `hooks` : exactement la forme reelle du skill
+        }
+      })
+    } as unknown as ReturnType<typeof createStrictSkillRunnerService>;
+
+    const service = new NewsToPostService(
+      db,
+      ideasRepository,
+      hooklessRunner,
+      () => createStrategyBundleFixture()
+    );
+
+    const result = service.createDraftFromSource({
+      sourceTitle: "Source sans hooks",
+      sourceSummary: "Resume suffisant pour une generation."
+    });
+
+    expect(result.draft.headline).toBe("Titre veille");
+    expect(result.hooks).toEqual([]);
+    expect(result.run.skillName).toBe("linkedin-news-to-post");
+  });
 });
