@@ -231,16 +231,28 @@ describe("package.yml", () => {
     expect(raw).not.toMatch(/continue-on-error/);
   });
 
-  it("never references any secret", () => {
-    expect(raw).not.toMatch(/secrets\./);
+  it("references only the expected mac code-signing secrets", () => {
+    // Le build macOS est signe (Developer ID) + notarise : les secrets de
+    // signature sont attendus. On verrouille l ensemble exact pour forcer une
+    // revue si la liste change.
+    const used = [...new Set([...raw.matchAll(/secrets\.([A-Z0-9_]+)/g)].map((m) => m[1]))].sort();
+    expect(used).toEqual([
+      "APPLE_APP_SPECIFIC_PASSWORD",
+      "APPLE_ID",
+      "APPLE_TEAM_ID",
+      "MAC_CSC_KEY_PASSWORD",
+      "MAC_CSC_LINK"
+    ]);
   });
 
-  it("contains no code-signing keywords", () => {
-    expect(raw).not.toMatch(/\bcodesign\b/);
-    expect(raw).not.toMatch(/notarize/);
-    expect(raw).not.toMatch(/CSC_/);
-    expect(raw).not.toMatch(/APPLE_/);
-    expect(raw).not.toMatch(/WIN_CSC_/);
+  it("never interpolates a secret inside a run: command (anti-injection)", () => {
+    // Les secrets ne doivent apparaitre que dans des blocs env:, jamais splices
+    // dans une commande shell run:.
+    for (const line of raw.split(/\r?\n/)) {
+      if (/^\s*run:/.test(line)) {
+        expect(line).not.toMatch(/secrets\./);
+      }
+    }
   });
 });
 
