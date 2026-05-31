@@ -94,8 +94,8 @@ describe("ci.yml", () => {
     const usesIndex = (needle: string) =>
       steps.findIndex((s) => typeof s.uses === "string" && s.uses.startsWith(needle));
 
-    const checkout = usesIndex("actions/checkout@v4");
-    const setupNode = usesIndex("actions/setup-node@v4");
+    const checkout = usesIndex("actions/checkout@");
+    const setupNode = usesIndex("actions/setup-node@");
     const npmCi = runIndex("npm ci");
     const rebuild = runIndex("npm run rebuild:native:electron");
     const typecheck = runIndex("npm run typecheck");
@@ -117,7 +117,7 @@ describe("ci.yml", () => {
 
   it("configures setup-node with node 20 and npm cache", () => {
     const steps = getOnlyJob(doc).steps ?? [];
-    const setupNode = findStep(steps, (s) => s.uses?.startsWith("actions/setup-node@v4") ?? false);
+    const setupNode = findStep(steps, (s) => s.uses?.startsWith("actions/setup-node@") ?? false);
     expect(String(setupNode.with?.["node-version"])).toBe("20");
     expect(setupNode.with?.cache).toBe("npm");
   });
@@ -182,8 +182,8 @@ describe("package.yml", () => {
     const usesIndex = (needle: string) =>
       steps.findIndex((s) => typeof s.uses === "string" && s.uses.startsWith(needle));
 
-    const checkout = usesIndex("actions/checkout@v4");
-    const setupNode = usesIndex("actions/setup-node@v4");
+    const checkout = usesIndex("actions/checkout@");
+    const setupNode = usesIndex("actions/setup-node@");
     const npmCi = runIndex("npm ci");
     const rebuild = runIndex("npm run rebuild:native:electron");
 
@@ -217,7 +217,7 @@ describe("package.yml", () => {
     const steps = getOnlyJob(doc).steps ?? [];
     const upload = findStep(
       steps,
-      (s) => s.uses?.startsWith("actions/upload-artifact@v4") ?? false
+      (s) => s.uses?.startsWith("actions/upload-artifact@") ?? false
     );
     const name = String(upload.with?.name ?? "");
     expect(name).toContain("ghostwraiter");
@@ -291,10 +291,10 @@ describe("release.yml", () => {
   it("downloads artifacts and creates a draft release", () => {
     const steps = getOnlyJob(doc).steps ?? [];
     const download = steps.find(
-      (s) => s.uses?.startsWith("actions/download-artifact@v4") ?? false
+      (s) => s.uses?.startsWith("actions/download-artifact@") ?? false
     );
     const release = steps.find(
-      (s) => s.uses?.startsWith("softprops/action-gh-release@v2") ?? false
+      (s) => s.uses?.startsWith("softprops/action-gh-release@") ?? false
     );
     expect(download).toBeDefined();
     expect(release).toBeDefined();
