@@ -109,10 +109,16 @@ export const updateDraftTextTupleSchema = z.tuple([
  * post existant comme brouillon corrigeable. Single-input (objet), valide en
  * strict pour rejeter toute cle parasite.
  */
+const nonBlank = (label: string) =>
+  z
+    .string()
+    .min(1, `${label} is required`)
+    .refine((value) => value.trim().length > 0, `${label} must not be blank`);
+
 export const createDraftFromContentSchema = z
   .object({
-    pillarLabel: z.string().min(1, "pillarLabel is required"),
-    headline: z.string().min(1, "headline is required"),
-    bodyMarkdown: z.string().min(1, "bodyMarkdown is required")
+    pillarLabel: nonBlank("pillarLabel"),
+    headline: nonBlank("headline"),
+    bodyMarkdown: nonBlank("bodyMarkdown")
   })
   .strict();
