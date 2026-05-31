@@ -145,7 +145,9 @@ export class CodexCliRunner {
           outputPath,
           "-"
         ],
-        this.buildPrompt(invocation, skillPrompt, frameworkPreamble)
+        // Assemblage partage (source unique) : preambule cadre + contrat
+        // par-skill + invocation. Voir assembleSkillPrompt / skill-prompt-loader.
+        assembleSkillPrompt(invocation, skillPrompt, frameworkPreamble)
       );
 
       if (result.signal === "SIGTERM" && result.status === null) {
@@ -190,15 +192,5 @@ export class CodexCliRunner {
     }
   }
 
-  private buildPrompt(
-    invocation: SkillRunnerInvocation,
-    skillPrompt: string,
-    frameworkPreamble: string
-  ) {
-    // Assemblage partage (source unique) : preambule cadre charge depuis
-    // skills/_framework/PROMPT.md (editable sans recompilation) + contrat
-    // par-skill + invocation.
-    return assembleSkillPrompt(invocation, skillPrompt, frameworkPreamble);
-  }
 
 }
