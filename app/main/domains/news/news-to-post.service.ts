@@ -12,7 +12,7 @@ import {
 import type { WorkshopSession } from "../../../shared/types/workshop";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import { createId } from "../../shared/create-id";
-import { insertExecutionRun } from "../execution/execution-runs.repository";
+import { recordExecutionRun } from "../execution/execution-runs.repository";
 
 export class NewsToPostService {
   constructor(
@@ -96,21 +96,11 @@ export class NewsToPostService {
         createdAt
       );
 
-    insertExecutionRun(this.db, {
-      id: runId,
+    recordExecutionRun(this.db, {
+      invocation,
+      result,
       ideaId: idea.id,
       draftId,
-      skillName: invocation.skillName,
-      skillVersion: invocation.skillVersion,
-      status: result.status,
-      summary: result.summary,
-      inputJson: JSON.stringify(invocation),
-      outputJson: JSON.stringify(result),
-      outputMarkdown: result.artifacts?.[0]?.content ?? null,
-      errorMessage: null,
-      logPath: null,
-      startedAt: createdAt,
-      finishedAt: createdAt,
       createdAt
     });
 

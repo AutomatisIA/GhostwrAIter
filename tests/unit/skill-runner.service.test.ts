@@ -3,6 +3,7 @@ import {
   SkillRunnerService,
   type SkillRunnerResult
 } from "../../app/main/domains/execution/skill-runner.service";
+import type { EngineRegistry } from "../../app/main/domains/execution/engine-registry";
 
 describe("skill runner service", () => {
   it("fails explicitly when Codex is unavailable", async () => {
@@ -405,5 +406,48 @@ describe("skill runner service", () => {
 
     expect(result.status).toBe("failed");
     expect(result.error?.code).toBe("ENGINE_EXECUTION_ERROR");
+  });
+
+  it("executeViaEngine prefixe le preambule cadre partage (source unique)", async () => {
+    let capturedPrompt = "";
+    const engine = {
+      executeSkill: async (prompt: string) => {
+        capturedPrompt = prompt;
+        return JSON.stringify({
+          status: "succeeded",
+          summary: "ok",
+          data: {
+            draft: { headline: "H", bodyMarkdown: "B" },
+            hooks: [],
+            variants: [],
+            qualitySignals: { clarity: 0.9, specificity: 0.9, antiHypeAlignment: 0.9 }
+          }
+        });
+      }
+    };
+    const engineRegistry = {
+      getActiveEngine: async () => ({
+        engine: "claude",
+        status: { installState: "authenticated" }
+      }),
+      getEngineByName: () => engine
+    } as unknown as EngineRegistry;
+    const service = new SkillRunnerService({ engineRegistry });
+
+    const result = await service.executeAsync({
+      runId: "run_engine",
+      skillName: "linkedin-post-writer",
+      skillVersion: "1.0.0",
+      context: {},
+      payload: { title: "t", angle: "a" },
+      attachments: []
+    });
+
+    expect(result.status).toBe("succeeded");
+    // Preambule cadre charge depuis skills/_framework/PROMPT.md, prefixe au prompt.
+    expect(capturedPrompt).toContain(
+      "You are a premium LinkedIn editorial skill runner"
+    );
+    expect(capturedPrompt).toContain("Contract-specific instructions:");
   });
 });

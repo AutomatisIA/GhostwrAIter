@@ -10,6 +10,7 @@ import { findCodexBinary } from "./find-codex-binary";
 import {
   FrameworkPromptNotFoundError,
   SkillPromptNotFoundError,
+  assembleSkillPrompt,
   createDefaultSkillPromptLoader,
   type SkillPromptLoader
 } from "./skill-prompt-loader";
@@ -194,18 +195,10 @@ export class CodexCliRunner {
     skillPrompt: string,
     frameworkPreamble: string
   ) {
-    // Le preambule cadre partage est charge depuis skills/_framework/PROMPT.md
-    // (editable sans recompilation). Assemblage identique a l ancien inline :
-    // preambule, ligne vide, contrat par-skill, ligne vide, invocation.
-    return [
-      frameworkPreamble,
-      "",
-      "Contract-specific instructions:",
-      skillPrompt,
-      "",
-      "Invocation:",
-      JSON.stringify(invocation, null, 2)
-    ].join("\n");
+    // Assemblage partage (source unique) : preambule cadre charge depuis
+    // skills/_framework/PROMPT.md (editable sans recompilation) + contrat
+    // par-skill + invocation.
+    return assembleSkillPrompt(invocation, skillPrompt, frameworkPreamble);
   }
 
 }

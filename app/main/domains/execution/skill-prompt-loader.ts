@@ -137,3 +137,25 @@ export function createDefaultSkillPromptLoader(skillsRoot?: string): SkillPrompt
     }
   };
 }
+
+/**
+ * Assemble le prompt final envoye au moteur : preambule cadre partage, ligne
+ * vide, contrat par-skill, ligne vide, invocation serialisee. Source unique
+ * utilisee par les deux chemins d execution (CodexCliRunner synchrone et
+ * SkillRunnerService.executeViaEngine) pour garantir un prompt identique.
+ */
+export function assembleSkillPrompt(
+  invocation: unknown,
+  skillPrompt: string,
+  frameworkPreamble: string
+): string {
+  return [
+    frameworkPreamble,
+    "",
+    "Contract-specific instructions:",
+    skillPrompt,
+    "",
+    "Invocation:",
+    JSON.stringify(invocation, null, 2)
+  ].join("\n");
+}
