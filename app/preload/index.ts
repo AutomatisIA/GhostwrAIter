@@ -124,6 +124,11 @@ const workshop: WorkshopApi = {
     unwrap(
       "workshop:update-draft-text",
       ipcRenderer.invoke("workshop:update-draft-text", draftId, headline, bodyMarkdown)
+    ),
+  createDraftFromContent: (input) =>
+    unwrap(
+      "workshop:create-draft-from-content",
+      ipcRenderer.invoke("workshop:create-draft-from-content", input)
     )
 };
 

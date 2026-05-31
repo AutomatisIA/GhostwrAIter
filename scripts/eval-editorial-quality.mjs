@@ -206,6 +206,16 @@ async function exerciseFixture(page, fixture) {
       rawOutput = await page.evaluate(async (input) => {
         return await globalThis.window.linkedinPoster.ideas.createFromNewsSource(input);
       }, fixture.payload);
+    } else if (fixture.skill === "linkedin-post-editor") {
+      rawOutput = await page.evaluate(async (input) => {
+        // Injecte le brouillon a corriger (feature 012) puis lance l editeur.
+        const session = await globalThis.window.linkedinPoster.workshop.createDraftFromContent({
+          pillarLabel: "Cadrage",
+          headline: "Brouillon a corriger",
+          bodyMarkdown: input.draftMarkdown
+        });
+        return await globalThis.window.linkedinPoster.workshop.correctDraft(session.draft.id);
+      }, fixture.payload);
     } else {
       throw new Error(`Unsupported fixture skill: ${fixture.skill}`);
     }

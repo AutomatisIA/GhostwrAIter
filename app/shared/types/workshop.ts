@@ -104,4 +104,10 @@ export type WorkshopApi = {
     headline: string,
     bodyMarkdown: string
   ) => Promise<WorkshopSession>;
+  /** Importe un texte de post existant comme brouillon corrigeable (puis correctDraft). */
+  createDraftFromContent: (input: {
+    pillarLabel: string;
+    headline: string;
+    bodyMarkdown: string;
+  }) => Promise<WorkshopSession>;
 };

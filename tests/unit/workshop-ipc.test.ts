@@ -241,4 +241,40 @@ describe("workshop IPC", () => {
       }
     });
   });
+
+  describe("workshop:create-draft-from-content (single input)", () => {
+    it("crée un brouillon corrigeable depuis un texte fourni (ok envelope)", async () => {
+      const { handlers, registrar } = createHarness();
+      registerWorkshopIpcHandlers(registrar, service);
+
+      const result = (await handlers.get("workshop:create-draft-from-content")?.(undefined, {
+        pillarLabel: "Cadrage",
+        headline: "Brouillon importe",
+        bodyMarkdown: "Texte a corriger."
+      })) as IpcResult<{ draft: { id: string; bodyMarkdown: string } }>;
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.draft.id).toBeTruthy();
+        expect(result.data.draft.bodyMarkdown).toBe("Texte a corriger.");
+      }
+    });
+
+    it("rejette une clé parasite via la validation Zod stricte", async () => {
+      const { handlers, registrar } = createHarness();
+      registerWorkshopIpcHandlers(registrar, service);
+
+      const result = (await handlers.get("workshop:create-draft-from-content")?.(undefined, {
+        pillarLabel: "Cadrage",
+        headline: "X",
+        bodyMarkdown: "Y",
+        rogue: "nope"
+      })) as IpcResult<unknown>;
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("IPC_INPUT_INVALID");
+      }
+    });
+  });
 });

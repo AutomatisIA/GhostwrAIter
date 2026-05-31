@@ -536,6 +536,41 @@ export class WorkshopService {
     return this.getSessionByDraftId(variantId);
   }
 
+  /**
+   * Cree un brouillon a partir d un texte fourni (post importe a ameliorer) et
+   * le persiste comme tout autre brouillon, de sorte que `correctDraft` puisse
+   * ensuite l ameliorer par son id. Sert au parcours "importer un post existant
+   * pour le retravailler" et permet a l evaluation editoriale d exercer le skill
+   * post-editor sur des brouillons controles (cas de test reproductibles).
+   */
+  createDraftFromContent(input: {
+    pillarLabel: string;
+    headline: string;
+    bodyMarkdown: string;
+  }): WorkshopSession {
+    const idea = this.ideasRepository.createIdea({
+      title: input.headline,
+      angle: "Brouillon importe pour correction",
+      pillarLabel: input.pillarLabel
+    });
+    const draftId = createId("draft");
+    const createdAt = new Date().toISOString();
+    // Note neutre : un brouillon importe n est pas encore evalue par un skill.
+    const qualityScore = 0.5;
+
+    this.db
+      .prepare(`
+        INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'draft')
+      `)
+      .run(draftId, idea.id, input.headline, input.bodyMarkdown, qualityScore, createdAt);
+
+    this.recordDraftVersion(draftId, input.bodyMarkdown, qualityScore, "manual_edit", createdAt);
+    this.syncDraftTags(draftId, idea.title, idea.angle, idea.pillarLabel, false);
+
+    return this.getSessionByDraftId(draftId);
+  }
+
   correctDraft(draftId: string, sender?: WebContents): WorkshopSession {
     const draft = this.db
       .prepare(`

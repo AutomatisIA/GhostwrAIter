@@ -10,6 +10,7 @@ import {
 import type { HookOption, PostObjective, PostTypology } from "../../shared/types/workshop";
 import {
   correctDraftTupleSchema,
+  createDraftFromContentSchema,
   createVariantTupleSchema,
   draftIdSchema,
   generateFinalDraftTupleSchema,
@@ -107,6 +108,14 @@ export class WorkshopRuntimeService {
   updateDraftText(draftId: string, headline: string, bodyMarkdown: string) {
     return this.service.updateDraftText(draftId, headline, bodyMarkdown);
   }
+
+  createDraftFromContent(input: {
+    pillarLabel: string;
+    headline: string;
+    bodyMarkdown: string;
+  }) {
+    return this.service.createDraftFromContent(input);
+  }
 }
 
 export function registerWorkshopIpcHandlers(
@@ -183,6 +192,12 @@ export function registerWorkshopIpcHandlers(
     "workshop:correct-draft",
     draftIdSchema,
     (draftId, sender) => workshopService.correctDraft(draftId, sender)
+  );
+  registerValidatedHandler(
+    ipcRegistrar,
+    "workshop:create-draft-from-content",
+    createDraftFromContentSchema,
+    (input) => workshopService.createDraftFromContent(input)
   );
   registerValidatedTupleHandler<[string, string], unknown>(
     ipcRegistrar,

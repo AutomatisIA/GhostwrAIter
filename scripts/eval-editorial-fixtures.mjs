@@ -242,10 +242,11 @@ Le reste est marketing.`
   }
 ];
 
-// Skills dont les fixtures sont validees pour la forme mais NON executees par
-// le harnais (pas de chemin d entree public). Signale explicitement dans le
-// rapport (jamais de troncature silencieuse).
-export const DESCOPED_SKILLS = ["linkedin-post-editor"];
+// Mecanisme de descope (skills validees pour la forme mais NON executees,
+// signalees dans le rapport, jamais tronquees en silence). Vide depuis la
+// feature 012 : `workshop.createDraftFromContent` injecte un brouillon, donc
+// l editeur (type D) est desormais exerce de bout en bout.
+export const DESCOPED_SKILLS = [];
 export const DESCOPE_REASON =
   "Aucune API publique n injecte un brouillon arbitraire a corriger (correctDraft ne re-corrige qu un brouillon genere et persiste).";
 

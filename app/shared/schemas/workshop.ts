@@ -103,3 +103,18 @@ export const updateDraftTextTupleSchema = z.tuple([
   z.string().min(1, "headline is required"),
   z.string().min(1, "bodyMarkdown is required")
 ]);
+
+/**
+ * Input schema for `workshop:create-draft-from-content`: importe un texte de
+ * post existant comme brouillon corrigeable. Single-input (objet), valide en
+ * strict pour rejeter toute cle parasite.
+ */
+export const createDraftFromContentSchema = z
+  .object({
+    pillarLabel: z.string().min(1, "pillarLabel is required"),
+    headline: z.string().min(1, "headline is required"),
+    bodyMarkdown: z.string().min(1, "bodyMarkdown is required")
+  })
+  .strict();
+
+export type CreateDraftFromContentInput = z.infer<typeof createDraftFromContentSchema>;
