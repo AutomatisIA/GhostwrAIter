@@ -15,10 +15,14 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
+    "paths": {
+      "@shared/*": ["./app/shared/*"]
+    },
     "types": ["vite/client"]
   },
   "include": [
     "app/renderer/src/**/*.ts",
-    "app/renderer/src/**/*.tsx"
+    "app/renderer/src/**/*.tsx",
+    "app/shared/**/*.ts"
   ]
 }

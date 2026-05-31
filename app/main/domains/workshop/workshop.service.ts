@@ -250,15 +250,23 @@ export class WorkshopService {
     // (structure -> hook -> redaction) via le `sender` propage. Pas de paire
     // composite additionnelle par-dessus (cf. contrat).
     const structures = this.getSuggestedStructures(ideaId, "expertise", "awareness", sender);
-    const hooks = this.generateHooks(ideaId, "expertise", structures[0].key, sender);
+    const topStructure = structures[0];
+    if (!topStructure) {
+      throw new Error("Aucune structure suggeree disponible pour generer le brouillon.");
+    }
+    const hooks = this.generateHooks(ideaId, "expertise", topStructure.key, sender);
+    const topHook = hooks[0];
+    if (!topHook) {
+      throw new Error("Aucune accroche generee pour finaliser le brouillon.");
+    }
     return this.generateFinalDraft(
       ideaId,
       "expertise",
       "awareness",
-      structures[0].key,
-      structures[0].label,
-      hooks[0].id,
-      hooks[0].text,
+      topStructure.key,
+      topStructure.label,
+      topHook.id,
+      topHook.text,
       hooks,
       sender
     );

@@ -20,7 +20,7 @@ export function parseYaml(content: string): unknown {
 export function parseFrontMatter(markdown: string): Record<string, unknown> | null {
   const match = markdown.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
   if (!match) return null;
-  const parsed = parse(match[1]);
+  const parsed = parse(match[1]!);
   return typeof parsed === "object" && parsed !== null
     ? (parsed as Record<string, unknown>)
     : null;

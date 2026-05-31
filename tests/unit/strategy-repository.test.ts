@@ -80,7 +80,7 @@ describe("strategy repository", () => {
       },
       offers: [{ name: "Offre 1", promise: "Promesse 1", problems: "Probleme 1" }],
       icps: [],
-      pillars: [{ label: "Pilier 1", position: 1 }],
+      pillars: [{ label: "Pilier 1", position: 1, isDefault: false }],
       voiceRules: []
     });
 
@@ -93,7 +93,7 @@ describe("strategy repository", () => {
       },
       offers: [{ name: "Offre 2", promise: "Promesse 2", problems: "Probleme 2" }],
       icps: [],
-      pillars: [{ label: "Pilier 2", position: 1 }],
+      pillars: [{ label: "Pilier 2", position: 1, isDefault: false }],
       voiceRules: []
     });
 

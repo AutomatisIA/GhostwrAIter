@@ -23,8 +23,8 @@ describe("Tabs", () => {
     expect(screen.getByRole("tablist")).toBeTruthy();
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(3);
-    expect(tabs[0].getAttribute("aria-selected")).toBe("true");
-    expect(tabs[1].getAttribute("aria-selected")).toBe("false");
+    expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
+    expect(tabs[1]!.getAttribute("aria-selected")).toBe("false");
   });
 
   it("change de selection au clic", () => {
@@ -56,7 +56,7 @@ describe("Tabs", () => {
   it("met le focus clavier uniquement sur l'onglet selectionne (roving tabindex)", () => {
     render(<Harness />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs[0].getAttribute("tabindex")).toBe("0");
-    expect(tabs[1].getAttribute("tabindex")).toBe("-1");
+    expect(tabs[0]!.getAttribute("tabindex")).toBe("0");
+    expect(tabs[1]!.getAttribute("tabindex")).toBe("-1");
   });
 });

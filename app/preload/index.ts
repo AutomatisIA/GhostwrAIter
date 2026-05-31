@@ -197,7 +197,7 @@ const onExecutionProgress: OnExecutionProgress = (listener) => {
 contextBridge.exposeInMainWorld("linkedinPoster", {
   platform: process.platform,
   appName: "GhostwrAIter",
-  appVersion: "1.3.0",
+  appVersion: __APP_VERSION__,
   strategy,
   ideas,
   workshop,

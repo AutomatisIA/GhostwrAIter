@@ -55,12 +55,12 @@ describe("LibraryScreen a11y", () => {
 
     const tabs = screen.getAllByRole("tab");
     expect(tabs).toHaveLength(2);
-    expect(tabs[0].textContent).toContain("Brouillons");
-    expect(tabs[1].textContent).toContain("Planning");
+    expect(tabs[0]!.textContent).toContain("Brouillons");
+    expect(tabs[1]!.textContent).toContain("Planning");
 
     // L'onglet « Brouillons » est selectionne par defaut.
-    expect(tabs[0].getAttribute("aria-selected")).toBe("true");
-    expect(tabs[1].getAttribute("aria-selected")).toBe("false");
+    expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
+    expect(tabs[1]!.getAttribute("aria-selected")).toBe("false");
   });
 
   it("respecte le roving tabindex (ordre de focus coherent)", async () => {
@@ -71,8 +71,8 @@ describe("LibraryScreen a11y", () => {
 
     // Seul l'onglet selectionne est atteignable via Tab ; les autres sont
     // navigables aux fleches (tabindex -1), ce qui garde un ordre de focus net.
-    expect(tabs[0].getAttribute("tabindex")).toBe("0");
-    expect(tabs[1].getAttribute("tabindex")).toBe("-1");
+    expect(tabs[0]!.getAttribute("tabindex")).toBe("0");
+    expect(tabs[1]!.getAttribute("tabindex")).toBe("-1");
   });
 
   it("ne laisse aucune action principale hors de portee clavier (boutons natifs)", async () => {

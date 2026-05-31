@@ -6,6 +6,7 @@ import type { IdeaRecord } from "./ideas";
 export type { HookOption } from "../schemas/workshop";
 import type { z } from "zod";
 import type {
+  HookOption,
   postObjectiveSchema,
   postTypologySchema
 } from "../schemas/workshop";
@@ -55,6 +56,11 @@ export type WorkshopContextUsed = {
   pillarLabel: string;
   strategyProfileName?: string;
   strategyPositioning?: string;
+  strategyBio?: string;
+  strategyExpertiseSummary?: string;
+  strategyOffersSummary?: string;
+  strategyIcpSummary?: string;
+  pillarDescription?: string;
   voiceGuardrail: string;
   activeSkills: string[];
 };

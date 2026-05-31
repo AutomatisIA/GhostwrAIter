@@ -17,10 +17,10 @@ describe("Stepper", () => {
   it("distingue completed / current / upcoming", () => {
     render(<Stepper steps={steps} currentIndex={1} />);
     const items = screen.getAllByRole("listitem");
-    expect(items[0].getAttribute("data-state")).toBe("completed");
-    expect(items[1].getAttribute("data-state")).toBe("current");
-    expect(items[2].getAttribute("data-state")).toBe("upcoming");
-    expect(items[3].getAttribute("data-state")).toBe("upcoming");
+    expect(items[0]!.getAttribute("data-state")).toBe("completed");
+    expect(items[1]!.getAttribute("data-state")).toBe("current");
+    expect(items[2]!.getAttribute("data-state")).toBe("upcoming");
+    expect(items[3]!.getAttribute("data-state")).toBe("upcoming");
   });
 
   it("pose aria-current=step uniquement sur l'etape courante", () => {
@@ -28,7 +28,7 @@ describe("Stepper", () => {
     const items = screen.getAllByRole("listitem");
     const currentMarkers = items.filter((el) => el.getAttribute("aria-current") === "step");
     expect(currentMarkers).toHaveLength(1);
-    expect(items[2].getAttribute("aria-current")).toBe("step");
+    expect(items[2]!.getAttribute("aria-current")).toBe("step");
   });
 
   it("marque les etapes passees avec un check, pas comme actives", () => {

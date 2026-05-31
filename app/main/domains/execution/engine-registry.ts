@@ -49,7 +49,7 @@ export class EngineRegistry {
     }
 
     // No authenticated engine found — return the stored one or the first
-    const fallbackName = storedName ?? ENGINE_PRIORITY[0];
+    const fallbackName: CliEngineName = storedName ?? ENGINE_PRIORITY[0]!;
     const fallbackEngine = this.getEngineByName(fallbackName);
     const fallbackStatus = fallbackEngine
       ? await fallbackEngine.getStatus()

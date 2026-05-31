@@ -3,7 +3,6 @@ import {
   EditorialDoctrineParseError,
   loadEditorialDoctrineFromFile,
   parseEditorialDoctrine
-  // @ts-expect-error — JS module without TS declarations, exposed via Node ESM
 } from "../../scripts/eval-editorial-doctrine-parser.mjs";
 
 const wellFormed = `# Editorial doctrine

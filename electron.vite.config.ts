@@ -1,7 +1,14 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import { injectCspMetaTag, type CspMode } from "./app/build/csp";
+
+// Single source of truth for the displayed app version: package.json.
+const appVersion: string = JSON.parse(
+  readFileSync(resolve(__dirname, "package.json"), "utf8")
+).version;
+const versionDefine = { __APP_VERSION__: JSON.stringify(appVersion) };
 
 function cspInjectionPlugin() {
   return {
@@ -34,6 +41,7 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    define: versionDefine,
     build: {
       outDir: "dist-electron/preload",
       lib: {

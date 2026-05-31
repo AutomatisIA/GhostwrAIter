@@ -15,7 +15,7 @@
     "preview": "electron-vite preview",
     "open:mac:latest": "./scripts/open-mac-latest.sh",
     "make:mac-launcher": "node scripts/build-mac-launcher.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "lint": "eslint .",
     "test": "npm run rebuild:native:node && vitest run",
     "test:watch": "vitest",

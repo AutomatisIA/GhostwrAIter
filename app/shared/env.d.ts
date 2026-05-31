@@ -9,10 +9,14 @@ import type { WorkshopApi } from "./types/workshop";
 export {};
 
 declare global {
+  /** Injecte par electron-vite (`define`) depuis package.json.version. */
+  const __APP_VERSION__: string;
+
   interface Window {
     linkedinPoster: {
       platform: string;
       appName: string;
+      appVersion: string;
       strategy: StrategyApi;
       ideas: IdeasApi;
       workshop: WorkshopApi;

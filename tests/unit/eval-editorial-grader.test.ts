@@ -54,7 +54,7 @@ describe("gradeOutput — Rule 1 (skill refused)", () => {
     );
     expect(result.verdict).toBe("fail");
     expect(result.violatedRules).toHaveLength(1);
-    expect(result.violatedRules[0].rule).toBe("skill-refused");
+    expect(result.violatedRules[0]!.rule).toBe("skill-refused");
   });
 });
 

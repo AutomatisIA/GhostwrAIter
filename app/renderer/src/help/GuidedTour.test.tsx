@@ -41,7 +41,7 @@ describe("GuidedTour (accessibilite + navigation)", () => {
 
   it("demarre a la premiere etape, Precedent desactive", () => {
     render(<GuidedTour open onClose={vi.fn()} />);
-    expect(screen.getByText(TOUR_STEPS[0].title)).toBeTruthy();
+    expect(screen.getByText(TOUR_STEPS[0]!.title)).toBeTruthy();
     const previous = screen.getByRole("button", { name: "Précédent" });
     expect((previous as HTMLButtonElement).disabled).toBe(true);
   });
@@ -49,9 +49,9 @@ describe("GuidedTour (accessibilite + navigation)", () => {
   it("avance et recule entre les etapes", () => {
     render(<GuidedTour open onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Suivant" }));
-    expect(screen.getByText(TOUR_STEPS[1].title)).toBeTruthy();
+    expect(screen.getByText(TOUR_STEPS[1]!.title)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Précédent" }));
-    expect(screen.getByText(TOUR_STEPS[0].title)).toBeTruthy();
+    expect(screen.getByText(TOUR_STEPS[0]!.title)).toBeTruthy();
   });
 
   it("affiche Terminer sur la derniere etape et ferme dessus", () => {
@@ -81,14 +81,14 @@ describe("GuidedTour (accessibilite + navigation)", () => {
 
   it("deplace le focus sur le titre a l'ouverture", () => {
     render(<GuidedTour open onClose={vi.fn()} />);
-    expect(document.activeElement?.textContent).toBe(TOUR_STEPS[0].title);
+    expect(document.activeElement?.textContent).toBe(TOUR_STEPS[0]!.title);
   });
 
   it("piege le focus (Tab depuis le dernier revient au premier)", () => {
     render(<GuidedTour open onClose={vi.fn()} />);
     const dialog = screen.getByRole("dialog");
     const buttons = screen.getAllByRole("button");
-    const last = buttons[buttons.length - 1];
+    const last = buttons[buttons.length - 1]!;
     last.focus();
     fireEvent.keyDown(dialog, { key: "Tab" });
     expect(document.activeElement).toBe(buttons[0]);
