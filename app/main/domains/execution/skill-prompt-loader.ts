@@ -3,6 +3,14 @@ import { dirname, join } from "node:path";
 
 export type SkillPromptLoader = {
   loadPrompt(skillName: string): string;
+  /**
+   * Charge le preambule cadre partage (doctrine qualite + contrat JSON
+   * top-level) depuis `skills/_framework/PROMPT.md` (section `## Prompt`).
+   * Prefixe a chaque prompt de skill. Editable sans recompilation.
+   * Leve `FrameworkPromptNotFoundError` si absent ou vide (jamais de
+   * degradation silencieuse).
+   */
+  loadFrameworkPreamble(): string;
 };
 
 // Walk parent directories from `startDir` until a `package.json` is found.
@@ -32,6 +40,17 @@ export class SkillPromptNotFoundError extends Error {
     this.skillName = skillName;
   }
 }
+
+export class FrameworkPromptNotFoundError extends Error {
+  readonly code = "FRAMEWORK_PROMPT_NOT_FOUND" as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "FrameworkPromptNotFoundError";
+  }
+}
+
+const FRAMEWORK_DIR = "_framework";
 
 const SKILL_NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 const PROMPT_HEADING = /^## Prompt\s*$/;
@@ -89,6 +108,28 @@ export function createDefaultSkillPromptLoader(skillsRoot?: string): SkillPrompt
         throw new SkillPromptNotFoundError(
           skillName,
           `Skill prompt section missing or empty in ${filePath}. Add a "## Prompt" heading followed by the prompt body.`
+        );
+      }
+
+      return body;
+    },
+
+    loadFrameworkPreamble(): string {
+      const filePath = join(baseDir, FRAMEWORK_DIR, "PROMPT.md");
+
+      let raw: string;
+      try {
+        raw = readFileSync(filePath, "utf-8");
+      } catch {
+        throw new FrameworkPromptNotFoundError(
+          `Framework preamble file not found at ${filePath}. Create skills/${FRAMEWORK_DIR}/PROMPT.md with a "## Prompt" section.`
+        );
+      }
+
+      const body = extractPromptBody(raw);
+      if (body === null) {
+        throw new FrameworkPromptNotFoundError(
+          `Framework preamble section missing or empty in ${filePath}. Add a "## Prompt" heading followed by the preamble body.`
         );
       }
 

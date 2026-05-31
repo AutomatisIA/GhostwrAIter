@@ -9,6 +9,7 @@ import {
   type CodexCliFilesystem
 } from "../../app/main/domains/execution/codex-cli-runner";
 import {
+  FrameworkPromptNotFoundError,
   SkillPromptNotFoundError,
   createDefaultSkillPromptLoader,
   type SkillPromptLoader
@@ -405,8 +406,68 @@ describe("codex cli runner — SKILL.md integration (feature 006)", () => {
     attachments: []
   };
 
+  it("assemble le preambule cadre extrait a l identique (parite US1)", () => {
+    // Parite : la chaine assemblee doit placer le preambule cadre tel quel,
+    // suivi d une ligne vide puis de "Contract-specific instructions:". Garde
+    // contre une extraction naive qui ajouterait/retirerait un saut de ligne.
+    const capturedPrompts: string[] = [];
+    const executor: CodexCliCommandExecutor = vi.fn().mockImplementation((_args, input) => {
+      capturedPrompts.push(input as string);
+      return { status: 1, stdout: "", stderr: "forced" };
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-parity"),
+      readFile: vi.fn(),
+      removeDir: vi.fn()
+    };
+    const stubLoader: SkillPromptLoader = {
+      loadFrameworkPreamble: () => "PREAMBLE LINE A\nPREAMBLE LINE B",
+      loadPrompt: () => "SKILL BODY"
+    };
+    const runner = new CodexCliRunner(executor, filesystem, stubLoader);
+
+    runner.execute(baseInvocation);
+
+    const prompt = capturedPrompts[0]!;
+    expect(prompt.startsWith("PREAMBLE LINE A\nPREAMBLE LINE B\n\nContract-specific instructions:\n")).toBe(
+      true
+    );
+    expect(prompt).toContain("\nContract-specific instructions:\nSKILL BODY\n\nInvocation:\n");
+  });
+
+  it("returns FRAMEWORK_PROMPT_NOT_FOUND when the framework preamble is missing", () => {
+    const stubLoader: SkillPromptLoader = {
+      loadFrameworkPreamble(): string {
+        throw new FrameworkPromptNotFoundError("framework preamble missing");
+      },
+      loadPrompt(): string {
+        return "unused";
+      }
+    };
+    const executor: CodexCliCommandExecutor = vi.fn().mockReturnValue({
+      status: 0,
+      stdout: "",
+      stderr: ""
+    });
+    const filesystem: CodexCliFilesystem = {
+      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-fw-missing"),
+      readFile: vi.fn().mockReturnValue(""),
+      removeDir: vi.fn()
+    };
+    const runner = new CodexCliRunner(executor, filesystem, stubLoader);
+
+    const result = runner.execute(baseInvocation);
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("FRAMEWORK_PROMPT_NOT_FOUND");
+    expect(executor).not.toHaveBeenCalled();
+  });
+
   it("returns SKILL_PROMPT_NOT_FOUND when the loader throws", () => {
     const stubLoader: SkillPromptLoader = {
+      loadFrameworkPreamble(): string {
+        return "FRAMEWORK PREAMBLE";
+      },
       loadPrompt(skillName: string): string {
         throw new SkillPromptNotFoundError(skillName, `prompt missing for ${skillName}`);
       }
@@ -436,6 +497,12 @@ describe("codex cli runner — SKILL.md integration (feature 006)", () => {
     const tmpRoot = mkdtempSync(join(tmpdir(), "ghostwraiter-runner-edit-"));
     try {
       mkdirSync(join(tmpRoot, "linkedin-post-writer"), { recursive: true });
+      mkdirSync(join(tmpRoot, "_framework"), { recursive: true });
+      writeFileSync(
+        join(tmpRoot, "_framework", "PROMPT.md"),
+        "# fw\n\n## Prompt\n\nFRAMEWORK PREAMBLE MARKER\n",
+        "utf-8"
+      );
       const skillFile = join(tmpRoot, "linkedin-post-writer", "SKILL.md");
 
       const promptV1 = "FIRST PROMPT BODY MARKER";
