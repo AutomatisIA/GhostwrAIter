@@ -547,6 +547,11 @@ export class WorkshopService {
     pillarLabel: string;
     headline: string;
     bodyMarkdown: string;
+    typology?: PostTypology;
+    objective?: PostObjective;
+    structureKey?: string;
+    structureLabel?: string;
+    selectedHookText?: string;
   }): WorkshopSession {
     const idea = this.ideasRepository.createIdea({
       title: input.headline,
@@ -558,12 +563,43 @@ export class WorkshopService {
     // Note neutre : un brouillon importe n est pas encore evalue par un skill.
     const qualityScore = 0.5;
 
+    // L editeur (post-editor) exige un contexte de production complet
+    // (typologie, objectif, structure, accroche) pour pouvoir le PRESERVER lors
+    // de la correction ; un brouillon importe n en a pas, on fournit donc des
+    // valeurs par defaut sures. L accroche par defaut est la premiere ligne non
+    // vide du corps (de facto l ouverture a preserver).
+    const firstLine =
+      input.bodyMarkdown
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line.length > 0) ?? input.headline;
+    const typology: PostTypology = input.typology ?? "expertise";
+    const objective: PostObjective = input.objective ?? "awareness";
+    const structureKey = input.structureKey ?? "belief-terrain-reality";
+    const structureLabel = input.structureLabel ?? "Croyance -> terrain -> realite";
+    const selectedHookText = input.selectedHookText ?? firstLine;
+
     this.db
       .prepare(`
-        INSERT INTO drafts (id, idea_id, headline, body_markdown, quality_score, created_at, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'draft')
+        INSERT INTO drafts (
+          id, idea_id, headline, body_markdown, quality_score, created_at, status,
+          typology, objective, structure_key, structure_label, selected_hook_text
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)
       `)
-      .run(draftId, idea.id, input.headline, input.bodyMarkdown, qualityScore, createdAt);
+      .run(
+        draftId,
+        idea.id,
+        input.headline,
+        input.bodyMarkdown,
+        qualityScore,
+        createdAt,
+        typology,
+        objective,
+        structureKey,
+        structureLabel,
+        selectedHookText
+      );
 
     this.recordDraftVersion(draftId, input.bodyMarkdown, qualityScore, "manual_edit", createdAt);
     this.syncDraftTags(draftId, idea.title, idea.angle, idea.pillarLabel, false);
