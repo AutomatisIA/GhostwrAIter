@@ -53,7 +53,7 @@ describe("workshop service", () => {
     const structures = workshopService.getSuggestedStructures(idea.id, "expertise", "awareness");
 
     expect(structures.length).toBeGreaterThan(0);
-    expect(structures[0].key).toBe("belief-terrain-reality");
+    expect(structures[0]!.key).toBe("belief-terrain-reality");
   });
 
   it("generates hooks for an idea and structure", () => {
@@ -66,7 +66,7 @@ describe("workshop service", () => {
     const hooks = workshopService.generateHooks(idea.id, "expertise", "belief-terrain-reality");
 
     expect(hooks.length).toBeGreaterThan(0);
-    expect(hooks[0].text).toContain("Le vrai probleme");
+    expect(hooks[0]!.text).toContain("Le vrai probleme");
   });
 
   it("generates a final draft from all selections", () => {
@@ -77,16 +77,16 @@ describe("workshop service", () => {
     });
 
     const structures = workshopService.getSuggestedStructures(idea.id, "expertise", "awareness");
-    const hooks = workshopService.generateHooks(idea.id, "expertise", structures[0].key);
+    const hooks = workshopService.generateHooks(idea.id, "expertise", structures[0]!.key);
 
     const session = workshopService.generateFinalDraft(
       idea.id,
       "expertise",
       "awareness",
-      structures[0].key,
-      structures[0].label,
-      hooks[0].id,
-      hooks[0].text,
+      structures[0]!.key,
+      structures[0]!.label,
+      hooks[0]!.id,
+      hooks[0]!.text,
       hooks
     );
 
@@ -174,15 +174,15 @@ describe("workshop service", () => {
     });
 
     const structures = service.getSuggestedStructures(idea.id, "expertise", "awareness");
-    const hooks = service.generateHooks(idea.id, "expertise", structures[0].key);
+    const hooks = service.generateHooks(idea.id, "expertise", structures[0]!.key);
     service.generateFinalDraft(
       idea.id,
       "expertise",
       "awareness",
-      structures[0].key,
-      structures[0].label,
-      hooks[0].id,
-      hooks[0].text,
+      structures[0]!.key,
+      structures[0]!.label,
+      hooks[0]!.id,
+      hooks[0]!.text,
       hooks
     );
 

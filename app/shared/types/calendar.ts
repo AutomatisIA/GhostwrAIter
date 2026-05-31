@@ -10,7 +10,8 @@ export type CalendarItem = {
 // Re-exported from the zod schema in app/shared/schemas/calendar.ts which
 // is now the single source of truth for the schedule-draft input shape
 // (feature 003).
-export type { ScheduleDraftInput } from "../schemas/calendar";
+import type { ScheduleDraftInput } from "../schemas/calendar";
+export type { ScheduleDraftInput };
 
 export type CalendarApi = {
   listItems: () => Promise<CalendarItem[]>;

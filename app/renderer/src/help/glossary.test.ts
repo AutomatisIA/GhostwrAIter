@@ -45,7 +45,8 @@ describe("glossary", () => {
   it("ne contient aucun em-dash dans les definitions, labels et exemples", () => {
     for (const term of TERM_KEYS) {
       const entry = GLOSSARY[term];
-      const text = `${entry.label} ${entry.definition} ${entry.example ?? ""}`;
+      const example = "example" in entry ? entry.example : "";
+      const text = `${entry.label} ${entry.definition} ${example}`;
       expect(text.includes("—"), `em-dash detecte dans ${term}`).toBe(false);
     }
   });

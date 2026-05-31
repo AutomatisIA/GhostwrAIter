@@ -22,7 +22,7 @@ import type {
   WorkshopSession
 } from "../../../shared/types/workshop";
 import { createId } from "../../shared/create-id";
-import { insertExecutionRun } from "../execution/execution-runs.repository";
+import { recordExecutionRun } from "../execution/execution-runs.repository";
 
 type WorkshopColumnSpec = {
   readonly table: "drafts" | "execution_runs";
@@ -250,15 +250,23 @@ export class WorkshopService {
     // (structure -> hook -> redaction) via le `sender` propage. Pas de paire
     // composite additionnelle par-dessus (cf. contrat).
     const structures = this.getSuggestedStructures(ideaId, "expertise", "awareness", sender);
-    const hooks = this.generateHooks(ideaId, "expertise", structures[0].key, sender);
+    const topStructure = structures[0];
+    if (!topStructure) {
+      throw new Error("Aucune structure suggeree disponible pour generer le brouillon.");
+    }
+    const hooks = this.generateHooks(ideaId, "expertise", topStructure.key, sender);
+    const topHook = hooks[0];
+    if (!topHook) {
+      throw new Error("Aucune accroche generee pour finaliser le brouillon.");
+    }
     return this.generateFinalDraft(
       ideaId,
       "expertise",
       "awareness",
-      structures[0].key,
-      structures[0].label,
-      hooks[0].id,
-      hooks[0].text,
+      topStructure.key,
+      topStructure.label,
+      topHook.id,
+      topHook.text,
       hooks,
       sender
     );
@@ -291,7 +299,7 @@ export class WorkshopService {
       throw new Error(result.error?.message ?? result.summary);
     }
 
-    this.recordExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
+    this.persistExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
 
     if (result.data?.structures && result.data.structures.length > 0) {
       return result.data.structures.map((s) => ({
@@ -341,7 +349,7 @@ export class WorkshopService {
       throw new Error(result.error?.message ?? result.summary);
     }
 
-    this.recordExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
+    this.persistExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
 
     return result.data.hooks.map((hook, index) => ({
       id: `hook_option_${index}`,
@@ -441,7 +449,7 @@ export class WorkshopService {
         .run(createId("hook"), draftId, text);
     }
 
-    this.recordExecutionRun(writerInvocation, writerResult, idea.id, draftId, createdAt);
+    this.persistExecutionRun(writerInvocation, writerResult, idea.id, draftId, createdAt);
     this.recordDraftVersion(draftId, bodyMarkdown, generationQualityScore, "generation", createdAt);
     this.syncDraftTags(draftId, idea.title, idea.angle, idea.pillarLabel, false);
 
@@ -521,7 +529,7 @@ export class WorkshopService {
       )
       .run(variantId, idea.id, result.data.draft.headline, variantBody, 0.72, createdAt, draftId);
 
-    this.recordExecutionRun(invocation, result, idea.id, variantId, createdAt);
+    this.persistExecutionRun(invocation, result, idea.id, variantId, createdAt);
     this.recordDraftVersion(variantId, variantBody, 0.72, "variant", createdAt);
     this.syncDraftTags(variantId, idea.title, idea.angle, idea.pillarLabel, true);
 
@@ -584,7 +592,7 @@ export class WorkshopService {
       correctedBody
     );
 
-    this.recordExecutionRun(editorInvocation, editorResult, draft.ideaId, draftId, correctedAt);
+    this.persistExecutionRun(editorInvocation, editorResult, draft.ideaId, draftId, correctedAt);
 
     if (correctedQualityScore <= draft.qualityScore) {
       this.recordDraftVersion(draftId, draft.bodyMarkdown, draft.qualityScore, "correction", correctedAt);
@@ -830,7 +838,7 @@ export class WorkshopService {
       .join(" | ");
   }
 
-  private recordExecutionRun(
+  private persistExecutionRun(
     invocation: SkillRunnerInvocation,
     result: SkillRunnerResult,
     ideaId: string,
@@ -844,23 +852,13 @@ export class WorkshopService {
         )
       : null;
 
-    insertExecutionRun(this.db, {
-      id: invocation.runId,
+    recordExecutionRun(this.db, {
+      invocation,
+      result,
       ideaId,
       draftId,
-      skillName: invocation.skillName,
-      skillVersion: invocation.skillVersion,
-      status: result.status,
-      summary: result.summary,
-      inputJson: JSON.stringify(invocation),
-      outputJson: JSON.stringify(result),
-      outputMarkdown:
-        result.artifacts?.find((artifact) => artifact.kind === "markdown")?.content ?? null,
-      errorMessage: result.error?.message ?? null,
-      logPath,
-      startedAt: createdAt,
-      finishedAt: createdAt,
-      createdAt
+      createdAt,
+      logPath
     });
 
     if (this.executionLogsDirectory) {

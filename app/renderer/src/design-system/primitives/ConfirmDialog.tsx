@@ -72,6 +72,9 @@ export function ConfirmDialog({
       }
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
+      if (!first || !last) {
+        return;
+      }
       const active = document.activeElement;
       // Garde : si le focus est hors du dialogue (ou nul), on le ramène sur le
       // premier élément focusable plutôt que de comparer un `activeElement`

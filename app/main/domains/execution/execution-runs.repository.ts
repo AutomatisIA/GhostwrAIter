@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import type { SkillRunnerInvocation, SkillRunnerResult } from "./skill-runner.service";
 
 // Single source of truth for writing rows to the execution_runs table.
 // Consolidates the formerly-duplicated INSERT statements that lived inline in
@@ -54,4 +55,44 @@ export function insertExecutionRun(db: Database.Database, payload: ExecutionRunP
     payload.finishedAt,
     payload.createdAt
   );
+}
+
+/**
+ * Helper unique d enregistrement d une execution : assemble la ligne
+ * `execution_runs` a partir de l invocation et du resultat, puis l ecrit via
+ * insertExecutionRun. Remplace les assemblages de payload dupliques (atelier,
+ * bibliotheque, veille) par un mapping unique de colonnes/valeurs. La cle est
+ * `invocation.runId` ; `startedAt`/`finishedAt`/`createdAt` partagent `createdAt`
+ * (instant unique de persistance, comportement preexistant).
+ */
+export function recordExecutionRun(
+  db: Database.Database,
+  params: {
+    invocation: SkillRunnerInvocation;
+    result: SkillRunnerResult;
+    ideaId: string | null;
+    draftId: string | null;
+    createdAt: string;
+    logPath?: string | null;
+  }
+): void {
+  const { invocation, result, ideaId, draftId, createdAt } = params;
+  insertExecutionRun(db, {
+    id: invocation.runId,
+    ideaId,
+    draftId,
+    skillName: invocation.skillName,
+    skillVersion: invocation.skillVersion,
+    status: result.status,
+    summary: result.summary,
+    inputJson: JSON.stringify(invocation),
+    outputJson: JSON.stringify(result),
+    outputMarkdown:
+      result.artifacts?.find((artifact) => artifact.kind === "markdown")?.content ?? null,
+    errorMessage: result.error?.message ?? null,
+    logPath: params.logPath ?? null,
+    startedAt: createdAt,
+    finishedAt: createdAt,
+    createdAt
+  });
 }

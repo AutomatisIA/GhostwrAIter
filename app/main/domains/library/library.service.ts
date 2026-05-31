@@ -3,7 +3,7 @@ import {
   SkillRunnerService,
   type SkillRunnerInvocation
 } from "../execution/skill-runner.service";
-import { insertExecutionRun } from "../execution/execution-runs.repository";
+import { recordExecutionRun } from "../execution/execution-runs.repository";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   LibraryEntry,
@@ -123,21 +123,11 @@ export class LibraryService {
       `)
       .run(`version_${Date.now()}`, variantId, bodyMarkdown, 0.84, createdAt);
 
-    insertExecutionRun(this.db, {
-      id: runId,
+    recordExecutionRun(this.db, {
+      invocation,
+      result,
       ideaId: source.ideaId,
       draftId: variantId,
-      skillName: invocation.skillName,
-      skillVersion: invocation.skillVersion,
-      status: result.status,
-      summary: result.summary,
-      inputJson: JSON.stringify(invocation),
-      outputJson: JSON.stringify(result),
-      outputMarkdown: result.artifacts?.[0]?.content ?? null,
-      errorMessage: null,
-      logPath: null,
-      startedAt: createdAt,
-      finishedAt: createdAt,
       createdAt
     });
 
@@ -294,21 +284,11 @@ export class LibraryService {
       `)
       .run(`version_${Date.now()}`, variantId, bodyMarkdown, qualityScore, createdAt);
 
-    insertExecutionRun(this.db, {
-      id: runId,
+    recordExecutionRun(this.db, {
+      invocation,
+      result,
       ideaId: source.ideaId,
       draftId: variantId,
-      skillName: invocation.skillName,
-      skillVersion: invocation.skillVersion,
-      status: result.status,
-      summary: result.summary,
-      inputJson: JSON.stringify(invocation),
-      outputJson: JSON.stringify(result),
-      outputMarkdown: result.artifacts?.[0]?.content ?? null,
-      errorMessage: null,
-      logPath: null,
-      startedAt: createdAt,
-      finishedAt: createdAt,
       createdAt
     });
 

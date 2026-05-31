@@ -42,7 +42,7 @@ function getOnlyJob(doc: WorkflowDocument): WorkflowJob {
   const jobs = doc.jobs ?? {};
   const keys = Object.keys(jobs);
   expect(keys).toHaveLength(1);
-  return jobs[keys[0]];
+  return jobs[keys[0]!]!;
 }
 
 function findStep(steps: WorkflowStep[], predicate: (s: WorkflowStep) => boolean): WorkflowStep {

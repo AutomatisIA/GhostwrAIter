@@ -5,6 +5,8 @@ export interface CardProps extends React.HTMLAttributes<HTMLElement> {
   interactive?: boolean;
   accent?: boolean;
   as?: React.ElementType;
+  /** Cible de navigation transmise telle quelle quand `as` est un composant de routing (ex. react-router `Link`). */
+  to?: string;
 }
 
 /**

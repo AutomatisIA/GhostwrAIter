@@ -1,6 +1,6 @@
 import log from "electron-log/main.js";
 import type { WebContents } from "electron";
-import { ZodError, type ZodTypeAny, type ZodTuple } from "zod";
+import { z, ZodError, type ZodTypeAny } from "zod";
 
 /**
  * Discriminated-union envelope produced by every validated IPC handler.
@@ -179,11 +179,11 @@ function logFailure(channel: string, envelope: IpcResult<unknown>): void {
  *
  * Never throws out of the handler: every failure path produces an envelope.
  */
-export function registerValidatedHandler<TInput, TOutput>(
+export function registerValidatedHandler<TSchema extends ZodTypeAny, TOutput>(
   ipcRegistrar: IpcRegistrar,
   channel: string,
-  schema: ZodTypeAny,
-  handler: ValidatedIpcHandler<TInput, TOutput>
+  schema: TSchema,
+  handler: ValidatedIpcHandler<z.output<TSchema>, TOutput>
 ): void {
   ipcRegistrar.handle(channel, async (event, ...args) => {
     const rawInput = args.length === 0 ? undefined : args[0];
@@ -194,7 +194,7 @@ export function registerValidatedHandler<TInput, TOutput>(
       return envelope;
     }
     try {
-      const output = await handler(parsed.data as TInput, extractSender(event));
+      const output = await handler(parsed.data as z.output<TSchema>, extractSender(event));
       return { ok: true, data: output } satisfies IpcResult<TOutput>;
     } catch (err) {
       const envelope = classifyThrown(err);
@@ -208,6 +208,10 @@ export function registerValidatedHandler<TInput, TOutput>(
  * Register an IPC handler whose input is a positional tuple, validated by the
  * given tuple schema and spread into the handler as positional arguments.
  *
+ * `tupleSchema` is typed `ZodType<TArgs>`, so the schema's parsed output is
+ * compile-time tied to the handler's positional argument types: a schema whose
+ * shape diverges from `TArgs` fails to typecheck (no `unknown` bridge cast).
+ *
  * Same envelope guarantees as `registerValidatedHandler`.
  */
 export function registerValidatedTupleHandler<
@@ -216,7 +220,7 @@ export function registerValidatedTupleHandler<
 >(
   ipcRegistrar: IpcRegistrar,
   channel: string,
-  tupleSchema: ZodTuple<never, never>,
+  tupleSchema: z.ZodType<TArgs>,
   handler: ValidatedIpcTupleHandler<TArgs, TOutput>
 ): void {
   ipcRegistrar.handle(channel, async (event, ...args) => {
@@ -227,7 +231,7 @@ export function registerValidatedTupleHandler<
       return envelope;
     }
     try {
-      const parsedArgs = parsed.data as unknown as TArgs;
+      const parsedArgs: TArgs = parsed.data;
       const output = await handler(
         ...([...parsedArgs, extractSender(event)] as [...TArgs, WebContents?])
       );

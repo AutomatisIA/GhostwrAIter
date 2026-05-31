@@ -4,16 +4,22 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowJs": true,
+    "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
+    "paths": {
+      "@shared/*": ["./app/shared/*"]
+    },
     "types": ["node"]
   },
   "include": [
     "electron.vite.config.ts",
     "scripts/**/*.mjs",
+    "app/build/**/*.ts",
     "app/main/**/*.ts",
     "app/preload/**/*.ts",
     "app/shared/**/*.ts",

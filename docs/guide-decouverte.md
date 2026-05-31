@@ -1,133 +1,41 @@
-# Guide de Decouverte
+# Guide de découverte
 
 ## Ce qu'est GhostwrAIter
 
-GhostwrAIter est un cockpit editorial local pour produire, corriger, reutiliser et planifier des contenus LinkedIn.
+GhostwrAIter est une application de bureau, locale, qui vous aide à produire des posts LinkedIn de qualité. Ce n'est pas un simple générateur de texte : c'est un atelier qui transforme votre stratégie éditoriale en posts concrets, sans repartir de zéro à chaque fois.
 
-Ce n'est pas un simple generateur de texte.
-
-L'application sert a transformer une strategie editoriale en systeme de travail concret:
-
-- definir un cap editorial clair
-- capturer des idees ou de la veille
-- transformer un sujet en post structure
-- garder les brouillons utiles dans une bibliotheque
-- planifier les publications
-- suivre les executions du runner Codex
+Vos données restent sur votre machine, et vous gardez toujours la décision finale : l'application propose, vous validez.
 
 ## Pourquoi l'outil existe
 
-L'objectif est de produire des posts utiles, coherents et reutilisables sans repartir de zero a chaque fois.
+Pour écrire régulièrement des posts utiles et cohérents, fidèles à votre voix, sans la fatigue de la page blanche et sans le rendu générique d'une IA à qui l'on demande un texte « au hasard ».
 
-Le probleme que l'outil cherche a resoudre est simple:
+## La visite guidée
 
-- trop d'idees restent au stade de note
-- les posts generes par IA sont souvent generiques
-- la strategie reste implicite au lieu d'etre exploitable
-- les bons brouillons se perdent
-- la production manque de cadence et de capitalisation
+Au tout premier lancement, sur un espace de travail vierge, une courte visite guidée se déclenche automatiquement. Elle présente le parcours et chaque écran en langage clair. Vous pouvez la passer à tout moment, et la **relancer plus tard depuis les Paramètres**.
 
-GhostwrAIter sert donc a garder la strategie, le backlog, les drafts et le calendrier dans un seul flux local.
+## Les cinq écrans, dans l'ordre conseillé
 
-## Pour qui
+GhostwrAIter s'utilise dans un ordre simple : **Stratégie → Créer → Bibliothèque**, avec le Cockpit comme point de départ et les Paramètres pour les réglages.
 
-L'outil est pense pour une personne qui veut piloter sa production LinkedIn avec un niveau de controle eleve:
+1. **Cockpit** : votre tableau de bord. Il montre où vous en êtes et ce qu'il reste à faire. C'est le point de départ à chaque ouverture.
 
-- consultant
-- independant
-- expert metier
-- dirigeant
-- createur qui veut une machine editoriale locale plutot qu'un SaaS
+2. **Stratégie** : commencez ici. Vous décrivez les clients que vous visez, vos thèmes (vos piliers) et votre façon de vous exprimer (votre voix). L'application s'en sert pour écrire des posts qui vous ressemblent.
 
-## Comment lire l'application
+3. **Créer** : vous transformez une idée en post, étape par étape, avec l'aide de l'assistant : cadrage, structure, accroche, rédaction. Vous gardez la main du début à la fin.
 
-L'application suit un ordre logique:
+4. **Bibliothèque** : tous vos posts s'y rangent : brouillons, variantes retravaillées et publications planifiées. Vous les retrouvez, les modifiez et les organisez quand vous voulez.
 
-1. `Strategie`
-   Tu definis qui tu es, ce que tu vends, pour qui tu ecris et les regles de voix.
-2. `Idees`
-   Tu captures des sujets, des angles ou une source de veille.
-3. `Atelier`
-   Tu transformes une idee en post via structure, hook, draft puis correction.
-4. `Bibliotheque`
-   Tu retrouves les contenus utiles et tu fabriques des variantes.
-5. `Calendrier`
-   Tu donnes une date a un draft.
-6. `Runner`
-   Tu verifies si Codex est bien detecte et tu consultes les executions.
-7. `Parametres`
-   Tu exportes le workspace ou tu purges les logs.
+5. **Paramètres** : le thème, le moteur IA et vos données. C'est aussi là que l'on relance la visite guidée.
 
-## Parcours recommande pour un premier usage
+## Le vocabulaire, expliqué dans l'application
 
-### 1. Commencer par la strategie
+Vous n'avez pas besoin de connaître le jargon métier à l'avance. Partout où un terme spécifique apparaît (pilier, accroche, ICP, typologie, socle éditorial…), une petite pastille d'aide en donne la définition en clair. Survolez-la quand un mot n'est pas évident.
 
-Pourquoi:
-Sans strategie, les generations restent pauvres ou trop generiques.
+## Premiers pas concrets
 
-Ce qu'il faut remplir en premier:
+1. Ouvrez **Stratégie** et renseignez au moins votre profil, un pilier et votre voix.
+2. Passez dans **Créer**, générez quelques idées (ou collez une veille), puis laissez l'assistant vous guider jusqu'au brouillon.
+3. Retrouvez vos posts dans la **Bibliothèque**, retravaillez-les et planifiez ceux qui sont prêts.
 
-- nom
-- positionnement
-- bio
-- resume d'expertise
-- au moins une offre
-- au moins un pilier
-- au moins une regle de voix
-
-### 2. Ajouter une idee simple
-
-Pourquoi:
-C'est le point d'entree le plus rapide pour tester le flux complet.
-
-Exemple:
-
-- titre: `Pourquoi les PME bloquent encore sur l'adoption IA`
-- angle: `Le frein n'est pas le modele, mais le cadrage`
-- pilier: `Adoption IA`
-
-### 3. Ouvrir l'atelier
-
-Pourquoi:
-L'atelier fait le vrai travail editorial.
-
-Ce que tu obtiens:
-
-- une structure recommandee
-- plusieurs hooks
-- un draft
-- une trace d'execution
-
-### 4. Creer une variante en bibliotheque
-
-Pourquoi:
-Un bon post ne doit pas rester a usage unique.
-
-Ce que tu obtiens:
-
-- une nouvelle version exploitable
-- une nouvelle entree dans la bibliotheque
-
-### 5. Planifier dans le calendrier
-
-Pourquoi:
-Un contenu non planifie reste souvent non publie.
-
-## Ce que signifie "local"
-
-Les donnees du produit restent sur la machine:
-
-- base SQLite
-- fichiers d'export
-- logs d'execution
-- workspace editorial
-
-Codex est utilise pour certaines generations, mais l'application garde le controle du stockage, des ecrans et du workflow.
-
-## Ce qu'il faut retenir
-
-Si tu decouvres l'outil sans contexte, pense-le comme un systeme en 3 couches:
-
-- `Strategie`: la source de verite
-- `Production`: idees + atelier + bibliotheque
-- `Pilotage`: calendrier + runner + parametres
+L'application vous accompagne à chaque étape : lancez-vous.

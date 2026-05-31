@@ -16,8 +16,11 @@ export type LibraryEntry = {
 // now the single source of truth for the search-entries input shape. The
 // schema uses `SearchLibraryInput` as its derived name; both aliases are
 // provided here so existing imports continue to compile.
-export type { SearchLibraryInput } from "../schemas/library";
-export type { SearchLibraryInput as LibrarySearchInput } from "../schemas/library";
+import type {
+  SearchLibraryInput,
+  SearchLibraryInput as LibrarySearchInput
+} from "../schemas/library";
+export type { SearchLibraryInput, LibrarySearchInput };
 
 export type LibraryApi = {
   listEntries: () => Promise<LibraryEntry[]>;

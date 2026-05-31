@@ -1,153 +1,92 @@
-# Fonctionnalites
+# Fonctionnalités
 
-## Strategie
+L'application est organisée en cinq écrans : Cockpit, Stratégie, Créer, Bibliothèque et Paramètres. Voici ce que chacun permet de faire.
+
+## Cockpit
 
 ### Ce que c'est
 
-La page qui stocke le socle editorial.
+L'écran d'accueil, qui donne une vue d'ensemble.
 
-### Pourquoi cette page existe
+### Ce qu'on y trouve
 
-Pour eviter que chaque generation reparte d'un contexte implicite ou d'un prompt recompose a la main.
+- Un résumé de votre avancement : stratégie posée ou non, posts en cours, publications planifiées.
+- Des cartes cliquables qui mènent directement à l'écran concerné.
+- Un repère clair de la prochaine action à mener.
+
+### À quoi ça sert
+
+À savoir, en un coup d'œil et à chaque ouverture, où vous en êtes et par où continuer.
+
+## Stratégie
+
+### Ce que c'est
+
+L'écran qui stocke votre socle éditorial : qui écrit, pour qui, et avec quelle ligne.
 
 ### Ce qu'on y met
 
-- profil
-- positionnement
-- offres
-- ICP
-- piliers editoriaux
-- regles de voix
+- **Profil** : nom, positionnement, description de votre activité.
+- **Offres** : ce que vous proposez.
+- **ICP (clients idéaux)** : les personnes visées, leurs problèmes, leurs attentes.
+- **Piliers** : vos deux à quatre grands thèmes éditoriaux.
+- **Voix** : les règles de ton à tenir, et celles à éviter.
 
-### Ce que l'on obtient
+### À quoi ça sert
 
-- une base strategique persistante
-- un socle editorial generable en texte de synthese
-- un contexte reutilisable par les autres pages
+À éviter que chaque génération reparte d'un contexte vague. L'application peut produire un **socle éditorial** réutilisé par toutes les générations suivantes, pour des posts qui vous ressemblent. Chaque section indique simplement si elle est renseignée, sans cible chiffrée artificielle.
 
-## Idees
+## Créer
 
 ### Ce que c'est
 
-Le backlog editorial.
+L'atelier qui transforme une idée en post, étape par étape.
 
-### Pourquoi cette page existe
+### Ce qu'on y fait
 
-Pour capturer vite une idee ou transformer une source de veille en matiere exploitable.
+- **Générer des idées** à partir de la stratégie, ou **transformer une veille** (un article, une actualité) en angle de post.
+- Dérouler l'assistant : **cadrage** (typologie et objectif), **structure** (la trame), **accroche** (la première phrase), **rédaction** (le brouillon complet).
+- Suivre la progression de l'assistant en temps réel, valider, corriger, ou demander une variante.
 
-### Entrees possibles
+### À quoi ça sert
 
-- un sujet saisi a la main
-- une source de veille collee
-- une generation a partir de la strategie
+À produire des posts structurés sans repartir de zéro, tout en gardant la décision finale. Rien n'est publié automatiquement.
 
-### Ce que l'on obtient
-
-- une liste d'idees
-- une entree ouvrable dans l'atelier
-- dans le cas de la veille, un draft initial si la transformation reussit
-
-## Atelier
+## Bibliothèque
 
 ### Ce que c'est
 
-Le coeur de production.
+L'endroit où se rangent tous vos contenus.
 
-### Pourquoi cette page existe
+### Ce qu'on y trouve
 
-Pour faire passer une idee brute vers une version publiable avec une logique visible et rejouable.
+- Les **brouillons** produits dans « Créer ».
+- Les **variantes** (plusieurs angles d'un même post).
+- Les posts **planifiés**, avec une vue planning par date.
 
-### Etapes
+### Ce qu'on y fait
 
-1. choisir une typologie et un objectif
-2. recuperer une structure
-3. choisir une accroche
-4. generer un draft
-5. lancer une correction si besoin
+- Rouvrir un post pour le modifier.
+- Créer une variante à partir d'un brouillon existant.
+- Planifier une publication à une date donnée.
 
-### Ce que l'on obtient
+### À quoi ça sert
 
-- un draft final
-- des hooks
-- des versions
-- une execution tracable
+À retrouver, retravailler et organiser ce qui a déjà été produit, et à voir ce qui doit sortir et quand.
 
-## Bibliotheque
+## Paramètres
 
 ### Ce que c'est
 
-Le lieu de capitalisation des drafts et variantes.
+Les réglages de l'application.
 
-### Pourquoi cette page existe
+### Ce qu'on y règle
 
-Pour ne pas perdre les contenus deja produits et pouvoir les recycler.
+- Le **thème** : clair, sombre, ou suivant votre système.
+- Le **moteur IA** utilisé pour les générations, avec son état de connexion.
+- Vos **données** locales.
+- La possibilité de **relancer la visite guidée** à tout moment.
 
-### Actions possibles
+### À quoi ça sert
 
-- rechercher
-- consulter
-- creer une variante
-- envoyer un draft vers le calendrier
-
-### Ce que l'on obtient
-
-- une memoire editoriale locale
-- des variantes reutilisables
-
-## Calendrier
-
-### Ce que c'est
-
-Une vue simple de planification.
-
-### Pourquoi cette page existe
-
-Pour transformer un brouillon en intention de publication datee.
-
-### Ce que l'on y fait
-
-- choisir un draft
-- choisir une date
-- enregistrer un statut de planification
-
-### Ce que l'on obtient
-
-- une liste de contenus prevus
-- une vision simple de la cadence editoriale
-
-## Runner
-
-### Ce que c'est
-
-L'ecran de diagnostic.
-
-### Pourquoi cette page existe
-
-Pour verifier si Codex est bien detecte et suivre les derniers runs.
-
-### Ce que l'on y lit
-
-- le mode du runner
-- la disponibilite de Codex
-- les skills connues
-- les executions recentes
-
-## Parametres
-
-### Ce que c'est
-
-La zone de maintenance locale.
-
-### Pourquoi cette page existe
-
-Pour rendre l'outil exploitable dans le temps sans manipulation manuelle des fichiers.
-
-### Ce que l'on y fait
-
-- exporter le workspace
-- purger les logs d'execution
-
-### Ce que l'on obtient
-
-- un export portable
-- un nettoyage local simple des traces sensibles
+À adapter l'apparence et le moteur à votre usage, et à garder le contrôle sur vos données, qui restent locales.

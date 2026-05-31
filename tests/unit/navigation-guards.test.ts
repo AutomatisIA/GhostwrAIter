@@ -52,7 +52,7 @@ describe("navigation guards", () => {
     openExternalMock = vi.fn();
     webContents = createCapturedWebContents();
     attachNavigationGuards(webContents, allowedOrigins, {
-      openExternal: openExternalMock
+      openExternal: openExternalMock as unknown as (url: string) => void
     });
   });
 

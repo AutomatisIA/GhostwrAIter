@@ -8,7 +8,9 @@ import type {
 } from "./skill-runner.service";
 import { findCodexBinary } from "./find-codex-binary";
 import {
+  FrameworkPromptNotFoundError,
   SkillPromptNotFoundError,
+  assembleSkillPrompt,
   createDefaultSkillPromptLoader,
   type SkillPromptLoader
 } from "./skill-prompt-loader";
@@ -102,9 +104,21 @@ export class CodexCliRunner {
 
   execute(invocation: SkillRunnerInvocation): SkillRunnerResult {
     let skillPrompt: string;
+    let frameworkPreamble: string;
     try {
+      frameworkPreamble = this.promptLoader.loadFrameworkPreamble();
       skillPrompt = this.promptLoader.loadPrompt(invocation.skillName);
     } catch (err) {
+      if (err instanceof FrameworkPromptNotFoundError) {
+        return {
+          status: "failed",
+          summary: "Framework preamble missing",
+          error: {
+            code: "FRAMEWORK_PROMPT_NOT_FOUND",
+            message: err.message
+          }
+        };
+      }
       if (err instanceof SkillPromptNotFoundError) {
         return {
           status: "failed",
@@ -131,7 +145,9 @@ export class CodexCliRunner {
           outputPath,
           "-"
         ],
-        this.buildPrompt(invocation, skillPrompt)
+        // Assemblage partage (source unique) : preambule cadre + contrat
+        // par-skill + invocation. Voir assembleSkillPrompt / skill-prompt-loader.
+        assembleSkillPrompt(invocation, skillPrompt, frameworkPreamble)
       );
 
       if (result.signal === "SIGTERM" && result.status === null) {
@@ -176,38 +192,5 @@ export class CodexCliRunner {
     }
   }
 
-  private buildPrompt(invocation: SkillRunnerInvocation, skillPrompt: string) {
-    return [
-      "You are a premium LinkedIn editorial skill runner for a consultant in generative AI for SMEs.",
-      "You are not allowed to degrade gracefully, simulate missing data, or invent placeholders.",
-      "If the requested output cannot be produced with high confidence from the provided context, return a failed JSON response.",
-      "Return only valid JSON matching the requested contract.",
-      "Do not wrap the JSON in markdown fences.",
-      "Never expose internal reasoning, validation grids, or hidden control logic in the final editorial output.",
-      "Never invent numbers, proofs, clients, results, links, or examples that are not explicitly present in the input.",
-      'Do not use "partial". If the contract cannot be fully satisfied, return "failed".',
-      "",
-      "Required top-level JSON fields:",
-      '- "status" in ["succeeded","failed","partial"]',
-      '- "summary" as a string',
-      '- "data" object for successful runs',
-      '- "error" object for failed runs',
-      "",
-      "Quality doctrine:",
-      "- Exact voice over generic correctness.",
-      "- Concrete over abstract.",
-      "- One strong idea per output.",
-      "- Anti-hype, anti-corporate, anti-generic AI phrasing.",
-      "- Hooks must create tension, curiosity, or a sharp business contrast.",
-      "- Structures must be compatible with the requested typology and objective.",
-      "- Correction must be silent: return the corrected content, not an explanation of the correction process.",
-      "",
-      "Contract-specific instructions:",
-      skillPrompt,
-      "",
-      "Invocation:",
-      JSON.stringify(invocation, null, 2)
-    ].join("\n");
-  }
 
 }

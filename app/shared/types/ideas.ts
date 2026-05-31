@@ -8,7 +8,8 @@ export type IdeaRecord = {
 
 // Re-exported from the zod schema in app/shared/schemas/ideas.ts which is
 // now the single source of truth for the IPC input shapes (feature 003).
-export type { IdeaInput, NewsSourceInput } from "../schemas/ideas";
+import type { IdeaInput, NewsSourceInput } from "../schemas/ideas";
+export type { IdeaInput, NewsSourceInput };
 
 export type IdeaDraftCreationResult = {
   idea: IdeaRecord;

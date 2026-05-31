@@ -111,7 +111,11 @@ describe("useAiProgress", () => {
     const { result, rerender } = renderHook(
       ({ activePhase }: { activePhase: typeof WORKSHOP_PIPELINE[number] | null }) =>
         useAiProgress({ active: true, activePhase }),
-      { initialProps: { activePhase: "structure" as const } }
+      {
+        initialProps: {
+          activePhase: "structure" as typeof WORKSHOP_PIPELINE[number] | null
+        }
+      }
     );
 
     expect(result.current.intentLabel).toBe("Choix de la structure en cours…");
@@ -240,7 +244,11 @@ describe("useAiProgress", () => {
     const { result, rerender } = renderHook(
       ({ activePhase }: { activePhase: "structure" | "hook" }) =>
         useAiProgress({ active: true, activePhase }),
-      { initialProps: { activePhase: "structure" as const } }
+      {
+        initialProps: {
+          activePhase: "structure" as "structure" | "hook"
+        }
+      }
     );
 
     rerender({ activePhase: "hook" });
