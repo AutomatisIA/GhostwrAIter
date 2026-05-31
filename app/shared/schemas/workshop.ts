@@ -116,5 +116,3 @@ export const createDraftFromContentSchema = z
     bodyMarkdown: z.string().min(1, "bodyMarkdown is required")
   })
   .strict();
-
-export type CreateDraftFromContentInput = z.infer<typeof createDraftFromContentSchema>;
