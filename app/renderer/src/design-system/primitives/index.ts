@@ -34,6 +34,16 @@ export type { ConfirmDialogProps } from "./ConfirmDialog";
 export { AiProgress } from "./AiProgress";
 export type { AiProgressProps } from "./AiProgress";
 
+export {
+  CheckCircleIcon,
+  AlertTriangleIcon,
+  XCircleIcon,
+  LightbulbIcon,
+  PencilIcon,
+  CalendarIcon
+} from "./icons";
+export type { IconProps } from "./icons";
+
 // Feedback (toasts) : surface unique re-exportee depuis feedback/.
 export { ToastProvider } from "../../feedback/ToastProvider";
 export { useToast } from "../../feedback/toast-context";

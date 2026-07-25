@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { formatCharCount, measurePost } from "../../../../shared/post-metrics";
 import { motion } from "motion/react";
 import type { LibraryEntry } from "@shared/types/library";
 import type { CalendarItem } from "@shared/types/calendar";
@@ -352,16 +353,17 @@ export function LibraryScreen() {
             </article>
             <article className="insight-card">
               <span className="status-label">
-                Qualité moyenne <InfoHint term="score-qualite" />
+                Longueur moyenne
               </span>
               <strong>
                 {loading || visibleEntries.length === 0
                   ? "…"
                   : `${Math.round(
-                      (visibleEntries.reduce((sum, entry) => sum + entry.qualityScore, 0) /
-                        visibleEntries.length) *
-                        100
-                    )}%`}
+                      visibleEntries.reduce(
+                        (sum, entry) => sum + measurePost(entry.bodyMarkdown).chars,
+                        0
+                      ) / visibleEntries.length
+                    ).toLocaleString("fr-FR")} caractères`}
               </strong>
             </article>
           </div>
@@ -470,7 +472,10 @@ export function LibraryScreen() {
                     ) : (
                       <>
                         <strong className="lib-card-headline">{entry.headline}</strong>
-                        <p className="lib-card-preview">{entry.bodyPreview}</p>
+                        {/* Texte complet + troncature CSS (-webkit-line-clamp) : evite la
+                            coupure en plein mot sans points de suspension du bodyPreview
+                            deja tronque a longueur fixe cote base. */}
+                        <p className="lib-card-preview">{entry.bodyMarkdown}</p>
                         <div className="lib-card-meta">
                           <span className="lib-card-tag">{entry.pillarLabel}</span>
                           <span className="lib-card-tag">{formatLibraryStatus(entry.status)}</span>
@@ -479,24 +484,27 @@ export function LibraryScreen() {
                               {scheduledDates.get(entry.draftId)}
                             </span>
                           )}
-                          {entry.tags.map((tag) => (
-                            <span key={tag} className="lib-card-tag lib-card-tag--muted">
-                              {tag}
-                            </span>
-                          ))}
+                          {entry.tags
+                            .filter(
+                              (tag) =>
+                                tag.trim().toLowerCase() !==
+                                entry.pillarLabel.trim().toLowerCase()
+                            )
+                            .map((tag) => (
+                              <span key={tag} className="lib-card-tag lib-card-tag--muted">
+                                {tag}
+                              </span>
+                            ))}
                           <span className="lib-card-quality">
                             <span
                               className="lib-card-quality-dot"
                               style={{
-                                background:
-                                  entry.qualityScore >= 0.8
-                                    ? "var(--color-accent-sky)"
-                                    : entry.qualityScore >= 0.6
-                                      ? "var(--color-accent)"
-                                      : "var(--color-warning-text)"
+                                background: measurePost(entry.bodyMarkdown).overLimit
+                                  ? "var(--color-warning-text)"
+                                  : "var(--color-accent)"
                               }}
                             />
-                            {Math.round(entry.qualityScore * 100)}%
+                            {formatCharCount(entry.bodyMarkdown)}
                           </span>
                         </div>
                         <div className="lib-card-toolbar">
@@ -558,9 +566,8 @@ export function LibraryScreen() {
                               Retravailler
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="danger"
                               size="sm"
-                              className="lib-card-action-danger"
                               disabled={busyDraftId !== null}
                               onClick={() => setDeletingDraftId(entry.draftId)}
                             >
@@ -694,7 +701,7 @@ export function LibraryScreen() {
                       <strong className="lib-card-headline">{calItem.draftHeadline}</strong>
                       {draft && (
                         <p className="lib-card-preview lib-card-preview--planning">
-                          {draft.bodyPreview}
+                          {draft.bodyMarkdown}
                         </p>
                       )}
                       <div className="lib-card-toolbar">

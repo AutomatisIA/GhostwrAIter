@@ -1,9 +1,21 @@
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useState, type ComponentType, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { formatCharCount } from "../../../../shared/post-metrics";
 import { motion, useMotionTemplate, useReducedMotion, useSpring } from "motion/react";
 import type { IdeaRecord } from "@shared/types/ideas";
 import type { LibraryEntry } from "@shared/types/library";
-import { Button, Card, EmptyState, Skeleton } from "../../design-system/primitives";
+import {
+  Button,
+  Card,
+  EmptyState,
+  Skeleton,
+  AlertTriangleIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  LightbulbIcon,
+  PencilIcon,
+  type IconProps
+} from "../../design-system/primitives";
 import {
   fadeInUp,
   staggerContainer,
@@ -18,9 +30,21 @@ type CockpitState = {
   publishedCount: number;
   recentIdeas: IdeaRecord[];
   recentDrafts: LibraryEntry[];
+  /** Idees jamais transformees en brouillon. */
+  ideasWithoutDraft: number;
+  /** Brouillons prets mais absents du calendrier. */
+  draftsUnscheduled: number;
+  /** Posts planifies a aujourd hui ou en retard, non publies. */
+  postsDue: number;
+  /** Titre du prochain post a publier, pour nommer l action. */
+  nextDueHeadline: string | null;
 };
 
 const initialState: CockpitState = {
+  ideasWithoutDraft: 0,
+  draftsUnscheduled: 0,
+  postsDue: 0,
+  nextDueHeadline: null,
   strategyReady: false,
   ideasCount: 0,
   draftsCount: 0,
@@ -33,6 +57,9 @@ const initialState: CockpitState = {
 function getNextAction(state: CockpitState): {
   label: string;
   explanation: string;
+  /** Verbe d action du bouton. Distinct du titre : repeter le titre mot pour
+   *  mot dans le bouton n apporte rien et allonge le bloc pour rien. */
+  cta: string;
   to: string | null;
 } {
   if (!state.strategyReady) {
@@ -40,6 +67,7 @@ function getNextAction(state: CockpitState): {
       label: "Définir votre stratégie éditoriale",
       explanation:
         "La stratégie est la fondation de tout votre contenu. Sans elle, l'IA ne peut pas générer de posts pertinents.",
+      cta: "Ouvrir la stratégie",
       to: "/strategie"
     };
   }
@@ -48,6 +76,7 @@ function getNextAction(state: CockpitState): {
       label: "Créer votre première idée",
       explanation:
         "L'atelier de création transforme vos idées en drafts LinkedIn. Commencez par capturer un sujet.",
+      cta: "Capturer une idée",
       to: "/creer"
     };
   }
@@ -56,6 +85,7 @@ function getNextAction(state: CockpitState): {
       label: "Rédiger votre premier post",
       explanation:
         "Vous avez des idées en stock. Passez à l'étape rédaction pour générer un draft complet.",
+      cta: "Ouvrir l'atelier",
       to: "/creer"
     };
   }
@@ -64,19 +94,70 @@ function getNextAction(state: CockpitState): {
       label: "Planifier vos drafts",
       explanation:
         "Vos drafts sont prêts. Placez-les dans le calendrier pour organiser votre publication.",
+      cta: "Ouvrir la bibliothèque",
       to: "/bibliotheque"
     };
   }
+
+  // A partir d'ici l'utilisateur est installe. Le bloc affichait « Tout est en
+  // place », c'est-a-dire un appel a l'action qui n'appelait a rien, alors qu'il
+  // occupe la position la plus visible de l'ecran. Il calcule desormais ce qui
+  // attend reellement, du plus urgent au moins urgent
+  // (cf. docs/audit-2026-07-ui-ux.md section 1).
+
+  if (state.postsDue > 0) {
+    const plural = state.postsDue > 1;
+    return {
+      label: plural
+        ? `${state.postsDue} posts à publier`
+        : `À publier : ${state.nextDueHeadline ?? "votre post planifié"}`,
+      explanation: plural
+        ? "Leur date de publication est arrivée. Copiez le texte, publiez, puis marquez-les comme publiés."
+        : "Sa date de publication est arrivée. Copiez le texte, publiez, puis marquez-le comme publié.",
+      cta: "Ouvrir la bibliothèque",
+      to: "/bibliotheque"
+    };
+  }
+
+  if (state.draftsUnscheduled > 0) {
+    const plural = state.draftsUnscheduled > 1;
+    return {
+      label: `${state.draftsUnscheduled} ${plural ? "brouillons non planifiés" : "brouillon non planifié"}`,
+      explanation: plural
+        ? "Ils sont rédigés mais n'ont pas de date. Un post sans date attend indéfiniment."
+        : "Il est rédigé mais n'a pas de date. Un post sans date attend indéfiniment.",
+      cta: "Planifier",
+      to: "/bibliotheque"
+    };
+  }
+
+  if (state.ideasWithoutDraft > 0) {
+    const plural = state.ideasWithoutDraft > 1;
+    return {
+      label: `${state.ideasWithoutDraft} ${plural ? "idées en attente de rédaction" : "idée en attente de rédaction"}`,
+      explanation: plural
+        ? "Elles sont dans votre backlog et n'ont pas encore de brouillon. Passez la plus mûre à l'atelier."
+        : "Elle est dans votre backlog et n'a pas encore de brouillon. Passez-la à l'atelier.",
+      cta: "Ouvrir l'atelier",
+      to: "/creer"
+    };
+  }
+
   return {
-    label: "Tout est en place",
-    explanation: "Votre pipeline de contenu est opérationnel.",
-    to: null
+    label: "Capturer un nouveau sujet",
+    explanation:
+      "Tout ce que vous aviez en stock est rédigé et planifié. Le pipeline se vide : alimentez-le pour ne pas manquer de matière.",
+    cta: "Capturer un sujet",
+    to: "/creer"
   };
 }
 
+type MetricTone = "success" | "warning" | "neutral";
+
 type Metric = {
   to: string;
-  icon: string;
+  icon: ComponentType<IconProps>;
+  tone: MetricTone;
   label: string;
   value: string;
   caption: string;
@@ -97,12 +178,14 @@ export function CockpitScreen() {
     Promise.all([
       window.linkedinPoster.strategy
         .getActiveBundle()
+        // Le badge doit refleter ce que le moteur EXIGE reellement, pas la
+        // simple presence de donnees. `buildStrategyContext` leve une erreur
+        // sans regle de voix, et une idee sans pilier ne porte aucun contexte
+        // editorial. Un OU sur quatre tableaux affichait « Prete » avec un seul
+        // pilier au libelle vide, puis l atelier echouait sans explication
+        // (cf. docs/audit-2026-07-fonctionnel.md section 6).
         .then((bundle) => ({
-          ready:
-            bundle.offers.length > 0 ||
-            bundle.icps.length > 0 ||
-            bundle.pillars.length > 0 ||
-            bundle.voiceRules.length > 0
+          ready: bundle.voiceRules.length > 0 && bundle.pillars.length > 0
         }))
         .catch(() => ({ ready: false })),
       window.linkedinPoster.ideas.listIdeas(),
@@ -133,7 +216,20 @@ export function CockpitScreen() {
           )
           .slice(0, 3);
 
+        const draftedIdeaIds = new Set(drafts.map((entry) => entry.ideaId));
+        const scheduledDraftIds = new Set(calendarItems.map((entry) => entry.draftId));
+
+        // Date du jour au format ISO court, pour comparer a `plannedDate`.
+        const today = new Date().toISOString().slice(0, 10);
+        const due = calendarItems
+          .filter((entry) => entry.status !== "published" && entry.plannedDate <= today)
+          .sort((a, b) => a.plannedDate.localeCompare(b.plannedDate));
+
         setState({
+          ideasWithoutDraft: ideas.filter((idea) => !draftedIdeaIds.has(idea.id)).length,
+          draftsUnscheduled: drafts.filter((entry) => !scheduledDraftIds.has(entry.draftId)).length,
+          postsDue: due.length,
+          nextDueHeadline: due[0]?.draftHeadline ?? null,
           strategyReady: strategy.ready,
           ideasCount: ideas.length,
           draftsCount: drafts.length,
@@ -205,7 +301,8 @@ export function CockpitScreen() {
   const metrics: Metric[] = [
     {
       to: "/strategie",
-      icon: state.strategyReady ? "✅" : "⚠️",
+      icon: state.strategyReady ? CheckCircleIcon : AlertTriangleIcon,
+      tone: state.strategyReady ? "success" : "warning",
       label: "Stratégie",
       value: state.strategyReady ? "Prête" : "À définir",
       caption: state.strategyReady
@@ -214,7 +311,8 @@ export function CockpitScreen() {
     },
     {
       to: "/creer",
-      icon: "💡",
+      icon: LightbulbIcon,
+      tone: state.ideasCount > 0 ? "success" : "neutral",
       label: "Idées",
       value: String(state.ideasCount),
       caption:
@@ -224,7 +322,8 @@ export function CockpitScreen() {
     },
     {
       to: "/bibliotheque",
-      icon: "📝",
+      icon: PencilIcon,
+      tone: state.draftsCount > 0 ? "success" : "neutral",
       label: "Drafts",
       value: String(state.draftsCount),
       caption:
@@ -234,7 +333,8 @@ export function CockpitScreen() {
     },
     {
       to: "/bibliotheque?view=planning",
-      icon: "📅",
+      icon: CalendarIcon,
+      tone: state.plannedCount > 0 ? "success" : "neutral",
       label: "Planifiés",
       value: String(state.plannedCount),
       caption:
@@ -284,23 +384,27 @@ export function CockpitScreen() {
         initial="hidden"
         animate="visible"
       >
-        {metrics.map((metric) => (
-          <motion.div key={metric.to} variants={item}>
-            <Card
-              as={Link}
-              to={metric.to}
-              interactive
-              elevation={2}
-              className="metric-card"
-            >
-              <span className="status-label">
-                {metric.icon} {metric.label}
-              </span>
-              <strong className="metric-card-value">{metric.value}</strong>
-              <span className="metric-card-caption">{metric.caption}</span>
-            </Card>
-          </motion.div>
-        ))}
+        {metrics.map((metric) => {
+          const MetricIcon = metric.icon;
+          return (
+            <motion.div key={metric.to} variants={item}>
+              <Card
+                as={Link}
+                to={metric.to}
+                interactive
+                elevation={2}
+                className="metric-card"
+              >
+                <span className="status-label">
+                  <MetricIcon className={`metric-icon metric-icon--${metric.tone}`} />
+                  {metric.label}
+                </span>
+                <strong className="metric-card-value">{metric.value}</strong>
+                <span className="metric-card-caption">{metric.caption}</span>
+              </Card>
+            </motion.div>
+          );
+        })}
       </motion.div>
 
       {/* Pipeline Progress : barre tokenisee, remplissage anime */}
@@ -367,7 +471,7 @@ export function CockpitScreen() {
                 size="lg"
                 onClick={() => navigate(nextAction.to as string)}
               >
-                {nextAction.label}
+                {nextAction.cta}
               </Button>
             ) : null}
           </Card>
@@ -392,7 +496,7 @@ export function CockpitScreen() {
                   </strong>
                   <div className="cockpit-list-footer">
                     <span className="cockpit-list-meta">
-                      Qualité : {Math.round(draft.qualityScore * 100)}%
+                      {formatCharCount(draft.bodyMarkdown)}
                     </span>
                     <span className="inline-link">Ouvrir</span>
                   </div>

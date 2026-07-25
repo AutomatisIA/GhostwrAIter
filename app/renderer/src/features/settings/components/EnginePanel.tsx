@@ -1,18 +1,38 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
 import type { CliEngineStatus, CliEngineName } from "@shared/types/settings";
-import { Button, Card, Skeleton, useToast } from "../../../design-system/primitives";
+import {
+  Button,
+  Card,
+  Skeleton,
+  useToast,
+  AlertTriangleIcon,
+  CheckCircleIcon,
+  XCircleIcon
+} from "../../../design-system/primitives";
 import { InfoHint } from "../../../help";
 import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
 
 function statusBadge(installState: CliEngineStatus["installState"]) {
   switch (installState) {
     case "authenticated":
-      return <span className="engine-badge engine-badge--ok">{"✅"} Connecté</span>;
+      return (
+        <span className="engine-badge engine-badge--ok">
+          <CheckCircleIcon size={14} /> Connecté
+        </span>
+      );
     case "installed":
-      return <span className="engine-badge engine-badge--warn">{"⚠️"} Installé</span>;
+      return (
+        <span className="engine-badge engine-badge--warn">
+          <AlertTriangleIcon size={14} /> Installé
+        </span>
+      );
     case "not-installed":
-      return <span className="engine-badge engine-badge--off">{"❌"} Non installé</span>;
+      return (
+        <span className="engine-badge engine-badge--off">
+          <XCircleIcon size={14} /> Non installé
+        </span>
+      );
   }
 }
 
