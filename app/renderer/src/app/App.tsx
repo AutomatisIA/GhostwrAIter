@@ -46,6 +46,14 @@ function AnimatedRoutes() {
   const location = useLocation();
   const variants = useMotionVariants(pageTransition);
 
+  // Le defilement etait conserve d un ecran a l autre : en arrivant sur une page
+  // depuis le bas d une autre, l utilisateur atterrissait au milieu, sans voir le
+  // titre ni les actions du haut. Signale plusieurs fois comme « le haut de
+  // l app n est pas visible quand on change d ecran ».
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+  }, [location.pathname]);
+
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { spawnCli } from "./spawn-cli";
 import type { CliEngineStatus } from "../../../shared/types/settings";
 import type { CliEngine } from "./cli-engine";
 import { findCliBinary } from "./find-cli-binary";
@@ -57,19 +58,12 @@ export class GeminiEngine implements CliEngine {
     const timeout = timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const command = resolveCommand();
 
-    const result = spawnSync(
-      command,
-      ["--json"],
-      {
-        input: prompt,
-        encoding: "utf8",
-        cwd: process.cwd(),
-        env: process.env,
-        timeout
-      }
-    );
+    const result = await spawnCli(command, ["--json"], {
+      input: prompt,
+      timeoutMs: timeout
+    });
 
-    if (result.signal === "SIGTERM" && result.status === null) {
+    if (result.timedOut) {
       throw new Error(
         `Gemini CLI did not respond within ${timeout} ms.`
       );

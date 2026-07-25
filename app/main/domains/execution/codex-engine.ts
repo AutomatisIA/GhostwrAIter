@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { spawnCli } from "./spawn-cli";
 import type { CliEngineStatus } from "../../../shared/types/settings";
 import type { CliEngine } from "./cli-engine";
 import { findCodexBinary } from "./find-codex-binary";
@@ -61,7 +62,7 @@ export class CodexEngine implements CliEngine {
     const outputPath = join(tempDirectory, "last-message.json");
 
     try {
-      const result = spawnSync(
+      const result = await spawnCli(
         command,
         [
           "exec",
@@ -71,16 +72,10 @@ export class CodexEngine implements CliEngine {
           outputPath,
           "-"
         ],
-        {
-          input: prompt,
-          encoding: "utf8",
-          cwd: process.cwd(),
-          env: process.env,
-          timeout
-        }
+        { input: prompt, timeoutMs: timeout }
       );
 
-      if (result.signal === "SIGTERM" && result.status === null) {
+      if (result.timedOut) {
         throw new Error(
           `Codex CLI did not respond within ${timeout} ms. Increase CODEX_CLI_TIMEOUT_MS or verify Codex availability.`
         );
