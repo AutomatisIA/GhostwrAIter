@@ -13,6 +13,17 @@ import { emptyInputSchema, openRunLogInputSchema } from "../../shared/schemas/ex
 registerKnownErrorCode("RUN_NOT_FOUND", "RUN_NOT_FOUND");
 registerKnownErrorCode("RUN_LOG_UNAVAILABLE", "RUN_LOG_UNAVAILABLE");
 
+/**
+ * Codes lies au choix du moteur IA. Sans cet enregistrement, `classifyThrown`
+ * ecrase le message en "Une erreur interne s est produite cote application" et
+ * l utilisateur ne sait pas que son moteur n est simplement pas connecte
+ * (cf. docs/audit-2026-07-fonctionnel.md section 2).
+ */
+registerKnownErrorCode("ENGINE_NOT_AUTHENTICATED", "ENGINE_NOT_AUTHENTICATED");
+registerKnownErrorCode("ENGINE_NOT_REGISTERED", "ENGINE_NOT_REGISTERED");
+registerKnownErrorCode("ENGINE_RESOLUTION_FAILED", "ENGINE_RESOLUTION_FAILED");
+registerKnownErrorCode("ENGINE_UNAVAILABLE", "ENGINE_UNAVAILABLE");
+
 export class ExecutionRuntimeService {
   private readonly service: ExecutionService;
 

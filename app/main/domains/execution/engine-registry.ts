@@ -23,6 +23,17 @@ export class EngineRegistry {
     return statuses;
   }
 
+  /**
+   * Resout le moteur actif.
+   *
+   * Un choix explicite de l utilisateur est CONTRAIGNANT : on renvoie ce moteur
+   * avec son etat reel, meme non authentifie, au lieu de basculer en silence sur
+   * un autre. C est ce basculement qui faisait afficher un moteur aux Parametres
+   * pendant qu un autre travaillait (cf. docs/audit-2026-07-fonctionnel.md).
+   *
+   * La selection par ordre de priorite ne s applique qu en l absence de tout
+   * choix enregistre, c est-a-dire au premier lancement.
+   */
   async getActiveEngine(): Promise<EngineSelection> {
     const preference = this.settingsService.getPreference(ACTIVE_ENGINE_PREFERENCE_KEY);
     const storedName = preference.value as CliEngineName | null;
@@ -30,14 +41,11 @@ export class EngineRegistry {
     if (storedName) {
       const engine = this.getEngineByName(storedName);
       if (engine) {
-        const status = await engine.getStatus();
-        if (status.installState === "authenticated") {
-          return { engine: storedName, status };
-        }
+        return { engine: storedName, status: await engine.getStatus() };
       }
     }
 
-    // Fallback: first authenticated engine by priority
+    // Aucun choix enregistre : premier moteur authentifie par ordre de priorite.
     for (const name of ENGINE_PRIORITY) {
       const engine = this.getEngineByName(name);
       if (engine) {
@@ -65,6 +73,15 @@ export class EngineRegistry {
         };
 
     return { engine: fallbackName, status: fallbackStatus };
+  }
+
+  /**
+   * Choix explicite de l utilisateur, ou null s il n a jamais choisi. Lecture
+   * seule en base, sans appel systeme : utilisable sur un chemin chaud.
+   */
+  getSelectedEngineName(): CliEngineName | null {
+    const preference = this.settingsService.getPreference(ACTIVE_ENGINE_PREFERENCE_KEY);
+    return (preference.value as CliEngineName | null) ?? null;
   }
 
   async setActiveEngine(name: CliEngineName): Promise<EngineSelection> {

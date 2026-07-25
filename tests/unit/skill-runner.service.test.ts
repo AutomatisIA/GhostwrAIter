@@ -450,4 +450,95 @@ describe("skill runner service", () => {
     );
     expect(capturedPrompt).toContain("Contract-specific instructions:");
   });
+
+  it("execute le moteur choisi par l utilisateur, pas Codex", async () => {
+    let claudeCalled = false;
+    let codexCalled = false;
+
+    const claudeEngine = {
+      executeSkill: async () => {
+        claudeCalled = true;
+        return JSON.stringify({
+          status: "succeeded",
+          summary: "ok",
+          data: {
+            draft: { headline: "H", bodyMarkdown: "B" },
+            hooks: [],
+            variants: [],
+            qualitySignals: { clarity: 0.9, specificity: 0.9, antiHypeAlignment: 0.9 }
+          }
+        });
+      }
+    };
+
+    const engineRegistry = {
+      getActiveEngine: async () => ({
+        engine: "claude",
+        status: { name: "claude", installState: "authenticated" }
+      }),
+      getEngineByName: () => claudeEngine
+    } as unknown as EngineRegistry;
+
+    const service = new SkillRunnerService({
+      engineRegistry,
+      codexCliRunner: {
+        isAvailable: () => true,
+        execute: () => {
+          codexCalled = true;
+          return { status: "failed", summary: "codex ne doit pas etre appele" };
+        }
+      } as never
+    });
+
+    const result = await service.executeAsync({
+      runId: "run_choice",
+      skillName: "linkedin-post-writer",
+      skillVersion: "1.0.0",
+      context: {},
+      payload: { title: "t", angle: "a" },
+      attachments: []
+    });
+
+    expect(result.status).toBe("succeeded");
+    expect(claudeCalled).toBe(true);
+    expect(codexCalled).toBe(false);
+  });
+
+  it("echoue en nommant le moteur choisi quand il n est pas authentifie, sans repli silencieux", async () => {
+    let codexCalled = false;
+
+    const engineRegistry = {
+      getActiveEngine: async () => ({
+        engine: "gemini",
+        status: { name: "gemini", displayName: "Gemini CLI", installState: "installed" }
+      }),
+      getEngineByName: () => ({ executeSkill: async () => "{}" })
+    } as unknown as EngineRegistry;
+
+    const service = new SkillRunnerService({
+      engineRegistry,
+      codexCliRunner: {
+        isAvailable: () => true,
+        execute: () => {
+          codexCalled = true;
+          return { status: "succeeded", summary: "repli silencieux interdit" };
+        }
+      } as never
+    });
+
+    const result = await service.executeAsync({
+      runId: "run_unauth",
+      skillName: "linkedin-post-writer",
+      skillVersion: "1.0.0",
+      context: {},
+      payload: { title: "t", angle: "a" },
+      attachments: []
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("ENGINE_NOT_AUTHENTICATED");
+    // Le message doit nommer le moteur pour etre actionnable cote utilisateur.
+    expect(result.error?.message).toContain("Gemini");
+    expect(codexCalled).toBe(false);
+  });
 });

@@ -1,3 +1,5 @@
+import type { ExecutionEngine } from "../../../shared/types/execution-progress";
+import { extractSkillPayload } from "./extract-skill-payload";
 import { CodexCliRunner } from "./codex-cli-runner";
 import type { EngineRegistry } from "./engine-registry";
 import {
@@ -62,6 +64,12 @@ export type SkillRunnerResult = {
     code: string;
     message: string;
   };
+  /**
+   * Moteur qui a reellement produit ce resultat. Renseigne par le runner, jamais
+   * par l appelant : c est la seule source fiable pour tracer la provenance d un
+   * texte et pour afficher un etat de progression qui ne ment pas.
+   */
+  engine?: ExecutionEngine;
 };
 
 type SkillRunnerOptions = {
@@ -81,7 +89,16 @@ export class SkillRunnerService {
     this.promptLoader = options?.promptLoader ?? createDefaultSkillPromptLoader();
   }
 
+  /**
+   * Voie synchrone historique, cablee en dur sur Codex. Conservee pour les
+   * montages sans registre de moteurs (tests, outillage). Le parcours applicatif
+   * passe par `executeAsync`, qui respecte le moteur choisi.
+   */
   execute(invocation: SkillRunnerInvocation): SkillRunnerResult {
+    return { ...this.executeOnCodex(invocation), engine: "codex" };
+  }
+
+  private executeOnCodex(invocation: SkillRunnerInvocation): SkillRunnerResult {
     if (!this.codexCliRunner?.isAvailable()) {
       return {
         status: "failed",
@@ -124,24 +141,96 @@ export class SkillRunnerService {
     }
   }
 
+  /**
+   * Execute une skill sur le moteur reellement selectionne.
+   *
+   * Le choix de l utilisateur est CONTRAIGNANT : si le moteur retenu n est pas
+   * authentifie, on echoue en le nommant plutot que de basculer en silence sur
+   * un autre. Un repli muet redonnerait au reglage des Parametres le statut de
+   * decor qu il avait avant ce correctif (cf. docs/audit-2026-07-fonctionnel.md).
+   *
+   * Le repli sur le runner Codex synchrone ne subsiste que pour les montages
+   * sans registre de moteurs (tests unitaires, outillage).
+   */
   async executeAsync(invocation: SkillRunnerInvocation): Promise<SkillRunnerResult> {
-    if (this.engineRegistry) {
-      try {
-        const selection = await this.engineRegistry.getActiveEngine();
-        if (selection.status.installState === "authenticated") {
-          const engine = this.engineRegistry.getEngineByName(selection.engine);
-          if (engine) {
-            return await this.executeViaEngine(engine, invocation);
-          }
-        }
-      } catch {
-        // Fall through to sync fallback
-      }
+    if (!this.engineRegistry) {
+      return this.execute(invocation);
     }
-    return this.execute(invocation);
+
+    let selection: Awaited<ReturnType<EngineRegistry["getActiveEngine"]>>;
+    try {
+      selection = await this.engineRegistry.getActiveEngine();
+    } catch (error) {
+      return {
+        status: "failed",
+        summary: "Engine resolution failed",
+        error: {
+          code: "ENGINE_RESOLUTION_FAILED",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Impossible de determiner le moteur IA actif."
+        }
+      };
+    }
+
+    const engineLabel = selection.status.displayName || selection.engine;
+
+    if (selection.status.installState !== "authenticated") {
+      return {
+        status: "failed",
+        summary: "Selected engine is not authenticated",
+        error: {
+          code: "ENGINE_NOT_AUTHENTICATED",
+          message:
+            `${engineLabel} est votre moteur IA selectionne, mais il n est pas connecte. ` +
+            `Lancez \`${selection.status.loginCommand || `${selection.engine} login`}\` ` +
+            "puis reessayez, ou choisissez un autre moteur dans les Parametres."
+        }
+      };
+    }
+
+    const engine = this.engineRegistry.getEngineByName(selection.engine);
+
+    if (!engine) {
+      return {
+        status: "failed",
+        summary: "Selected engine is not registered",
+        error: {
+          code: "ENGINE_NOT_REGISTERED",
+          message: `Le moteur ${engineLabel} est selectionne mais introuvable dans l application.`
+        }
+      };
+    }
+
+    return this.executeViaEngine(engine, invocation, selection.engine as ExecutionEngine);
   }
 
+  /**
+   * Nom du moteur explicitement choisi, lu sans interroger le systeme de
+   * fichiers ni lancer de processus. Sert a annoncer la bonne etiquette AVANT
+   * l execution, la ou attendre le resultat serait trop tard.
+   */
+  getSelectedEngineName(): ExecutionEngine | null {
+    return (this.engineRegistry?.getSelectedEngineName() ?? null) as ExecutionEngine | null;
+  }
+
+  /**
+   * Estampille le resultat avec le moteur qui l a produit. Le corps de
+   * l execution vit dans `runOnEngine` : l estampille est appliquee sur TOUS les
+   * chemins de sortie, y compris les echecs, sinon un echec resterait
+   * inattribuable.
+   */
   private async executeViaEngine(
+    engine: { executeSkill(prompt: string, timeoutMs?: number): Promise<string> },
+    invocation: SkillRunnerInvocation,
+    engineName: ExecutionEngine
+  ): Promise<SkillRunnerResult> {
+    const result = await this.runOnEngine(engine, invocation);
+    return { ...result, engine: engineName };
+  }
+
+  private async runOnEngine(
     engine: { executeSkill(prompt: string, timeoutMs?: number): Promise<string> },
     invocation: SkillRunnerInvocation
   ): Promise<SkillRunnerResult> {
@@ -175,7 +264,9 @@ export class SkillRunnerService {
     }
 
     const prompt = assembleSkillPrompt(invocation, skillPrompt, frameworkPreamble);
-    const raw = await engine.executeSkill(prompt);
+    // Les CLI n emettent pas tous le contrat nu : Claude et Gemini l encadrent
+    // dans leur propre enveloppe JSON. Voir extract-skill-payload.
+    const raw = extractSkillPayload(await engine.executeSkill(prompt));
 
     let result: SkillRunnerResult;
     try {

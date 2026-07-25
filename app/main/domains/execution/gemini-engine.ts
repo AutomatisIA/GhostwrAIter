@@ -45,7 +45,10 @@ export class GeminiEngine implements CliEngine {
       installState: authenticated ? "authenticated" : installed ? "installed" : "not-installed",
       version: null,
       subscriptionLabel: "Abonnement Google AI Premium",
-      installCommand: "npm install -g @anthropic-ai/gemini-cli",
+      // Le paquet est publie par Google, pas par Anthropic. `@anthropic-ai/gemini-cli`
+      // n existe pas (404 sur le registre npm, verifie le 2026-07-25) : la commande
+      // affichee dans les Parametres, bouton Copier compris, ne pouvait pas aboutir.
+      installCommand: "npm install -g @google/gemini-cli",
       loginCommand: "gemini login"
     };
   }

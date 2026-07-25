@@ -21,6 +21,12 @@ const KNOWN_ERROR_MESSAGES: Record<string, string> = {
     "Codex CLI a renvoyé une réponse invalide. Réessaie ou consulte le log.",
   SKILL_PROMPT_NOT_FOUND:
     "Le prompt d'une compétence est manquant. Vérifie le fichier `skills/<name>/SKILL.md`.",
+  // ENGINE_NOT_AUTHENTICATED, ENGINE_NOT_REGISTERED et ENGINE_RESOLUTION_FAILED
+  // ne sont volontairement PAS mappés ici : le message du backend nomme déjà le
+  // moteur concerné et la commande de connexion à lancer. Le laisser passer est
+  // plus actionnable que n'importe quel texte générique écrit ici.
+  ENGINE_UNAVAILABLE:
+    "Aucun moteur IA n'est disponible. Ouvre les Paramètres pour en installer et en connecter un.",
   IPC_HANDLER_ERROR: "Une erreur interne s'est produite côté application."
 };
 
