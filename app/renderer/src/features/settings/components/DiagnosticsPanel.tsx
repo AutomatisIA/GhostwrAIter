@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
 import type { ExecutionRunEntry } from "@shared/types/execution";
-import { Button, Card, useToast } from "../../../design-system/primitives";
-import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
+import { Button, useToast } from "../../../design-system/primitives";
 
 function formatSkillLabel(skillName: string) {
   const labels: Record<string, string> = {
@@ -34,9 +32,6 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [runs, setRuns] = useState<ExecutionRunEntry[]>([]);
   const [loading, setLoading] = useState(defaultExpanded);
-
-  const container = useMotionVariants(staggerContainer);
-  const item = useMotionVariants(fadeInUp);
 
   useEffect(() => {
     if (!expanded) return;
@@ -78,35 +73,40 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
 
       {expanded ? (
         <>
-          {loading ? <p className="settings-diagnostics-loading">Chargement…</p> : null}
+          {loading ? <p className="settings-diagnostics__note">Chargement…</p> : null}
 
           {!loading && runs.length === 0 ? (
-            <p className="settings-diagnostics-empty">Aucune génération enregistrée pour l'instant.</p>
+            <p className="settings-diagnostics__note">
+              Aucune génération enregistrée pour l'instant.
+            </p>
           ) : null}
 
-          <motion.div
-            className="list-grid"
-            variants={container}
-            initial="hidden"
-            animate="visible"
-          >
-            {runs.map((run) => (
-              <motion.div key={run.id} variants={item}>
-                <Card elevation={1} className="settings-run-card">
-                  <span className={`status-label settings-run-status settings-run-status--${run.status}`}>
-                    {formatRunStatus(run.status)}
-                  </span>
-                  <strong>{formatSkillLabel(run.skillName)}</strong>
-                  <p>{run.summary}</p>
+          {runs.length > 0 ? (
+            <div className="settings-runs">
+              {runs.map((run) => (
+                <div className="settings-run" key={run.id}>
+                  <div className="settings-run__head">
+                    <span className="settings-run__title">{formatSkillLabel(run.skillName)}</span>
+                    <span className={`settings-run__status settings-run__status--${run.status}`}>
+                      {formatRunStatus(run.status)}
+                    </span>
+                  </div>
+
+                  <p className="settings-run__summary">{run.summary}</p>
+
                   {run.status === "failed" && (run.errorCode || run.errorMessage) ? (
-                    <div className="error-detail">
-                      <span className="status-label">Détail technique</span>
-                      {run.errorCode ? <code className="error-code">{run.errorCode}</code> : null}
-                      {run.errorMessage ? <p>{run.errorMessage}</p> : null}
+                    <div className="settings-run__error">
+                      {run.errorCode ? (
+                        <code className="settings-run__error-code">{run.errorCode}</code>
+                      ) : null}
+                      {run.errorMessage ? (
+                        <p className="settings-run__error-message">{run.errorMessage}</p>
+                      ) : null}
                     </div>
                   ) : null}
+
                   {run.status === "failed" ? (
-                    <div className="settings-run-action">
+                    <div className="settings-run__action">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -122,10 +122,10 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
                       </Button>
                     </div>
                   ) : null}
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

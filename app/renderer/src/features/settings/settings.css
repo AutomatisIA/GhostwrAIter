@@ -1,0 +1,441 @@
+/*
+ * Feuille de l ecran Parametres.
+ *
+ * Transposition de la direction visuelle du 25 juillet 2026. L ecran n est pas
+ * dessine dans la maquette : les regles ci-dessous transposent le modele de
+ * formulaire de la maquette (surface bordee unique, lignes separees par un
+ * trait, grille 176px 1fr, champs de 36px sur --surface-app borde
+ * --line-field, focus en bordure primaire plus halo teinte).
+ */
+
+/* ---------------------------------------------------------------------------
+ * Sections.
+ * ------------------------------------------------------------------------- */
+
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  /* Un formulaire ne gagne rien a s etirer sur toute la largeur d une fenetre
+     de bureau : la colonne d etiquettes s eloignerait de ses champs. */
+  max-width: 920px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-section-title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-height-tight);
+  color: var(--ink);
+}
+
+.settings-section-desc {
+  margin: 0;
+  max-width: 74ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+ * Formulaire : surface bordee unique, une ligne par reglage.
+ * `overflow: hidden` sert au rognage des angles, jamais au defilement.
+ * ------------------------------------------------------------------------- */
+
+.settings-form {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 176px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row--top {
+  align-items: start;
+}
+
+.settings-row--top .settings-row__label {
+  /* Aligne l etiquette sur la premiere ligne de texte du controle. */
+  padding-top: 6px;
+}
+
+.settings-row__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink);
+}
+
+.settings-row__control {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.settings-row__hint {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+.settings-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  word-break: break-all;
+}
+
+/* ---------------------------------------------------------------------------
+ * Apparence : controle segmente.
+ *
+ * Rehabillage LOCAL de la primitive Tabs, scope sous `.settings-theme`. La
+ * feuille partagee lui donne encore une gouttiere pilulaire et un indicateur en
+ * degrade d accent, et ce chantier n en est pas proprietaire : le scope confine
+ * la reecriture a cet ecran et laisse le chantier commun libre d aplatir la
+ * primitive sans conflit.
+ * ------------------------------------------------------------------------- */
+
+.settings-theme {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.settings-theme .ds-tabs {
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.settings-theme .ds-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+}
+
+.settings-theme .ds-tab:hover {
+  color: var(--ink-muted);
+}
+
+.settings-theme .ds-tab[aria-selected="true"] {
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* ---------------------------------------------------------------------------
+ * Moteur d execution : une liste de choix, pas une vitrine.
+ *
+ * Le moteur retenu est rappele en permanence au pied de la navigation. Ce
+ * panneau n a donc plus a le proclamer : il sert a choisir, et a diagnostiquer
+ * ce qui manque quand un moteur ne repond pas.
+ * ------------------------------------------------------------------------- */
+
+.settings-engines {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.settings-engine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-engine:last-child {
+  border-bottom: none;
+}
+
+.settings-engine__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.settings-engine__name {
+  flex: none;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink);
+}
+
+.settings-engine__sub {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-engine__action {
+  flex: none;
+}
+
+.settings-engine__active {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--primary-ink);
+  white-space: nowrap;
+}
+
+.engine-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.engine-badge--ok {
+  background: var(--surface-sunken);
+  color: var(--state-ok);
+}
+
+/* Ambre : le moteur est la, il reste une action a faire. De l attention, pas
+   une erreur et surtout pas une validation. */
+.engine-badge--warn {
+  background: var(--amber-tint);
+  color: var(--amber-ink);
+}
+
+.engine-badge--off {
+  background: var(--surface-sunken);
+  color: var(--ink-subtle);
+}
+
+.settings-engine__commands {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings-engine__command {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.settings-engine__command-label {
+  flex: none;
+  width: 88px;
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+}
+
+.engine-command {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-xs);
+  color: var(--ink-muted);
+  background: var(--surface-app);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-engine-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 16px 18px;
+  background: var(--surface-raised);
+  border: 1px solid var(--state-ko-line);
+  border-radius: var(--radius-sm);
+}
+
+.settings-engine-error strong {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink);
+}
+
+.settings-engine-error p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * Diagnostics : l historique des generations.
+ * ------------------------------------------------------------------------- */
+
+.settings-diagnostics {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.settings-diagnostics__note {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+}
+
+.settings-runs {
+  width: 100%;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.settings-run {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-run:last-child {
+  border-bottom: none;
+}
+
+.settings-run__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.settings-run__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink);
+}
+
+.settings-run__status {
+  flex: none;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.settings-run__status--succeeded {
+  color: var(--state-ok);
+}
+
+/* Un run en echec est une erreur, pas une attention : encre d erreur. L ambre
+   est reserve au resultat partiel, ou il reste quelque chose a regarder. */
+.settings-run__status--failed {
+  color: var(--state-ko);
+}
+
+.settings-run__status--partial {
+  color: var(--amber-ink);
+}
+
+.settings-run__summary {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-muted);
+}
+
+.settings-run__error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding: 8px 10px;
+  background: var(--state-ko-tint);
+  border: 1px solid var(--state-ko-line);
+  border-radius: var(--radius-sm);
+}
+
+.settings-run__error-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-xs);
+  color: var(--state-ko);
+}
+
+.settings-run__error-message {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-muted);
+}
+
+.settings-run__action {
+  margin-top: var(--space-1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Fenetre etroite : la colonne d etiquettes de 176px passe au-dessus du
+ * controle plutot que de comprimer le champ.
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .settings-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .settings-row--top .settings-row__label {
+    padding-top: 0;
+  }
+}

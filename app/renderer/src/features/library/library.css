@@ -1,0 +1,383 @@
+/*
+ * Feuille de l ecran Bibliotheque.
+ *
+ * Transposition de la direction visuelle du 25 juillet 2026. L ecran n est pas
+ * dessine dans la maquette : les regles ci-dessous transposent le modele de
+ * liste de la maquette (surface bordee unique, lignes separees par un trait,
+ * titre 17px/620, metadonnees 13px separees par des points medians) sur les
+ * brouillons et sur le planning.
+ *
+ * DETTE CONNUE, a domicilier ailleurs. Le bloc marque « heritage partage » en
+ * fin de fichier habille des ecrans qui ne sont pas la Bibliotheque :
+ * `.editor-section` et `.editor-card` servent a Strategie, `.list-card`,
+ * `.grid-selection` et `.list-selection` a l Atelier, `.filter-bar` et
+ * `.list-grid` a Creer. Elles ont atterri ici lors du decoupage de la feuille
+ * monolithique. Les retoucher depuis ce chantier casserait trois ecrans dont un
+ * autre chantier est proprietaire : elles sont laissees telles quelles.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Barre de page : bascule de vue et filtres de portee ecran.
+ * ------------------------------------------------------------------------- */
+
+/* `min-width: 0` : sans lui, la barre refuse de descendre sous la largeur de son
+   contenu et chasse le surtitre hors de l ecran au lieu de comprimer la
+   recherche. La chaine doit etre continue de `.page__actions` jusqu au champ. */
+.library-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+/*
+ * Rehabillage LOCAL de la primitive Tabs.
+ *
+ * `.ds-tabs` porte encore, dans la feuille partagee, le vocabulaire precedent :
+ * gouttiere pilulaire, indicateur en degrade d accent, ombre. Ce chantier n est
+ * pas proprietaire de cette feuille. Les regles sont donc scopees sous
+ * `.library-tabs`, ce qui les confine a cet ecran et laisse le chantier commun
+ * libre d aplatir la primitive sans conflit.
+ *
+ * La maquette souligne l onglet actif d un trait primaire courant sur toute la
+ * hauteur d une barre de 44px. Cette forme demanderait d etirer `.page__actions`
+ * sur la hauteur de la barre, propriete de la feuille partagee. Le controle
+ * segmente ci-dessous rend la meme information avec le meme vocabulaire plat :
+ * 4px, un trait, aucune ombre, aucun degrade.
+ */
+.library-tabs .ds-tabs {
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.library-tabs .ds-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+}
+
+.library-tabs .ds-tab:hover {
+  color: var(--ink-muted);
+}
+
+.library-tabs .ds-tab[aria-selected="true"] {
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+  font-weight: var(--font-weight-semibold);
+}
+
+.library-bar__search,
+.library-bar__select {
+  height: 28px;
+  min-width: 0;
+  padding: 0 10px;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.library-bar__search {
+  flex: 0 1 220px;
+}
+
+.library-bar__select {
+  flex: none;
+}
+
+.library-bar__search:focus,
+.library-bar__select:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------------------------------------------------------------------------
+ * Corps : intitule de liste, puis la liste.
+ * ------------------------------------------------------------------------- */
+
+.library-note {
+  margin: 0 0 var(--space-4);
+  max-width: 74ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+.library-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 10px;
+}
+
+.library-head__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.library-head__count {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Surface bordee unique. `overflow: hidden` sert au rognage des angles, jamais
+   au defilement : le seul conteneur defilant reste `.page__body`. */
+.library-list {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.library-entry {
+  border-bottom: 1px solid var(--line);
+}
+
+.library-entry:last-child {
+  border-bottom: none;
+}
+
+.library-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 14px 16px;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.library-row:hover {
+  background: var(--surface-sunken);
+}
+
+.library-row__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.library-row__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-title);
+  /* 1,3 : valeur de la maquette, entre --line-height-tight et snug. */
+  line-height: 1.3;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.library-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.library-row__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-circle);
+  background: currentColor;
+}
+
+/* Point median separateur : il ponctue, il n informe pas. Un ton plus clair que
+   la metadonnee qu il separe. */
+.library-row__sep {
+  flex: none;
+  color: var(--line-strong);
+}
+
+.library-row__pillar {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.library-row__num {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ambre : porte l attention, jamais la validation. Ici, un brouillon qui depasse
+   la limite LinkedIn et ne pourra pas etre publie tel quel. */
+.library-row__num--over {
+  color: var(--amber-ink);
+  font-weight: var(--font-weight-medium);
+}
+
+.library-row__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/*
+ * Suppression : la variante `danger` est conservee, c est elle qui porte le sens
+ * pour la lecture du code et pour la boite de confirmation. Son aplat rouge,
+ * repete sur chaque ligne d une liste dense, deviendrait le point le plus
+ * appuye de l ecran alors que c est l action la moins souhaitable. Elle est donc
+ * ramenee ici a une encre d erreur sans surface, et ne reprend du poids qu au
+ * survol.
+ */
+.library-row__actions .ds-button[data-variant="danger"] {
+  background: transparent;
+  color: var(--state-ko);
+  font-weight: var(--font-weight-medium);
+}
+
+.library-row__actions .ds-button[data-variant="danger"]:not(:disabled):hover {
+  filter: none;
+  background: var(--state-ko-tint);
+}
+
+/* ---------------------------------------------------------------------------
+ * Edition en ligne et planification en ligne.
+ * ------------------------------------------------------------------------- */
+
+.library-row--editing {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  background: var(--surface-sunken);
+}
+
+.library-row--editing:hover {
+  background: var(--surface-sunken);
+}
+
+.library-input,
+.library-textarea {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.library-input {
+  height: 36px;
+  padding: 0 12px;
+}
+
+.library-textarea {
+  padding: 9px 12px;
+  line-height: var(--line-height-normal);
+  min-height: 240px;
+  resize: vertical;
+}
+
+.library-input:focus,
+.library-textarea:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+.library-schedule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 16px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--line);
+}
+
+.library-schedule__input {
+  width: auto;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Etat vide.
+ * ------------------------------------------------------------------------- */
+
+.library-empty {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------------------------------------------------------------------------
+ * Heritage partage : regles consommees par Strategie, Atelier et Creer.
+ * Voir la note d en-tete. Ne pas retoucher depuis ce chantier.
+ * ------------------------------------------------------------------------- */
+
+.editor-section {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-section);
+  border: 1px solid var(--color-border);
+}
+
+.editor-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+}
+
+.list-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.list-card {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-1);
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.grid-selection,
+.list-selection {
+  display: grid;
+  gap: 14px;
+}

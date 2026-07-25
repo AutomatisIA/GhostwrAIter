@@ -13,6 +13,10 @@ export default tseslint.config(
       "node_modules",
       "playwright-report",
       "coverage",
+      // Moteur d execution du canevas Claude Design, code genere importe tel
+      // quel avec les maquettes. Rien a y corriger, il n est jamais execute
+      // par l application.
+      "design-import",
       "electron.vite.config.*.mjs"
     ]
   },

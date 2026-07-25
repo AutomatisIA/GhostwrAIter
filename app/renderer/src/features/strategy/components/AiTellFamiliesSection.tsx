@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ALL_TELL_FAMILIES, TELL_FAMILIES, type TellFamilyId } from "../../../../../shared/ai-tells";
-import { Card } from "../../../design-system/primitives";
+import { SectionHead } from "./SectionHead";
 import {
   AI_TELL_FAMILIES_PREFERENCE_KEY,
   parseTellFamiliesPreference
@@ -41,31 +41,26 @@ export function AiTellFamiliesSection() {
   }
 
   return (
-    <section className="editor-section">
-      <div className="section-heading">
-        <div>
-          <h2>Marqueurs d'écriture IA</h2>
-          <p>
-            Cocher une famille l'interdit à la génération. Toutes sont cochées par défaut :
-            décochez celles que vous tolérez dans vos posts.
-          </p>
-        </div>
-      </div>
+    <section className="strategy-section" aria-label="Marqueurs d'écriture IA">
+      <SectionHead
+        title="Marqueurs d'écriture IA"
+        lead="Cocher une famille l'interdit à la génération. Toutes sont cochées par défaut : décochez celles que vous tolérez dans vos posts."
+      />
 
-      <div className="ai-tell-families-grid">
+      <div className="strategy-tells">
         {TELL_FAMILIES.map((family) => (
-          <Card key={family.id} elevation={1} className="ai-tell-family-card">
-            <label className="checkbox-field">
+          <div key={family.id} className="strategy-surface strategy-tell">
+            <label className="strategy-check">
               <input
                 type="checkbox"
                 checked={enabled.includes(family.id)}
                 disabled={!loaded}
                 onChange={() => toggle(family.id)}
               />
-              {family.label}
+              <span>{family.label}</span>
             </label>
-            <p className="ai-tell-family-description">{family.description}</p>
-          </Card>
+            <p className="strategy-tell__description">{family.description}</p>
+          </div>
         ))}
       </div>
     </section>

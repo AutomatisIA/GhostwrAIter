@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { formatCharCount, measurePost } from "../../../../shared/post-metrics";
 import { motion } from "motion/react";
@@ -6,20 +6,17 @@ import type { LibraryEntry } from "@shared/types/library";
 import type { CalendarItem } from "@shared/types/calendar";
 import {
   Button,
-  Card,
   ConfirmDialog,
   EmptyState,
+  PageFrame,
   Skeleton,
   Tabs,
   useToast
 } from "../../design-system/primitives";
-import {
-  fadeInUp,
-  staggerContainer,
-  useMotionVariants
-} from "../../design-system/motion/variants";
+import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
 import { InfoHint } from "../../help";
 
+import "./library.css";
 function formatLibraryStatus(status: LibraryEntry["status"]) {
   if (status === "scheduled") {
     return "Planifié";
@@ -48,6 +45,47 @@ function formatCalendarStatus(status: CalendarItem["status"]) {
   return "Prêt";
 }
 
+/**
+ * Ligne de metadonnees du modele de liste : une pastille, puis des fragments
+ * separes par des points medians. Le separateur est purement typographique,
+ * d ou `aria-hidden` : lu a voix haute il n ajoute rien au fragment qu il suit.
+ */
+function MetaLine({ parts }: { parts: ReactNode[] }) {
+  return (
+    <span className="library-row__meta">
+      <span className="library-row__dot" aria-hidden="true" />
+      {parts.map((part, index) => (
+        <Fragment key={index}>
+          {index > 0 ? (
+            <span className="library-row__sep" aria-hidden="true">
+              ·
+            </span>
+          ) : null}
+          {part}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+/** Trois lignes fantomes dans la meme surface bordee que la liste reelle. */
+function LoadingList({ label }: { label: string }) {
+  return (
+    <div className="library-list" aria-busy="true" aria-label={label}>
+      {[0, 1, 2].map((index) => (
+        <div className="library-entry" key={index}>
+          <div className="library-row">
+            <div className="library-row__main">
+              <Skeleton variant="text" />
+              <Skeleton variant="text" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type TabView = "drafts" | "planning";
 
 export function LibraryScreen() {
@@ -55,8 +93,7 @@ export function LibraryScreen() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const container = useMotionVariants(staggerContainer);
-  const item = useMotionVariants(fadeInUp);
+  const listReveal = useMotionVariants(fadeInUp);
 
   // `activeTab` est DERIVE de l'URL (`?view=planning`), pas un state local
   // (finding revue Codex). La transition de route d'App.tsx est keyee sur le
@@ -123,7 +160,7 @@ export function LibraryScreen() {
         setScheduledDates(dateMap);
       })
       .catch(() => {
-        // Non-critique : les badges de date ne s'affichent simplement pas.
+        // Non-critique : les dates planifiees ne s'affichent simplement pas.
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -324,84 +361,83 @@ export function LibraryScreen() {
   const upcomingCount = visibleCalendarItems.filter((i) => i.status !== "published").length;
   const publishedCount = visibleCalendarItems.filter((i) => i.status === "published").length;
 
+  const draftsCount =
+    visibleEntries.length === entries.length
+      ? `${visibleEntries.length} brouillon${visibleEntries.length > 1 ? "s" : ""}`
+      : `${visibleEntries.length} sur ${entries.length}`;
+
+  // Filtres et bascule de vue : de portee ecran, donc dans la barre de page.
+  const pageActions = (
+    <div className="library-bar">
+      <div className="library-tabs">
+        <Tabs
+          aria-label="Vues de la bibliothèque"
+          value={activeTab}
+          onChange={(value) => switchTab(value as TabView)}
+          items={[
+            { value: "drafts", label: "Brouillons" },
+            { value: "planning", label: "Planning" }
+          ]}
+        />
+      </div>
+
+      {activeTab === "drafts" ? (
+        <>
+          <input
+            className="library-bar__search"
+            aria-label="Recherche"
+            value={query}
+            onChange={(event) => void handleSearch(event.target.value)}
+            placeholder="Titre, pilier, tag…"
+          />
+          <select
+            className="library-bar__select"
+            aria-label="Statut"
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter(event.target.value as LibraryEntry["status"] | "all")
+            }
+          >
+            <option value="all">Tous les statuts</option>
+            <option value="draft">Brouillon</option>
+            <option value="variant">Variante</option>
+            <option value="scheduled">Planifié</option>
+          </select>
+        </>
+      ) : (
+        <select
+          className="library-bar__select"
+          aria-label="Filtrer par statut"
+          value={calendarStatusFilter}
+          onChange={(event) =>
+            setCalendarStatusFilter(event.target.value as CalendarItem["status"] | "all")
+          }
+        >
+          <option value="all">Tous les statuts</option>
+          <option value="planned">Planifié</option>
+          <option value="ready">Prêt</option>
+          <option value="published">Publié</option>
+          <option value="missed">Manqué</option>
+        </select>
+      )}
+    </div>
+  );
+
   return (
-    <section className="panel page-panel">
-      <h1>Bibliothèque</h1>
-
-      <Tabs
-        aria-label="Vues de la bibliothèque"
-        value={activeTab}
-        onChange={(value) => switchTab(value as TabView)}
-        items={[
-          { value: "drafts", label: "Brouillons" },
-          { value: "planning", label: "Planning" }
-        ]}
-      />
-
+    <PageFrame eyebrow="Bibliothèque" actions={pageActions}>
       {activeTab === "drafts" && (
         <>
-          <div className="insight-strip">
-            <article className="insight-card">
-              <span className="status-label">
-                Brouillons visibles <InfoHint term="draft" />
-              </span>
-              <strong>
-                {loading
-                  ? "…"
-                  : `${visibleEntries.length} brouillon${visibleEntries.length > 1 ? "s" : ""}`}
-              </strong>
-            </article>
-            <article className="insight-card">
-              <span className="status-label">
-                Longueur moyenne
-              </span>
-              <strong>
-                {loading || visibleEntries.length === 0
-                  ? "…"
-                  : `${Math.round(
-                      visibleEntries.reduce(
-                        (sum, entry) => sum + measurePost(entry.bodyMarkdown).chars,
-                        0
-                      ) / visibleEntries.length
-                    ).toLocaleString("fr-FR")} caractères`}
-              </strong>
-            </article>
-          </div>
-
-          <div className="filter-bar">
-            <label className="field compact-field">
-              <span>Recherche</span>
-              <input
-                aria-label="Recherche"
-                value={query}
-                onChange={(event) => void handleSearch(event.target.value)}
-                placeholder="Titre, pilier, tag…"
-              />
-            </label>
-            <label className="field compact-field">
-              <span>Statut</span>
-              <select
-                aria-label="Statut"
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as LibraryEntry["status"] | "all")
-                }
-              >
-                <option value="all">Tous</option>
-                <option value="draft">Brouillon</option>
-                <option value="variant">Variante</option>
-                <option value="scheduled">Planifié</option>
-              </select>
-            </label>
+          <div className="library-head">
+            <span className="eyebrow library-head__title">
+              Brouillons <InfoHint term="draft" />
+            </span>
+            <span className="library-head__count">{loading ? "…" : draftsCount}</span>
           </div>
 
           {loading ? (
-            <div className="list-grid" aria-label="Chargement de la bibliothèque">
-              <Skeleton variant="card" />
-              <Skeleton variant="card" />
-            </div>
+            <LoadingList label="Chargement de la bibliothèque" />
           ) : visibleEntries.length === 0 ? (
-            <Card elevation={1} className="library-empty-card">
+            <div className="library-empty">
               {entries.length === 0 ? (
                 <EmptyState
                   title="Aucun brouillon pour le moment"
@@ -421,33 +457,47 @@ export function LibraryScreen() {
                   }}
                 />
               )}
-            </Card>
+            </div>
           ) : (
             <motion.div
-              className="list-grid"
-              variants={container}
+              className="library-list"
+              variants={listReveal}
               initial="hidden"
               animate="visible"
             >
-              {visibleEntries.map((entry) => (
-                <motion.div key={entry.draftId} variants={item}>
-                  <Card elevation={2} interactive={false} className="lib-card">
+              {visibleEntries.map((entry) => {
+                const metrics = measurePost(entry.bodyMarkdown);
+                const plannedDate = scheduledDates.get(entry.draftId);
+                const extraTags = entry.tags.filter(
+                  (tag) => tag.trim().toLowerCase() !== entry.pillarLabel.trim().toLowerCase()
+                );
+
+                return (
+                  <div className="library-entry" key={entry.draftId}>
                     {editingDraftId === entry.draftId ? (
-                      <>
+                      <div className="library-row library-row--editing">
                         <input
-                          className="draft-edit-headline"
+                          className="library-input"
                           value={editHeadline}
                           onChange={(e) => setEditHeadline(e.target.value)}
                           aria-label="Titre du post"
                         />
                         <textarea
-                          className="draft-edit-body"
+                          className="library-textarea"
                           value={editBody}
                           onChange={(e) => setEditBody(e.target.value)}
                           rows={12}
                           aria-label="Corps du post"
                         />
-                        <div className="lib-card-toolbar lib-card-toolbar--edit">
+                        <div className="library-row__actions">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={busyDraftId !== null}
+                            onClick={handleCancelEditing}
+                          >
+                            Annuler
+                          </Button>
                           <Button
                             variant="primary"
                             size="sm"
@@ -459,158 +509,139 @@ export function LibraryScreen() {
                           >
                             Enregistrer
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={busyDraftId !== null}
-                            onClick={handleCancelEditing}
-                          >
-                            Annuler
-                          </Button>
                         </div>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        <strong className="lib-card-headline">{entry.headline}</strong>
-                        {/* Texte complet + troncature CSS (-webkit-line-clamp) : evite la
-                            coupure en plein mot sans points de suspension du bodyPreview
-                            deja tronque a longueur fixe cote base. */}
-                        <p className="lib-card-preview">{entry.bodyMarkdown}</p>
-                        <div className="lib-card-meta">
-                          <span className="lib-card-tag">{entry.pillarLabel}</span>
-                          <span className="lib-card-tag">{formatLibraryStatus(entry.status)}</span>
-                          {scheduledDates.has(entry.draftId) && (
-                            <span className="lib-card-tag lib-card-tag--scheduled">
-                              {scheduledDates.get(entry.draftId)}
-                            </span>
-                          )}
-                          {entry.tags
-                            .filter(
-                              (tag) =>
-                                tag.trim().toLowerCase() !==
-                                entry.pillarLabel.trim().toLowerCase()
-                            )
-                            .map((tag) => (
-                              <span key={tag} className="lib-card-tag lib-card-tag--muted">
-                                {tag}
-                              </span>
-                            ))}
-                          <span className="lib-card-quality">
-                            <span
-                              className="lib-card-quality-dot"
-                              style={{
-                                background: measurePost(entry.bodyMarkdown).overLimit
-                                  ? "var(--color-warning-text)"
-                                  : "var(--color-accent)"
-                              }}
-                            />
-                            {formatCharCount(entry.bodyMarkdown)}
-                          </span>
-                        </div>
-                        <div className="lib-card-toolbar">
-                          <div className="lib-card-toolbar-primary">
-                            {confirmingVariantId === entry.draftId ? (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                loading={busyDraftId === entry.draftId}
-                                disabled={busyDraftId !== null}
-                                onClick={() => {
-                                  setConfirmingVariantId(null);
-                                  void handleCreateDivergentVariant(entry.draftId);
-                                }}
+                      <article className="library-row">
+                        <div className="library-row__main">
+                          <span className="library-row__title">{entry.headline}</span>
+                          <MetaLine
+                            parts={[
+                              <span className="library-row__pillar" key="pillar">
+                                {entry.pillarLabel}
+                              </span>,
+                              <span key="status">{formatLibraryStatus(entry.status)}</span>,
+                              ...(plannedDate
+                                ? [
+                                    <span className="library-row__num" key="date">
+                                      {plannedDate}
+                                    </span>
+                                  ]
+                                : []),
+                              <span
+                                key="chars"
+                                className={`library-row__num${
+                                  metrics.overLimit ? " library-row__num--over" : ""
+                                }`}
                               >
-                                Confirmer ?
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                disabled={busyDraftId !== null}
-                                onClick={() => setConfirmingVariantId(entry.draftId)}
-                              >
-                                Variante
-                              </Button>
-                            )}
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled={busyDraftId !== null}
-                              onClick={() => {
-                                if (schedulingDraftId === entry.draftId) {
-                                  setSchedulingDraftId(null);
-                                  setSchedulingDate("");
-                                } else {
-                                  setSchedulingDraftId(entry.draftId);
-                                  setSchedulingDate("");
-                                }
-                              }}
-                            >
-                              Planifier
-                            </Button>
-                          </div>
-                          <div className="lib-card-toolbar-secondary">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busyDraftId !== null}
-                              onClick={() => handleStartEditing(entry)}
-                            >
-                              Modifier
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
-                            >
-                              Retravailler
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              disabled={busyDraftId !== null}
-                              onClick={() => setDeletingDraftId(entry.draftId)}
-                            >
-                              Supprimer
-                            </Button>
-                          </div>
+                                {formatCharCount(entry.bodyMarkdown)}
+                              </span>,
+                              ...extraTags.map((tag) => <span key={`tag-${tag}`}>{tag}</span>)
+                            ]}
+                          />
                         </div>
-                        {schedulingDraftId === entry.draftId && (
-                          <div className="lib-card-schedule">
-                            <input
-                              type="date"
-                              aria-label="Date de publication"
-                              value={schedulingDate}
-                              onChange={(e) => setSchedulingDate(e.target.value)}
-                              className="lib-card-schedule-input"
-                            />
+
+                        <div className="library-row__actions">
+                          {confirmingVariantId === entry.draftId ? (
                             <Button
                               variant="primary"
                               size="sm"
                               loading={busyDraftId === entry.draftId}
-                              disabled={!schedulingDate || busyDraftId !== null}
-                              onClick={() => void handleConfirmSchedule(entry.draftId)}
+                              disabled={busyDraftId !== null}
+                              onClick={() => {
+                                setConfirmingVariantId(null);
+                                void handleCreateDivergentVariant(entry.draftId);
+                              }}
                             >
-                              Planifier à cette date
+                              Confirmer ?
                             </Button>
+                          ) : (
                             <Button
                               variant="ghost"
                               size="sm"
                               disabled={busyDraftId !== null}
-                              onClick={() => {
+                              onClick={() => setConfirmingVariantId(entry.draftId)}
+                            >
+                              Variante
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={busyDraftId !== null}
+                            onClick={() => {
+                              if (schedulingDraftId === entry.draftId) {
                                 setSchedulingDraftId(null);
                                 setSchedulingDate("");
-                              }}
-                            >
-                              Annuler
-                            </Button>
-                          </div>
-                        )}
-                      </>
+                              } else {
+                                setSchedulingDraftId(entry.draftId);
+                                setSchedulingDate("");
+                              }
+                            }}
+                          >
+                            Planifier
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
+                          >
+                            Retravailler
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={busyDraftId !== null}
+                            onClick={() => handleStartEditing(entry)}
+                          >
+                            Modifier
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            disabled={busyDraftId !== null}
+                            onClick={() => setDeletingDraftId(entry.draftId)}
+                          >
+                            Supprimer
+                          </Button>
+                        </div>
+                      </article>
                     )}
-                  </Card>
-                </motion.div>
-              ))}
+
+                    {schedulingDraftId === entry.draftId && (
+                      <div className="library-schedule">
+                        <input
+                          type="date"
+                          aria-label="Date de publication"
+                          value={schedulingDate}
+                          onChange={(e) => setSchedulingDate(e.target.value)}
+                          className="library-input library-schedule__input"
+                        />
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          loading={busyDraftId === entry.draftId}
+                          disabled={!schedulingDate || busyDraftId !== null}
+                          onClick={() => void handleConfirmSchedule(entry.draftId)}
+                        >
+                          Planifier à cette date
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyDraftId !== null}
+                          onClick={() => {
+                            setSchedulingDraftId(null);
+                            setSchedulingDate("");
+                          }}
+                        >
+                          Annuler
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </motion.div>
           )}
         </>
@@ -618,52 +649,22 @@ export function LibraryScreen() {
 
       {activeTab === "planning" && (
         <>
-          <p className="library-planning-intro">
+          <p className="library-note">
             Le planning est votre calendrier éditorial personnel. Il ne publie rien automatiquement :
             quand la date arrive, ouvrez le post, copiez-le et collez-le sur LinkedIn.
           </p>
 
-          <div className="insight-strip">
-            <article className="insight-card">
-              <span className="status-label">À venir</span>
-              <strong>
-                {planningLoading
-                  ? "…"
-                  : `${upcomingCount} post${upcomingCount > 1 ? "s" : ""}`}
-              </strong>
-            </article>
-            <article className="insight-card">
-              <span className="status-label">Publiés</span>
-              <strong>{planningLoading ? "…" : `${publishedCount}`}</strong>
-            </article>
-          </div>
-
-          <div className="filter-bar" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
-            <label className="field compact-field">
-              <span>Statut</span>
-              <select
-                aria-label="Filtrer par statut"
-                value={calendarStatusFilter}
-                onChange={(event) =>
-                  setCalendarStatusFilter(event.target.value as CalendarItem["status"] | "all")
-                }
-              >
-                <option value="all">Tous les statuts</option>
-                <option value="planned">Planifié</option>
-                <option value="ready">Prêt</option>
-                <option value="published">Publié</option>
-                <option value="missed">Manqué</option>
-              </select>
-            </label>
+          <div className="library-head">
+            <span className="eyebrow library-head__title">Planning</span>
+            <span className="library-head__count">
+              {planningLoading ? "…" : `${upcomingCount} à venir · ${publishedCount} publiés`}
+            </span>
           </div>
 
           {planningLoading ? (
-            <div className="list-grid" aria-label="Chargement du planning">
-              <Skeleton variant="card" />
-              <Skeleton variant="card" />
-            </div>
+            <LoadingList label="Chargement du planning" />
           ) : visibleCalendarItems.length === 0 ? (
-            <Card elevation={1} className="library-empty-card">
+            <div className="library-empty">
               {calendarItems.length === 0 ? (
                 <EmptyState
                   title="Aucune publication planifiée"
@@ -680,64 +681,64 @@ export function LibraryScreen() {
                   }}
                 />
               )}
-            </Card>
+            </div>
           ) : (
             <motion.div
-              className="list-grid"
-              variants={container}
+              className="library-list"
+              variants={listReveal}
               initial="hidden"
               animate="visible"
             >
               {visibleCalendarItems.map((calItem) => {
                 const draft = entries.find((e) => e.draftId === calItem.draftId);
                 return (
-                  <motion.div key={calItem.id} variants={item}>
-                    <Card elevation={2} interactive={false} className="lib-card">
-                      <div className="lib-card-meta">
-                        <span className="lib-card-tag">{calItem.pillarLabel}</span>
-                        <span className="lib-card-tag">{formatCalendarStatus(calItem.status)}</span>
-                        <span className="lib-card-planned-date">{calItem.plannedDate}</span>
+                  <div className="library-entry" key={calItem.id}>
+                    <article className="library-row">
+                      <div className="library-row__main">
+                        <span className="library-row__title">{calItem.draftHeadline}</span>
+                        <MetaLine
+                          parts={[
+                            <span className="library-row__num" key="date">
+                              {calItem.plannedDate}
+                            </span>,
+                            <span key="status">{formatCalendarStatus(calItem.status)}</span>,
+                            <span className="library-row__pillar" key="pillar">
+                              {calItem.pillarLabel}
+                            </span>
+                          ]}
+                        />
                       </div>
-                      <strong className="lib-card-headline">{calItem.draftHeadline}</strong>
-                      {draft && (
-                        <p className="lib-card-preview lib-card-preview--planning">
-                          {draft.bodyMarkdown}
-                        </p>
-                      )}
-                      <div className="lib-card-toolbar">
-                        <div className="lib-card-toolbar-primary">
-                          {draft && (
-                            <>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => void handleCopyAndMarkPublished(calItem, draft)}
-                              >
-                                Copier et marquer publié
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() =>
-                                  void copyDraftToClipboard(
-                                    `${draft.headline}\n\n${draft.bodyMarkdown}`,
-                                    "Post copié."
-                                  )
-                                }
-                              >
-                                Copier
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                        <div className="lib-card-toolbar-secondary">
-                          <Button variant="ghost" size="sm" onClick={() => switchTab("drafts")}>
-                            Voir dans les brouillons
-                          </Button>
-                        </div>
+
+                      <div className="library-row__actions">
+                        <Button variant="ghost" size="sm" onClick={() => switchTab("drafts")}>
+                          Voir dans les brouillons
+                        </Button>
+                        {draft && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                void copyDraftToClipboard(
+                                  `${draft.headline}\n\n${draft.bodyMarkdown}`,
+                                  "Post copié."
+                                )
+                              }
+                            >
+                              Copier
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => void handleCopyAndMarkPublished(calItem, draft)}
+                            >
+                              Copier et marquer publié
+                            </Button>
+                          </>
+                        )}
                       </div>
-                    </Card>
-                  </motion.div>
+                    </article>
+                  </div>
                 );
               })}
             </motion.div>
@@ -764,6 +765,6 @@ export function LibraryScreen() {
         }}
         onCancel={() => setDeletingDraftId(null)}
       />
-    </section>
+    </PageFrame>
   );
 }

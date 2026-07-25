@@ -1,22 +1,30 @@
 import { useState, type FormEvent } from "react";
 import { motion } from "motion/react";
-import { AiProgress, Button, Card, Skeleton, Tabs } from "../../design-system/primitives";
-import { useAiProgress } from "../../feedback/useAiProgress";
 import {
-  fadeInUp,
-  staggerContainer,
-  useMotionVariants
-} from "../../design-system/motion/variants";
-import { InfoHint } from "../../help";
+  AiProgress,
+  AlertTriangleIcon,
+  Button,
+  CheckCircleIcon,
+  PageFrame,
+  Skeleton,
+  Tabs
+} from "../../design-system/primitives";
+import { useAiProgress } from "../../feedback/useAiProgress";
+import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
 import { useStrategyBundle } from "./hooks/useStrategyBundle";
+import { HelpDisclosureProvider } from "./components/HelpDisclosureProvider";
+import { HelpMasterToggle } from "./components/HelpMasterToggle";
+import { HELP_FIELDS, type StrategyTab } from "./components/strategy-help";
+import { isFilled } from "./components/completeness-text";
 import { ProfileSection } from "./components/ProfileSection";
 import { OffersSection } from "./components/OffersSection";
 import { IcpsSection } from "./components/IcpsSection";
 import { PillarsSection } from "./components/PillarsSection";
 import { VoiceRulesSection } from "./components/VoiceRulesSection";
 import { AiTellFamiliesSection } from "./components/AiTellFamiliesSection";
+import { FoundationSection } from "./components/FoundationSection";
 
-type StrategyTab = "profil" | "offres" | "icps" | "piliers" | "voix" | "socle";
+import "./strategy.css";
 
 const tabs: Array<{ key: StrategyTab; label: string }> = [
   { key: "profil", label: "Profil" },
@@ -27,10 +35,12 @@ const tabs: Array<{ key: StrategyTab; label: string }> = [
   { key: "socle", label: "Socle éditorial" }
 ];
 
+/** Etat de completude porte par la coche de l onglet. */
+type TabMark = "none" | "ok" | "warn";
+
 export function StrategyScreen() {
   const [activeTab, setActiveTab] = useState<StrategyTab>("profil");
-  const [isEditingFoundation, setIsEditingFoundation] = useState(false);
-  const [editedFoundation, setEditedFoundation] = useState("");
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   const {
     bundle,
@@ -57,7 +67,6 @@ export function StrategyScreen() {
     generateFoundation
   } = useStrategyBundle();
 
-  const container = useMotionVariants(staggerContainer);
   const item = useMotionVariants(fadeInUp);
 
   // Feedback IA continu pendant la generation du socle (feature 010, T032).
@@ -73,220 +82,201 @@ export function StrategyScreen() {
     pipeline: ["foundation"]
   });
 
+  // L horodatage est pose apres que `saveBundle` a rendu la main. Le hook avale
+  // l erreur et la signale par un toast sans la remonter ici : distinguer le
+  // succes de l echec demanderait de modifier la logique d enregistrement, qui
+  // n appartient pas a ce chantier. L heure est donc celle de la derniere
+  // tentative, jamais affichee avant qu il y en ait eu une.
+  async function handleSave() {
+    await saveBundle();
+    setSavedAt(new Date());
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await saveBundle();
+    await handleSave();
   }
 
-  function handleStartEditFoundation() {
-    setEditedFoundation(foundationSummary);
-    setIsEditingFoundation(true);
-  }
-
-  function handleSaveFoundation() {
-    setFoundationSummary(editedFoundation);
-    setIsEditingFoundation(false);
+  function tabMark(tab: StrategyTab): TabMark {
+    switch (tab) {
+      case "profil":
+        return isFilled(bundle.profile.name) &&
+          isFilled(bundle.profile.positioning) &&
+          isFilled(bundle.profile.bio) &&
+          isFilled(bundle.profile.expertiseSummary)
+          ? "ok"
+          : "none";
+      case "offres":
+        return bundle.offers.some((offer) => isFilled(offer.name) && isFilled(offer.promise))
+          ? "ok"
+          : "none";
+      case "icps":
+        return bundle.icps.some((icp) => isFilled(icp.segment) && isFilled(icp.pains))
+          ? "ok"
+          : "none";
+      case "piliers":
+        return bundle.pillars.some((pillar) => isFilled(pillar.label)) ? "ok" : "none";
+      case "voix":
+        return bundle.voiceRules.some((rule) => isFilled(rule.ruleText)) ? "ok" : "none";
+      case "socle":
+        if (foundationOutdated) return "warn";
+        return isFilled(foundationSummary) ? "ok" : "none";
+    }
   }
 
   const tabItems = tabs.map((tab) => {
-    let marker = "";
-    if (tab.key === "socle") {
-      if (foundationOutdated) marker = " ⚠";
-      else if (foundationSummary) marker = " ✓";
-    }
-    return { value: tab.key, label: `${tab.label}${marker}` };
+    const mark = tabMark(tab.key);
+    return {
+      value: tab.key,
+      label: (
+        <span className="strategy-tab-label">
+          {tab.label}
+          {mark === "ok" ? (
+            <span className="strategy-tab-mark" data-state="ok">
+              <CheckCircleIcon size={13} />
+            </span>
+          ) : null}
+          {mark === "warn" ? (
+            <span className="strategy-tab-mark" data-state="warn">
+              <AlertTriangleIcon size={13} />
+            </span>
+          ) : null}
+        </span>
+      )
+    };
   });
+
+  const foundationLabel = foundationOutdated
+    ? "Régénérer le socle (recommandé)"
+    : foundationSummary
+      ? "Régénérer le socle"
+      : "Générer le socle éditorial";
+
+  const barActions = (
+    <>
+      {savedAt ? (
+        <span className="strategy-savedat">
+          Enregistré à{" "}
+          {savedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+        </span>
+      ) : null}
+      <Button variant="secondary" onClick={handleSave} loading={saving}>
+        Enregistrer
+      </Button>
+      <Button variant="primary" onClick={generateFoundation} loading={generating}>
+        {foundationLabel}
+      </Button>
+    </>
+  );
 
   if (loading) {
     return (
-      <section className="panel page-panel">
-        <h1>Stratégie éditoriale</h1>
+      <PageFrame eyebrow="Stratégie éditoriale">
         <div className="strategy-skeleton">
           <Skeleton variant="text" />
           <Skeleton variant="card" />
           <Skeleton variant="card" />
         </div>
-      </section>
+      </PageFrame>
     );
   }
 
   return (
-    <section className="panel page-panel">
-      <h1>Stratégie éditoriale</h1>
+    <HelpDisclosureProvider>
+      <PageFrame eyebrow="Stratégie éditoriale" actions={barActions}>
+        <div className="strategy-tabbar">
+          <Tabs
+            items={tabItems}
+            value={activeTab}
+            onChange={(value) => setActiveTab(value as StrategyTab)}
+            aria-label="Sections de la stratégie éditoriale"
+          />
+          <HelpMasterToggle fields={HELP_FIELDS[activeTab]} />
+        </div>
 
-      <div className="strategy-tabs-bar">
-        <Tabs
-          items={tabItems}
-          value={activeTab}
-          onChange={(value) => setActiveTab(value as StrategyTab)}
-          aria-label="Sections de la stratégie éditoriale"
-        />
-      </div>
-
-      {activeTab !== "socle" ? (
-        <form className="strategy-form" onSubmit={handleSubmit}>
-          <motion.div
-            key={activeTab}
-            className="strategy-sections"
-            variants={container}
-            initial="hidden"
-            animate="visible"
-          >
-            {activeTab === "profil" && (
-              <motion.div variants={item}>
+        {activeTab !== "socle" ? (
+          <form className="strategy-panel" onSubmit={handleSubmit}>
+            <motion.div key={activeTab} variants={item} initial="hidden" animate="visible">
+              {activeTab === "profil" && (
                 <ProfileSection profile={bundle.profile} onUpdate={updateProfileField} />
-              </motion.div>
-            )}
+              )}
 
-            {activeTab === "offres" && (
-              <motion.div variants={item}>
+              {activeTab === "offres" && (
                 <OffersSection
                   offers={bundle.offers}
                   onAdd={addOffer}
                   onRemove={removeOffer}
                   onUpdate={updateOfferField}
                 />
-              </motion.div>
-            )}
+              )}
 
-            {activeTab === "icps" && (
-              <motion.div variants={item}>
+              {activeTab === "icps" && (
                 <IcpsSection
                   icps={bundle.icps}
                   onAdd={addIcp}
                   onRemove={removeIcp}
                   onUpdate={updateIcpField}
                 />
-              </motion.div>
-            )}
+              )}
 
-            {activeTab === "piliers" && (
-              <motion.div variants={item}>
+              {activeTab === "piliers" && (
                 <PillarsSection
                   pillars={bundle.pillars}
                   onAdd={addPillar}
                   onRemove={removePillar}
                   onUpdate={updatePillarField}
                 />
-              </motion.div>
-            )}
+              )}
 
-            {activeTab === "voix" && (
-              <motion.div variants={item}>
-                <VoiceRulesSection
-                  voiceRules={bundle.voiceRules}
-                  onAdd={addVoiceRule}
-                  onRemove={removeVoiceRule}
-                  onUpdate={updateVoiceRuleField}
-                />
-              </motion.div>
-            )}
+              {activeTab === "voix" && (
+                <>
+                  <VoiceRulesSection
+                    voiceRules={bundle.voiceRules}
+                    onAdd={addVoiceRule}
+                    onRemove={removeVoiceRule}
+                    onUpdate={updateVoiceRuleField}
+                  />
+                  <AiTellFamiliesSection />
+                </>
+              )}
+            </motion.div>
 
-            {activeTab === "voix" && (
-              <motion.div variants={item}>
-                <AiTellFamiliesSection />
-              </motion.div>
-            )}
+            {/* Bouton par defaut du formulaire : il rend la touche Entree
+                equivalente au bouton « Enregistrer » de la barre de page, sans
+                ajouter un second bouton visible ni un doublon dans l arbre
+                d accessibilite. */}
+            <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
+          </form>
+        ) : (
+          <motion.div
+            key="socle"
+            className="strategy-panel"
+            variants={item}
+            initial="hidden"
+            animate="visible"
+          >
+            <FoundationSection
+              summary={foundationSummary}
+              outdated={foundationOutdated}
+              onApplyManualEdit={setFoundationSummary}
+              progress={
+                generating ? (
+                  <AiProgress
+                    phase={foundationProgress.phase}
+                    intentLabel={foundationProgress.intentLabel || "Génération en cours…"}
+                    elapsedMs={foundationProgress.elapsedMs}
+                    currentIndex={foundationProgress.currentIndex}
+                    totalSteps={foundationProgress.totalSteps}
+                    state={
+                      foundationProgress.state === "idle" ? "running" : foundationProgress.state
+                    }
+                  />
+                ) : null
+              }
+            />
           </motion.div>
-
-          <div className="form-actions">
-            <Button type="submit" variant="primary" loading={saving}>
-              Enregistrer
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <motion.div
-          className="strategy-form"
-          variants={container}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div variants={item}>
-            <Card accent elevation={2} className="strategy-socle-intro">
-              <h2 className="section-title-with-hint">
-                Socle éditorial
-                <InfoHint term="socle-editorial" />
-              </h2>
-              <p>
-                Le socle éditorial est un résumé structuré de votre stratégie. Il est utilisé comme
-                contexte par tous les modules de génération. Générez-le automatiquement depuis votre
-                profil, vos offres, vos ICPs et vos piliers, ou écrivez-le à la main.
-              </p>
-            </Card>
-          </motion.div>
-
-          {foundationOutdated && (
-            <motion.div variants={item} className="strategy-outdated-banner" role="status">
-              La stratégie a été modifiée depuis la dernière génération du socle. Regénérez-le pour
-              que les prochains brouillons utilisent les données à jour.
-            </motion.div>
-          )}
-
-          <motion.div variants={item} className="form-actions">
-            <Button
-              variant={isEditingFoundation ? "secondary" : "primary"}
-              onClick={generateFoundation}
-              loading={generating}
-            >
-              {foundationOutdated
-                ? "Regénérer le socle (recommandé)"
-                : foundationSummary
-                  ? "Regénérer le socle"
-                  : "Générer le socle éditorial"}
-            </Button>
-            {foundationSummary && !isEditingFoundation && (
-              <Button variant="secondary" onClick={handleStartEditFoundation}>
-                Modifier à la main
-              </Button>
-            )}
-          </motion.div>
-
-          {generating ? (
-            <motion.div variants={item}>
-              <AiProgress
-                phase={foundationProgress.phase}
-                intentLabel={foundationProgress.intentLabel || "Génération en cours…"}
-                elapsedMs={foundationProgress.elapsedMs}
-                currentIndex={foundationProgress.currentIndex}
-                totalSteps={foundationProgress.totalSteps}
-                state={foundationProgress.state === "idle" ? "running" : foundationProgress.state}
-              />
-            </motion.div>
-          ) : null}
-
-          {isEditingFoundation ? (
-            <motion.div variants={item} className="strategy-socle-editor">
-              <textarea
-                className="draft-edit-body"
-                value={editedFoundation}
-                onChange={(event) => setEditedFoundation(event.target.value)}
-                rows={20}
-                aria-label="Socle éditorial"
-              />
-              <div className="form-actions">
-                <Button variant="primary" onClick={handleSaveFoundation}>
-                  Appliquer les modifications
-                </Button>
-                <Button variant="secondary" onClick={() => setIsEditingFoundation(false)}>
-                  Annuler
-                </Button>
-              </div>
-            </motion.div>
-          ) : foundationSummary ? (
-            <motion.div variants={item}>
-              <Card elevation={1} className="strategy-socle-preview">
-                {foundationSummary}
-              </Card>
-            </motion.div>
-          ) : (
-            <motion.p variants={item} className="strategy-socle-hint">
-              Aucun socle éditorial généré. Remplissez d'abord les onglets Profil, Offres, ICPs et
-              Piliers, puis cliquez sur « Générer le socle éditorial ».
-            </motion.p>
-          )}
-        </motion.div>
-      )}
-    </section>
+        )}
+      </PageFrame>
+    </HelpDisclosureProvider>
   );
 }

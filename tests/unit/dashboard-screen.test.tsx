@@ -99,7 +99,10 @@ describe("CockpitScreen", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Cockpit" })).toBeTruthy();
-    expect(await screen.findByText("idée dans le backlog")).toBeTruthy();
-    expect(await screen.findByText("draft en bibliothèque")).toBeTruthy();
+    // Les quatre cartes de mesure sont devenues une reglette : les libelles
+    // changent, le contrat ne change pas. Le Cockpit doit toujours donner a
+    // voir l etat du backlog et celui des brouillons.
+    expect(await screen.findByText("Idées")).toBeTruthy();
+    expect(await screen.findByText("Brouillons")).toBeTruthy();
   });
 });

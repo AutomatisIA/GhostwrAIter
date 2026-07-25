@@ -1,14 +1,17 @@
 /*
- * Design tokens : feature 010 (refonte visuelle et expérience).
- * Familles ajoutées en complément des tokens couleur existants de styles.css :
- * spacing, radius, échelle typographique, élévation/profondeur, motion, glass,
- * focus, gradients expressifs dérivés du primaire #0a66c2.
- * Source unique de vérité : aucune valeur ad hoc de spacing/radius/typo/shadow
- * ne doit subsister dans le markup ou ailleurs dans le CSS.
+ * Jetons de forme, d espacement, de typographie et de mouvement.
+ * Les couleurs vivent dans palette.css, importe juste avant celui-ci.
+ *
+ * Revision du 25 juillet 2026, direction visuelle : la version precedente
+ * portait un vocabulaire d arrondis genereux, d ombres portees et de
+ * glassmorphisme. La direction retenue s en separe, non par gout mais parce que
+ * l audit a montre que la profondeur simulee servait a distinguer des blocs que
+ * rien ne distinguait sur le fond. Un trait de un pixel fait le meme travail
+ * sans emprunter au relief une credibilite que le contenu n avait pas.
  */
 
 :root {
-  /* Espacement : échelle 4px */
+  /* Espacement : echelle 4px */
   --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
@@ -19,83 +22,96 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* Arrondis */
-  --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 28px;
+  /* Arrondis. La direction n en emploie que trois : 3px pour les etiquettes,
+     4px pour tout le reste, 6px pour le cadre de la fenetre. Les noms d echelle
+     sont conserves pour ne pas casser les usages existants, mais ils pointent
+     desormais vers ces trois valeurs. */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
   --radius-pill: 999px;
+  --radius-circle: 50%;
 
-  /* Échelle typographique */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.375rem;
-  --font-size-2xl: 1.75rem;
-  --font-size-3xl: 2.25rem;
-  --line-height-tight: 1.2;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.7;
-  /* Inter Variable (embarquee, styles.css) couvre l'axe wght 100-900 :
-     ces deux bornes donnent aux titres de page une graisse legere et une
-     graisse forte reellement disponibles, la hierarchie ne repose plus
-     uniquement sur la taille. */
-  --font-weight-light: 300;
+  /* Echelle typographique. Neuf tailles, reprises de la maquette. Elles sont en
+     pixels et non en rem : l application est une fenetre de bureau a taille
+     maitrisee, pas un document dont l utilisateur regle le corps de base. */
+  --font-size-2xs: 11px;
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 16px;
+  --font-size-xl: 17px;
+  --font-size-2xl: 22px;
+  --font-size-3xl: 34px;
+
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.4;
+  --line-height-normal: 1.55;
+  --line-height-relaxed: 1.65;
+
+  /* Graisses. Inter Variable couvre l axe 100-900 en continu : les valeurs
+     intermediaires 620 et 680 ne sont pas des approximations, elles sont
+     reellement rendues. La hierarchie ne repose plus sur la seule taille.
+     250 sert au chiffre du chronometre, seul endroit ou une graisse fine
+     tient, parce que le glyphe y est grand. */
+  --font-weight-thin: 250;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
-  --font-weight-bold: 700;
+  --font-weight-title: 620;
+  --font-weight-eyebrow: 680;
+  --font-weight-bold: 800;
+  /* Conserves pour les usages existants, alignes sur l echelle ci-dessus. */
+  --font-weight-light: 250;
   --font-weight-extrabold: 800;
 
-  /* Élévation / profondeur */
-  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.05);
-  --shadow-2: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.05);
-  --shadow-3: 0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.06);
-  --shadow-4: 0 24px 56px rgba(15, 23, 42, 0.18), 0 8px 20px rgba(15, 23, 42, 0.08);
-  --shadow-glow-accent: 0 0 0 1px rgba(10, 102, 194, 0.35), 0 8px 28px rgba(10, 102, 194, 0.28);
+  /* Interlettrage. Les surtitres en capitales ont besoin d air, les grands
+     titres en manquent. */
+  --tracking-eyebrow: 0.08em;
+  --tracking-title: -0.012em;
+  --tracking-display: -0.02em;
 
-  /* Motion */
-  --duration-fast: 150ms;
-  --duration-base: 250ms;
-  --duration-slow: 400ms;
+  /* Elevation. Reservee a ce qui flotte reellement au-dessus du reste : une
+     boite de dialogue, un menu. Les cartes et les panneaux sont delimites par
+     un trait, pas par une ombre. */
+  --shadow-1: none;
+  --shadow-2: none;
+  --shadow-3: 0 6px 24px rgba(15, 23, 42, 0.14);
+  --shadow-4: 0 12px 40px rgba(15, 23, 42, 0.2);
+  --shadow-glow-accent: none;
+
+  /* Mouvement */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 320ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* Glassmorphism */
-  --glass-blur: 18px;
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.5);
+  /* Le glassmorphisme est retire. Ces trois jetons restent declares parce que
+     la feuille heritee les consomme encore par endroits ; ils rendent
+     desormais une surface opaque. La convention maison prevoit du
+     glassmorphisme sur les applications AutomatisIA : c est ici une deviation
+     assumee, la direction commandee l ecarte explicitement. */
+  --glass-blur: 0px;
+  --glass-bg: var(--surface-raised);
+  --glass-border: var(--line);
 
-  /* Gradients expressifs (dérivés du primaire #0a66c2) */
-  --gradient-accent: linear-gradient(135deg, #0a66c2 0%, #004182 100%);
-  --gradient-accent-soft: linear-gradient(135deg, rgba(10, 102, 194, 0.14), rgba(14, 165, 233, 0.1));
-  --gradient-surface: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(238, 243, 248, 0.86));
-  --gradient-celebration: linear-gradient(120deg, #0a66c2, #0ea5e9, #38bdf8);
+  /* Les degrades sont ramenes a des aplats. Meme raison que les ombres : ils
+     habillaient des blocs dont la valeur n etait pas etablie. */
+  --gradient-accent: var(--primary-fill);
+  --gradient-accent-soft: var(--primary-tint);
+  --gradient-surface: var(--surface-raised);
+  --gradient-celebration: var(--primary-fill);
 
-  /* Focus */
-  --focus-ring: 0 0 0 3px rgba(10, 102, 194, 0.45);
+  /* Focus : bordure primaire plus halo teinte, comme dans la maquette. */
+  --focus-ring: 0 0 0 3px var(--primary-tint);
 }
 
 :root[data-theme="dark"] {
-  /* Élévation : ombres plus profondes sur fond sombre */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-3: 0 12px 28px rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35);
-  --shadow-4: 0 24px 56px rgba(0, 0, 0, 0.6), 0 8px 20px rgba(0, 0, 0, 0.4);
-  --shadow-glow-accent: 0 0 0 1px rgba(56, 189, 248, 0.4), 0 8px 30px rgba(10, 102, 194, 0.5);
-
-  /* Glass sombre */
-  --glass-bg: rgba(17, 26, 41, 0.66);
-  --glass-border: rgba(148, 184, 230, 0.18);
-
-  /* Gradients adaptés au sombre */
-  --gradient-accent: linear-gradient(135deg, #1d7fe0 0%, #0a4f97 100%);
-  --gradient-accent-soft: linear-gradient(135deg, rgba(29, 127, 224, 0.22), rgba(14, 165, 233, 0.14));
-  --gradient-surface: linear-gradient(160deg, rgba(22, 33, 51, 0.96), rgba(15, 23, 38, 0.9));
-  --gradient-celebration: linear-gradient(120deg, #1d7fe0, #0ea5e9, #38bdf8);
-
-  --focus-ring: 0 0 0 3px rgba(56, 189, 248, 0.55);
+  --shadow-3: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --shadow-4: 0 12px 40px rgba(0, 0, 0, 0.6);
 }

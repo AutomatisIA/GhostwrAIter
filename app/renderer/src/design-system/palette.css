@@ -1,0 +1,104 @@
+/*
+ * Palette de la direction visuelle (maquette du 25 juillet 2026).
+ *
+ * Source unique des couleurs. Dix-huit jetons semantiques, declares deux fois :
+ * une fois pour le theme clair, une fois pour le theme sombre. Aucun theme n est
+ * deduit de l autre.
+ *
+ * Deux roles par accent, et cette distinction est structurante :
+ *   --primary-fill  la couleur SURFACE, sous du texte blanc (boutons, nav active)
+ *   --primary-ink   la couleur TEXTE, posee sur une surface claire ou teintee
+ * En clair l encre est plus SOMBRE que le fond (#0a5aab sur #0a66c2), en sombre
+ * elle est plus CLAIRE (#5aa4ea sur #1a6fc4). Traiter --primary-ink comme une
+ * simple variante de survol inverse le sombre. Meme chose pour l ambre.
+ *
+ * Contraste : verifie par `node scripts/audit-contrast.mjs`, qui enumere les
+ * paires reellement employees et echoue si l une passe sous son seuil AA.
+ */
+
+:root {
+  /* Surfaces, du fond vers le premier plan */
+  --surface-app: #f6f7f9;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f0f2f5;
+
+  /* Lignes. --line separe, --line-strong delimite. */
+  --line: #e3e6ea;
+  --line-strong: #cfd5dc;
+  /* Bordure des composants interactifs (champs, boutons secondaires). La
+     maquette employait --line-strong, qui ne donne que 1,48:1 sur blanc : un
+     champ de saisie n est identifiable que par sa bordure, et WCAG 1.4.11 exige
+     3:1 pour cet usage precis. Assombri jusqu au premier ton conforme sur les
+     deux fonds ou un champ peut se poser (3,27:1 sur --surface-raised,
+     3,05:1 sur --surface-app). Les separateurs decoratifs gardent la legerete
+     de la maquette : ils ne portent aucune information. */
+  --line-field: #858f9d;
+
+  /* Encres, du plus appuye au plus discret */
+  --ink: #0f141b;
+  --ink-muted: #414b57;
+  --ink-subtle: #616a76;
+
+  /* Primaire. Bleu LinkedIn, verrouille par le brief. */
+  --primary-fill: #0a66c2;
+  --primary-ink: #0a5aab;
+  --primary-tint: #e9f1fb;
+  --primary-line: #c3daf5;
+
+  /* Ambre : seul accent non bleu. Porte l attention, jamais la validation. */
+  --amber-fill: #c07c07;
+  --amber-ink: #7d5000;
+  --amber-tint: #fbf1de;
+  --amber-line: #ecd9ab;
+
+  /* Etats. L erreur suit la meme partition encre / surface que les accents :
+     --state-ko est l ENCRE, lisible sur fond clair ; --state-ko-fill est la
+     SURFACE, sous du texte blanc. Les confondre donne un bouton de suppression
+     rouge pale au libelle blanc illisible, ce qui est arrive une fois deja. */
+  --state-ok: #0f6b45;
+  --state-ko: #b42318;
+  --state-ko-fill: #b42318;
+  --state-ko-tint: #fdecea;
+  --state-ko-line: #f3c4be;
+
+  /* Texte pose sur une surface pleine primaire ou d etat */
+  --on-fill: #ffffff;
+}
+
+:root[data-theme="dark"] {
+  --surface-app: #0d1117;
+  --surface-raised: #151a21;
+  --surface-sunken: #1c222b;
+
+  --line: #2a3240;
+  --line-strong: #3a4353;
+  /* Meme raison qu en clair. 3,34:1 sur --surface-raised, 3,62:1 sur
+     --surface-app. */
+  --line-field: #626d80;
+
+  --ink: #e7ecf2;
+  --ink-muted: #a9b3c0;
+  --ink-subtle: #8b95a3;
+
+  /* Le bleu de marque est eclairci : #0a66c2 sur #151a21 ne donne pas assez de
+     contraste avec du texte blanc par-dessus. */
+  --primary-fill: #1a6fc4;
+  --primary-ink: #5aa4ea;
+  --primary-tint: #132639;
+  --primary-line: #274b6d;
+
+  --amber-fill: #e0a744;
+  --amber-ink: #e6b25c;
+  --amber-tint: #2a2113;
+  --amber-line: #4a3a1c;
+
+  --state-ok: #4ec08c;
+  --state-ko: #f0796f;
+  /* L encre corail est trop pale pour porter du texte blanc (1,8:1). Rouge
+     sature dedie pour la surface pleine, 7,3:1 avec du blanc par-dessus. */
+  --state-ko-fill: #a12a20;
+  --state-ko-tint: #2a1614;
+  --state-ko-line: #4a221e;
+
+  --on-fill: #ffffff;
+}

@@ -50,7 +50,7 @@ export function ThemeSelector() {
         value={current}
         onChange={(value) => handleChange(value as ThemePreference)}
       />
-      <p className="settings-theme-hint">{HINTS[current]}</p>
+      <p className="settings-row__hint">{HINTS[current]}</p>
     </div>
   );
 }

@@ -35,12 +35,19 @@ secondaire, la direction aurait été plus terne que l'existant.
 
 ### Bleus
 
-`#0a5aab`, `#08447f`, `#e9f1fb`, `#c3daf5`.
+`#0a66c2`, `#0a5aab`, `#e9f1fb`, `#c3daf5`.
 
-**Point à trancher avant implémentation** : la maquette emploie `#0a5aab` comme
-bleu principal, et non `#0a66c2`. La primaire était pourtant déclarée verrouillée
-dans le brief. Le nouveau bleu est plus sombre. C'est une décision du
-propriétaire, pas une décision de conception.
+**Il n'y avait pas de décision à prendre.** Un relevé mécanique des couleurs de
+ce fichier avait fait croire à un conflit avec la primaire verrouillée, parce
+qu'il comptait les occurrences sans lire les déclarations. La maquette pose en
+réalité `--pri:#0a66c2` et `--priT:#0a5aab` : le bleu LinkedIn est bien la
+primaire, et `#0a5aab` en est le rôle **encre**, employé pour le texte et les
+liens posés sur une surface claire.
+
+Cette partition en deux rôles vaut pour les trois accents et elle est
+structurante. En thème sombre, l'encre est plus **claire** que la surface
+(`--primary-fill:#1a6fc4` contre `--primary-ink:#5aa4ea`). Traiter l'encre
+comme une simple variante foncée de la surface casse le thème sombre.
 
 ### Échelle typographique
 
@@ -52,18 +59,22 @@ L'application n'employait pratiquement que 600 et 700, ce qui aplatissait la
 hiérarchie. La maquette exploite enfin l'axe complet d'Inter Variable, embarquée
 depuis le commit `82d66f3`.
 
-## Pour implémenter
+## Mise en oeuvre
 
-Ce chantier réécrit la couche visuelle de cinq écrans, plus les jetons, plus une
-partie de la feuille héritée. Ce n'est pas un correctif.
+Elle a été faite. Voir `design-import/CONSIGNES.md` pour le vocabulaire de
+jetons appliqué, et les deux vérifications outillées qui la gardent :
 
-À fournir à la session qui s'en chargera :
+- `npm run audit:contraste` mesure les paires de couleurs réellement employées
+  et échoue si l'une passe sous son seuil WCAG AA, sur les deux thèmes. La
+  maquette n'était pas conforme telle quelle : la bordure des champs au repos
+  ne donnait que 1,48:1 en clair, alors qu'un champ de saisie n'est
+  identifiable que par sa bordure. D'où le jeton `--line-field`, seul écart
+  assumé à la maquette.
+- `npm run audit:geometrie` lance l'application et relève des mesures dans le
+  rendu réel : hauteur de l'onglet Profil, position de l'en-tête après
+  défilement, largeur de la barre latérale. Aucune de ces portes ne se juge à
+  la lecture du CSS.
 
-- `design-import/Maquettes.dc.html`, la maquette
-- `docs/brief-design.md`, le brief d'origine avec les contraintes fermes
-- `docs/audit-2026-07-ui-ux.md`, les défauts mesurés et les ratios de contraste
-- `/tmp/ghost-design/`, les 36 captures de l'état actuel
-
-Rappel des contraintes fermes du brief : aucun emoji, aucun cadratin, français
-accentué, aucune ressource réseau, contraste WCAG AA sur les deux thèmes, aucune
-valeur en dur, thème clair et sombre traités séparément.
+Contraintes fermes du brief, toutes tenues : aucun emoji, aucun cadratin,
+français accentué, aucune ressource réseau, contraste WCAG AA sur les deux
+thèmes, aucune valeur en dur, thème clair et sombre traités séparément.

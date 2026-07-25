@@ -28,9 +28,9 @@ export function StructurePanel({
 
   return (
     <div className="workshop-step">
-      <h3>
+      <h2>
         Sélectionne une structure narrative <InfoHint term="structure" />
-      </h3>
+      </h2>
       <p className="step-description">
         La structure détermine l'ordre du raisonnement. Choisis celle qui
         sert le mieux l'idée et l'objectif retenu.

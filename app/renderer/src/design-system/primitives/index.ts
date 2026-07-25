@@ -4,6 +4,8 @@
  * Le feedback (ToastProvider/useToast) vit dans `../../feedback` : il est
  * re-exporte ici par commodite pour offrir une surface d'import unique.
  */
+export { PageFrame } from "./PageFrame";
+
 export { Button } from "./Button";
 export type { ButtonProps, ButtonVariant, ButtonSize } from "./Button";
 
