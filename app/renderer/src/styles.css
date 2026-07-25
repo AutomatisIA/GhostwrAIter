@@ -55,6 +55,8 @@
   --color-accent-border: rgba(10, 102, 194, 0.22);
   --color-accent-border-selected: rgba(10, 102, 194, 0.4);
   --color-overlay: rgba(15, 23, 42, 0.35);
+  --color-overlay-strong: rgba(15, 23, 42, 0.55);
+  --color-bg-card-solid: #ffffff;
   --color-shadow: rgba(15, 23, 42, 0.07);
   --color-shadow-card: rgba(15, 23, 42, 0.05);
   --color-sky-bg: rgba(14, 165, 233, 0.1);
@@ -120,6 +122,8 @@
   --color-accent-border: rgba(10, 102, 194, 0.3);
   --color-accent-border-selected: rgba(10, 102, 194, 0.5);
   --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-overlay-strong: rgba(0, 0, 0, 0.68);
+  --color-bg-card-solid: #1e293b;
   --color-shadow: rgba(0, 0, 0, 0.3);
   --color-shadow-card: rgba(0, 0, 0, 0.2);
   --color-sky-bg: rgba(14, 165, 233, 0.15);
@@ -2309,7 +2313,9 @@ textarea:focus-visible,
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
-  background: var(--color-overlay);
+  /* Voile renforce : a 0.35 le fond restait lisible et la boite de dialogue ne
+     se detachait pas de la page. */
+  background: var(--color-overlay-strong, var(--color-overlay));
 }
 .ds-dialog {
   width: 100%;
@@ -2319,11 +2325,13 @@ textarea:focus-visible,
   gap: var(--space-4);
   padding: var(--space-6);
   border-radius: var(--radius-xl);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  /* Surface OPAQUE, volontairement pas de verre. Une boite de dialogue isole une
+     decision : avec `--glass-bg` a 72 % d opacite, le contenu de la page se
+     lisait au travers et l ensemble passait pour un defaut d affichage.
+     Constate sur l ecran de bienvenue, ou le texte du Cockpit traversait. */
+  background: var(--color-bg-card-solid, #ffffff);
+  border: 1px solid var(--color-border);
   box-shadow: var(--shadow-4);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 .ds-dialog__title {
   font-size: var(--font-size-xl);
@@ -2365,10 +2373,16 @@ textarea:focus-visible,
   font-weight: var(--font-weight-bold);
   color: var(--color-text-strong);
 }
+/* Le titre recoit le focus par programme a l ouverture, pour que les lecteurs
+   d ecran annoncent l etape. Ce focus n est pas issu d une navigation au clavier
+   et ne doit donc pas dessiner d anneau : Chromium le traitait pourtant comme
+   `focus-visible` et affichait un cadre bleu pleine largeur, qui touchait les
+   bords du dialogue et passait pour un defaut d affichage. Le focus reste
+   acquis, seule son apparence disparait. */
+.guided-tour__title:focus,
 .guided-tour__title:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
-  border-radius: var(--radius-sm);
+  box-shadow: none;
 }
 .guided-tour__body {
   font-size: var(--font-size-sm);
