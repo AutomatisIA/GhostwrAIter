@@ -1,14 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { motion } from "motion/react";
-import {
-  AiProgress,
-  AlertTriangleIcon,
-  Button,
-  CheckCircleIcon,
-  PageFrame,
-  Skeleton,
-  Tabs
-} from "../../design-system/primitives";
+import { AiProgress, Button, PageFrame, Skeleton, Tabs } from "../../design-system/primitives";
 import { useAiProgress } from "../../feedback/useAiProgress";
 import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
 import { useStrategyBundle } from "./hooks/useStrategyBundle";
@@ -23,6 +15,7 @@ import { PillarsSection } from "./components/PillarsSection";
 import { VoiceRulesSection } from "./components/VoiceRulesSection";
 import { AiTellFamiliesSection } from "./components/AiTellFamiliesSection";
 import { FoundationSection } from "./components/FoundationSection";
+import { StrategyAside } from "./components/StrategyAside";
 
 import "./strategy.css";
 
@@ -35,8 +28,30 @@ const tabs: Array<{ key: StrategyTab; label: string }> = [
   { key: "socle", label: "Socle éditorial" }
 ];
 
-/** Etat de completude porte par la coche de l onglet. */
-type TabMark = "none" | "ok" | "warn";
+/** Marque d onglet chiffree. Zero ne s affiche pas : un onglet vierge est nu. */
+function count(saisis: number): TabMark {
+  return saisis > 0 ? { text: String(saisis) } : null;
+}
+
+/** Effet du profil sur les generations, dit sans reproche ni menace d echec. */
+function profileEffectText(filled: number): string {
+  if (filled === 0) {
+    return "Profil vide. Le modèle n'a rien pour vous distinguer : les posts sortiront interchangeables avec ceux de n'importe qui.";
+  }
+  if (filled < 4) {
+    return "Profil partiel. Le modèle écrit avec ce qu'il a : plus les champs sont renseignés, moins les posts sont génériques.";
+  }
+  return "Profil complet. Les posts citeront vos chiffres et votre positionnement au lieu de rester génériques.";
+}
+
+/**
+ * Marque portee a droite du libelle d onglet.
+ *
+ * Les cinq premiers onglets portent un decompte, le sixieme un etat en toutes
+ * lettres : « à jour » ne se compte pas. `tone` vaut `attention` pour le seul
+ * cas ou l utilisateur a quelque chose a faire.
+ */
+type TabMark = { text: string; tone?: "attention" } | null;
 
 export function StrategyScreen() {
   const [activeTab, setActiveTab] = useState<StrategyTab>("profil");
@@ -97,30 +112,42 @@ export function StrategyScreen() {
     await handleSave();
   }
 
+  const profileFilled = [
+    bundle.profile.name,
+    bundle.profile.positioning,
+    bundle.profile.bio,
+    bundle.profile.expertiseSummary
+  ].filter(isFilled).length;
+
+  // Les six onglets portaient chacun une coche verte des qu ils contenaient
+  // quelque chose. Six marques identiques ne hierarchisent rien, et le vert
+  // reste reserve au terminal, c est a dire au post publie. On affiche donc le
+  // nombre de choses SAISIES, et l etat du socle en toutes lettres puisqu il ne
+  // se compte pas.
+  //
+  // « Saisies » et non « presentes » : les predicats sont ceux que l indicateur
+  // de completude applique dans chaque onglet. Compter les lignes existantes
+  // ferait afficher « 1 » a l onglet Offres au-dessus d un « 0 offre sur 1 »,
+  // et deux compteurs voisins se contrediraient.
   function tabMark(tab: StrategyTab): TabMark {
     switch (tab) {
       case "profil":
-        return isFilled(bundle.profile.name) &&
-          isFilled(bundle.profile.positioning) &&
-          isFilled(bundle.profile.bio) &&
-          isFilled(bundle.profile.expertiseSummary)
-          ? "ok"
-          : "none";
+        return count(profileFilled);
       case "offres":
-        return bundle.offers.some((offer) => isFilled(offer.name) && isFilled(offer.promise))
-          ? "ok"
-          : "none";
+        return count(
+          bundle.offers.filter((offer) => isFilled(offer.name) && isFilled(offer.promise)).length
+        );
       case "icps":
-        return bundle.icps.some((icp) => isFilled(icp.segment) && isFilled(icp.pains))
-          ? "ok"
-          : "none";
+        return count(
+          bundle.icps.filter((icp) => isFilled(icp.segment) && isFilled(icp.pains)).length
+        );
       case "piliers":
-        return bundle.pillars.some((pillar) => isFilled(pillar.label)) ? "ok" : "none";
+        return count(bundle.pillars.filter((pillar) => isFilled(pillar.label)).length);
       case "voix":
-        return bundle.voiceRules.some((rule) => isFilled(rule.ruleText)) ? "ok" : "none";
+        return count(bundle.voiceRules.filter((rule) => isFilled(rule.ruleText)).length);
       case "socle":
-        if (foundationOutdated) return "warn";
-        return isFilled(foundationSummary) ? "ok" : "none";
+        if (foundationOutdated) return { text: "à régénérer", tone: "attention" };
+        return isFilled(foundationSummary) ? { text: "à jour" } : null;
     }
   }
 
@@ -131,14 +158,13 @@ export function StrategyScreen() {
       label: (
         <span className="strategy-tab-label">
           {tab.label}
-          {mark === "ok" ? (
-            <span className="strategy-tab-mark" data-state="ok">
-              <CheckCircleIcon size={13} />
-            </span>
-          ) : null}
-          {mark === "warn" ? (
-            <span className="strategy-tab-mark" data-state="warn">
-              <AlertTriangleIcon size={13} />
+          {/* `aria-hidden` : le nom accessible de l onglet doit rester son
+              libelle. « Voix 12 » enonce a la lecture n apprend rien, et la
+              completude est deja annoncee dans le corps de l onglet par
+              l indicateur, qui porte `role="status"`. */}
+          {mark ? (
+            <span className="strategy-tab-mark" data-tone={mark.tone} aria-hidden="true">
+              {mark.text}
             </span>
           ) : null}
         </span>
@@ -152,6 +178,10 @@ export function StrategyScreen() {
       ? "Régénérer le socle"
       : "Générer le socle éditorial";
 
+  // Un seul bouton plein sur l ecran, et c est l enregistrement. La barre
+  // portait aussi « Régénérer le socle », en plein lui aussi : deux actions au
+  // meme rang, dont la plus voyante n etait pas la principale. La regeneration
+  // est descendue dans le panneau de droite, en bouton borde.
   const barActions = (
     <>
       {savedAt ? (
@@ -160,13 +190,29 @@ export function StrategyScreen() {
           {savedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
         </span>
       ) : null}
-      <Button variant="secondary" onClick={handleSave} loading={saving}>
+      <Button variant="primary" onClick={handleSave} loading={saving}>
         Enregistrer
       </Button>
-      <Button variant="primary" onClick={generateFoundation} loading={generating}>
-        {foundationLabel}
-      </Button>
     </>
+  );
+
+  // Ce que l etat du profil produit a la generation. L indicateur de completude
+  // dit ce QUI MANQUE, cette phrase dit ce que le modele EN FAIT : les deux ne
+  // se recouvrent pas. Elle n est rendue que sous l onglet Profil, et le cas du
+  // profil entierement vide a sa propre phrase : « profil partiel » sur un
+  // espace vierge decrirait un etat que l utilisateur n a pas.
+  const profileEffect = activeTab !== "profil" ? null : profileEffectText(profileFilled);
+
+  const aside = (
+    <StrategyAside
+      profileEffect={profileEffect}
+      foundationExists={isFilled(foundationSummary)}
+      foundationOutdated={foundationOutdated}
+      foundationLabel={foundationLabel}
+      showFreshness={activeTab !== "socle"}
+      generating={generating}
+      onGenerate={generateFoundation}
+    />
   );
 
   if (loading) {
@@ -194,88 +240,95 @@ export function StrategyScreen() {
           <HelpMasterToggle fields={HELP_FIELDS[activeTab]} />
         </div>
 
-        {activeTab !== "socle" ? (
-          <form className="strategy-panel" onSubmit={handleSubmit}>
-            <motion.div key={activeTab} variants={item} initial="hidden" animate="visible">
-              {activeTab === "profil" && (
-                <ProfileSection profile={bundle.profile} onUpdate={updateProfileField} />
-              )}
+        {/* Deux colonnes, le formulaire d abord dans l ordre du document. La
+            colonne de droite occupe la place que le formulaire laissait vide a
+            sa droite comme sous lui : l ecran etait juge trop long alors que sa
+            moitie basse ne portait rien. */}
+        <div className="strategy-layout">
+          {activeTab !== "socle" ? (
+            <form className="strategy-panel" onSubmit={handleSubmit}>
+              <motion.div key={activeTab} variants={item} initial="hidden" animate="visible">
+                {activeTab === "profil" && (
+                  <ProfileSection profile={bundle.profile} onUpdate={updateProfileField} />
+                )}
 
-              {activeTab === "offres" && (
-                <OffersSection
-                  offers={bundle.offers}
-                  onAdd={addOffer}
-                  onRemove={removeOffer}
-                  onUpdate={updateOfferField}
-                />
-              )}
-
-              {activeTab === "icps" && (
-                <IcpsSection
-                  icps={bundle.icps}
-                  onAdd={addIcp}
-                  onRemove={removeIcp}
-                  onUpdate={updateIcpField}
-                />
-              )}
-
-              {activeTab === "piliers" && (
-                <PillarsSection
-                  pillars={bundle.pillars}
-                  onAdd={addPillar}
-                  onRemove={removePillar}
-                  onUpdate={updatePillarField}
-                />
-              )}
-
-              {activeTab === "voix" && (
-                <>
-                  <VoiceRulesSection
-                    voiceRules={bundle.voiceRules}
-                    onAdd={addVoiceRule}
-                    onRemove={removeVoiceRule}
-                    onUpdate={updateVoiceRuleField}
+                {activeTab === "offres" && (
+                  <OffersSection
+                    offers={bundle.offers}
+                    onAdd={addOffer}
+                    onRemove={removeOffer}
+                    onUpdate={updateOfferField}
                   />
-                  <AiTellFamiliesSection />
-                </>
-              )}
+                )}
+
+                {activeTab === "icps" && (
+                  <IcpsSection
+                    icps={bundle.icps}
+                    onAdd={addIcp}
+                    onRemove={removeIcp}
+                    onUpdate={updateIcpField}
+                  />
+                )}
+
+                {activeTab === "piliers" && (
+                  <PillarsSection
+                    pillars={bundle.pillars}
+                    onAdd={addPillar}
+                    onRemove={removePillar}
+                    onUpdate={updatePillarField}
+                  />
+                )}
+
+                {activeTab === "voix" && (
+                  <>
+                    <VoiceRulesSection
+                      voiceRules={bundle.voiceRules}
+                      onAdd={addVoiceRule}
+                      onRemove={removeVoiceRule}
+                      onUpdate={updateVoiceRuleField}
+                    />
+                    <AiTellFamiliesSection />
+                  </>
+                )}
+              </motion.div>
+
+              {/* Bouton par defaut du formulaire : il rend la touche Entree
+                  equivalente au bouton « Enregistrer » de la barre de page, sans
+                  ajouter un second bouton visible ni un doublon dans l arbre
+                  d accessibilite. */}
+              <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
+            </form>
+          ) : (
+            <motion.div
+              key="socle"
+              className="strategy-panel"
+              variants={item}
+              initial="hidden"
+              animate="visible"
+            >
+              <FoundationSection
+                summary={foundationSummary}
+                outdated={foundationOutdated}
+                onApplyManualEdit={setFoundationSummary}
+                progress={
+                  generating ? (
+                    <AiProgress
+                      phase={foundationProgress.phase}
+                      intentLabel={foundationProgress.intentLabel || "Génération en cours…"}
+                      elapsedMs={foundationProgress.elapsedMs}
+                      currentIndex={foundationProgress.currentIndex}
+                      totalSteps={foundationProgress.totalSteps}
+                      state={
+                        foundationProgress.state === "idle" ? "running" : foundationProgress.state
+                      }
+                    />
+                  ) : null
+                }
+              />
             </motion.div>
-
-            {/* Bouton par defaut du formulaire : il rend la touche Entree
-                equivalente au bouton « Enregistrer » de la barre de page, sans
-                ajouter un second bouton visible ni un doublon dans l arbre
-                d accessibilite. */}
-            <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
-          </form>
-        ) : (
-          <motion.div
-            key="socle"
-            className="strategy-panel"
-            variants={item}
-            initial="hidden"
-            animate="visible"
-          >
-            <FoundationSection
-              summary={foundationSummary}
-              outdated={foundationOutdated}
-              onApplyManualEdit={setFoundationSummary}
-              progress={
-                generating ? (
-                  <AiProgress
-                    phase={foundationProgress.phase}
-                    intentLabel={foundationProgress.intentLabel || "Génération en cours…"}
-                    elapsedMs={foundationProgress.elapsedMs}
-                    currentIndex={foundationProgress.currentIndex}
-                    totalSteps={foundationProgress.totalSteps}
-                    state={
-                      foundationProgress.state === "idle" ? "running" : foundationProgress.state
-                    }
-                  />
-                ) : null
-              }
-            />
-          </motion.div>
-        )}
+          )}
+          {aside}
+        </div>
       </PageFrame>
     </HelpDisclosureProvider>
   );

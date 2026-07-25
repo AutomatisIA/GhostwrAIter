@@ -94,8 +94,7 @@ describe("LibraryScreen a11y", () => {
 });
 
 /**
- * Contrat du revelateur d'actions de ligne (correctif de presentation, juillet
- * 2026).
+ * Contrat des actions de ligne (correctifs de presentation, juillet 2026).
  *
  * Les tests ci-dessus rendent une bibliotheque VIDE : aucune ligne, donc aucune
  * action, donc aucune garantie sur l'acces clavier aux actions de ligne. Le bloc
@@ -103,10 +102,24 @@ describe("LibraryScreen a11y", () => {
  * contredisent en apparence :
  *
  *   1. les cinq actions restent atteignables au clavier ;
- *   2. aucune action destructive n'est cliquable derriere un element invisible,
- *      ce qui se prouve par l'ABSENCE du bouton dans le DOM, pas par une lecture
- *      du CSS ;
+ *   2. aucune action destructive n'est cliquable derriere un element invisible ;
  *   3. le repli se fait au clavier (Echap) et rend le focus a son declencheur.
+ *
+ * REVISION DE LA PREUVE DE LA CONTRAINTE 2. Elle etait prouvee par l'ABSENCE du
+ * bouton dans le DOM. Depuis que les quatre actions se decouvrent au survol et
+ * au focus de la ligne, elles sont DANS le DOM au repos, rendues transparentes
+ * et neutralisees par `pointer-events: none`. Le contrat n'a pas bouge, son
+ * moyen de preuve si : on mesure desormais `pointer-events` sur le bouton
+ * reellement rendu.
+ *
+ * Cette mesure impose d'injecter la feuille : vitest n'applique aucun CSS par
+ * defaut (mesure : `document.styleSheets.length` vaut 0, et un
+ * `getComputedStyle` y renvoie les valeurs initiales du navigateur). Un test
+ * ecrit sans cette injection aurait lu `auto` et conclu a l'inverse du vrai.
+ *
+ * CE QUI RESTE HORS DE PORTEE. jsdom n'evalue pas `:focus-within` : apres un
+ * `focus()` sur un bouton du groupe, `pointer-events` y reste `none` (mesure).
+ * La revelation au focus clavier n'est donc verifiee par aucun test ici.
  */
 const SECONDARY_ACTIONS = ["Variante", "Planifier", "Retravailler", "Supprimer"];
 
@@ -127,10 +140,10 @@ function libraryEntry(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function renderLibraryWithEntries() {
+function renderWithEntries(entries: ReturnType<typeof libraryEntry>[]) {
   (globalThis as unknown as { window: Window }).window.linkedinPoster = {
     library: {
-      listEntries: vi.fn().mockResolvedValue([libraryEntry()]),
+      listEntries: vi.fn().mockResolvedValue(entries),
       searchEntries: vi.fn().mockResolvedValue([]),
       createDivergentVariant: vi.fn(),
       updateEntryText: vi.fn(),
@@ -151,23 +164,54 @@ function renderLibraryWithEntries() {
   );
 }
 
+function renderLibraryWithEntries() {
+  return renderWithEntries([libraryEntry()]);
+}
+
 describe("LibraryScreen actions de ligne", () => {
-  it("garde les actions secondaires hors du DOM tant que le revelateur est replie", async () => {
+  it("garde les cinq actions dans l'ordre de tabulation au repos", async () => {
     renderLibraryWithEntries();
 
     await screen.findByText("Un brouillon a reconnaitre");
 
-    // « Modifier » reste en clair : c'est l'action primaire de la ligne.
+    // « Modifier » et le revelateur restent en clair : c'est l'etat de repos que
+    // la maquette demande.
     expect(screen.getByRole("button", { name: "Modifier" })).toBeTruthy();
 
     const disclosure = screen.getByRole("button", { name: /Autres actions/ });
     expect(disclosure.tagName).toBe("BUTTON");
     expect(disclosure.getAttribute("aria-expanded")).toBe("false");
 
-    // Rien de destructif ne subsiste derriere un element masque.
+    // Les quatre autres sont dans le DOM, sans attribut qui les retire de la
+    // tabulation. Leur neutralisation a la souris est mesuree ailleurs, dans
+    // `tests/unit/library-screen.test.tsx`, qui peut charger la feuille.
     for (const label of SECONDARY_ACTIONS) {
-      expect(screen.queryByRole("button", { name: label })).toBeNull();
+      const action = screen.getByRole("button", { name: label });
+      expect(action.tagName).toBe("BUTTON");
+      expect(action.getAttribute("tabindex")).toBeNull();
+      expect(action.hasAttribute("hidden")).toBe(false);
     }
+  });
+
+  it("ne montre jamais les memes actions deux fois sur une ligne", async () => {
+    const user = userEvent.setup();
+    renderLibraryWithEntries();
+
+    await screen.findByText("Un brouillon a reconnaitre");
+
+    // Au repos, les actions vivent dans le groupe revele.
+    for (const label of SECONDARY_ACTIONS) {
+      expect(screen.getAllByRole("button", { name: label })).toHaveLength(1);
+    }
+
+    await user.click(screen.getByRole("button", { name: /Autres actions/ }));
+
+    // Panneau ouvert, elles vivent dans le panneau, et le groupe revele n'est
+    // plus rendu : sinon la meme ligne porterait « Supprimer » a deux endroits.
+    for (const label of SECONDARY_ACTIONS) {
+      expect(screen.getAllByRole("button", { name: label })).toHaveLength(1);
+    }
+    expect(document.querySelector(".library-row__actions-extra")).toBeNull();
   });
 
   it("expose les quatre actions secondaires apres activation au clavier", async () => {
@@ -205,12 +249,16 @@ describe("LibraryScreen actions de ligne", () => {
     disclosure.focus();
     await user.keyboard("{Enter}");
 
+    const panelId = disclosure.getAttribute("aria-controls")!;
     const deleteButton = await screen.findByRole("button", { name: "Supprimer" });
     deleteButton.focus();
     await user.keyboard("{Escape}");
 
+    // C'est le PANNEAU qui doit disparaitre. « Supprimer » reste dans le DOM :
+    // il retourne au groupe revele de la ligne, ou `pointer-events: none` le
+    // neutralise (verifie par le test de l'etat de repos).
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: "Supprimer" })).toBeNull();
+      expect(document.getElementById(panelId)).toBeNull();
     });
     expect(disclosure.getAttribute("aria-expanded")).toBe("false");
     expect(document.activeElement).toBe(disclosure);
@@ -218,19 +266,15 @@ describe("LibraryScreen actions de ligne", () => {
 });
 
 describe("LibraryScreen rangee de metadonnees", () => {
-  it("plafonne les etiquettes affichees et replie le reste dans un « +N » titre", async () => {
+  it("plafonne les mots cles a trois, separes par des virgules, et replie le reste", async () => {
     const { container } = renderLibraryWithEntries();
 
     await screen.findByText("Un brouillon a reconnaitre");
 
-    // Trois etiquettes en clair, pas cinq.
-    const tags = container.querySelectorAll(".library-row__tag");
-    expect(tags).toHaveLength(3);
-    expect([...tags].map((tag) => tag.textContent)).toEqual([
-      "agents",
-      "entreprises",
-      "française"
-    ]);
+    // Trois mots cles en clair, pas cinq, et separes par des virgules : le point
+    // median est reserve aux metadonnees de nature differente.
+    const tagList = container.querySelector(".library-row__tag-list");
+    expect(tagList?.textContent).toBe("agents, entreprises, française");
 
     // Le reste tient dans un seul fragment, detail complet dans son `title`.
     const more = container.querySelector(".library-row__more");
@@ -238,11 +282,55 @@ describe("LibraryScreen rangee de metadonnees", () => {
     expect(more?.getAttribute("title")).toBe("apprentissage, generative");
   });
 
-  it("n'ouvre plus la rangee par une pastille decorative", async () => {
+  it("accole la pastille au nom du pilier plutot que de l'ouvrir sans referent", async () => {
     const { container } = renderLibraryWithEntries();
 
     await screen.findByText("Un brouillon a reconnaitre");
 
-    expect(container.querySelector(".library-row__dot")).toBeNull();
+    // La pastille existe, mais DANS le fragment du pilier : posee en tete de
+    // rangee, `MetaLine` inserait un point median derriere elle et la ligne
+    // s'ouvrait sur « · Brouillon », une puce sans referent.
+    const pillar = container.querySelector(".library-row__pillar");
+    expect(pillar?.querySelector(".library-row__dot")).toBeTruthy();
+    expect(pillar?.querySelector(".library-row__pillar-name")?.textContent).toBe("Adoption IA");
+
+    const meta = container.querySelector(".library-row__meta");
+    expect(meta?.firstElementChild).toBe(pillar);
+  });
+
+  it("tait le statut « Brouillon » et ne garde que celui qui sort de l'ordinaire", async () => {
+    const { container } = renderWithEntries([
+      libraryEntry({ draftId: "d1", headline: "Brouillon ordinaire", status: "draft" }),
+      libraryEntry({ draftId: "d2", headline: "Une variante", status: "variant" })
+    ]);
+
+    await screen.findByText("Brouillon ordinaire");
+
+    // Assertions portees sur les rangees de metadonnees et non sur la page :
+    // le filtre de statut de la barre d'ecran contient legitimement une option
+    // « Brouillon », qu'une recherche globale confondrait avec la ligne.
+    const statuses = [...container.querySelectorAll(".library-row__status")].map(
+      (node) => node.textContent
+    );
+
+    // L'onglet dit deja « Brouillons » : le repeter sur chaque ligne n'apprend
+    // rien. « Variante », lui, distingue reellement deux lignes.
+    expect(statuses).toEqual(["Variante"]);
+  });
+
+  it("resume la section en une phrase : effectif puis longueur moyenne", async () => {
+    const { container } = renderWithEntries([
+      libraryEntry({ draftId: "d1", headline: "Mille", bodyMarkdown: "a".repeat(1000) }),
+      libraryEntry({ draftId: "d2", headline: "Mille soixante", bodyMarkdown: "b".repeat(1060) })
+    ]);
+
+    await screen.findByText("Mille soixante");
+
+    // Compare le `textContent` brut : `toLocaleString("fr-FR")` pose une espace
+    // insecante etroite comme separateur de milliers, que le normaliseur de
+    // testing-library replie du seul cote du DOM. Moyenne de 1 000 et 1 060.
+    expect(container.querySelector(".library-head__count")?.textContent).toBe(
+      `2, longueur moyenne ${(1030).toLocaleString("fr-FR")} caractères`
+    );
   });
 });

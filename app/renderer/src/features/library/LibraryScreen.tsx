@@ -21,7 +21,6 @@ import {
   useToast
 } from "../../design-system/primitives";
 import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
-import { InfoHint } from "../../help";
 
 import "./library.css";
 function formatLibraryStatus(status: LibraryEntry["status"]) {
@@ -60,26 +59,37 @@ function formatCalendarStatus(status: CalendarItem["status"]) {
 const MAX_VISIBLE_TAGS = 3;
 
 /**
- * Chevron du revelateur d actions. Le jeu d icones partage
+ * Trois points du revelateur d actions. Le jeu d icones partage
  * (`design-system/primitives/icons`) appartient au chantier commun : ce trace
- * reste confine a l ecran Bibliotheque plutot que d y etre ajoute.
+ * reste confine a l ecran Bibliotheque plutot que d y etre ajoute. Un carre de
+ * 30px la ou un libelle ecrit prenait cent trente : c est la colonne de titres
+ * qui recupere la place, et c est elle qui sert a reconnaitre un brouillon.
  */
-function ChevronDownIcon() {
+function MoreHorizontalIcon() {
   return (
     <svg
-      width={14}
-      height={14}
+      width={16}
+      height={16}
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
+      stroke="none"
       aria-hidden="true"
     >
-      <path d="m6 9 6 6 6-6" />
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
     </svg>
   );
+}
+
+/**
+ * Pastille du pilier. Elle ne vaut que collee au nom qu elle annonce : posee en
+ * tete de rangee comme fragment autonome, `MetaLine` inserait un point median
+ * derriere elle et la ligne s ouvrait sur « · Brouillon », une puce sans
+ * referent suivie d un separateur sans rien a separer.
+ */
+function PillarDot() {
+  return <span className="library-row__dot" aria-hidden="true" />;
 }
 
 /**
@@ -310,6 +320,78 @@ export function LibraryScreen() {
     disclosure.focus();
   }
 
+  /**
+   * Les quatre actions secondaires d une ligne. Elles sont rendues a deux
+   * endroits qui ne coexistent jamais : dans la ligne, revelees au survol ou au
+   * focus, et dans le panneau ouvert au clic sur le revelateur. Un seul source
+   * pour les deux, sans quoi les libelles et les gardes de re-entree divergent.
+   *
+   * `fromPanel` ne change qu une chose : replier le panneau et rendre le focus a
+   * son declencheur n a de sens que si l on vient du panneau.
+   */
+  function secondaryActions(entry: LibraryEntry, fromPanel: boolean) {
+    return (
+      <>
+        {confirmingVariantId === entry.draftId ? (
+          <Button
+            variant="primary"
+            size="sm"
+            loading={busyDraftId === entry.draftId}
+            disabled={busyDraftId !== null}
+            onClick={() => {
+              setConfirmingVariantId(null);
+              void handleCreateDivergentVariant(entry.draftId);
+            }}
+          >
+            Confirmer ?
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busyDraftId !== null}
+            onClick={() => setConfirmingVariantId(entry.draftId)}
+          >
+            Variante
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busyDraftId !== null}
+          onClick={(event) => {
+            // Le panneau se referme au profit de la bande de planification :
+            // deux bandes empilees sous la meme ligne n auraient plus de lecture
+            // possible.
+            const alreadyScheduling = schedulingDraftId === entry.draftId;
+            setSchedulingDraftId(alreadyScheduling ? null : entry.draftId);
+            setSchedulingDate("");
+            if (fromPanel) {
+              collapseRowActions(event.currentTarget);
+            }
+          }}
+        >
+          Planifier
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
+        >
+          Retravailler
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={busyDraftId !== null}
+          onClick={() => setDeletingDraftId(entry.draftId)}
+        >
+          Supprimer
+        </Button>
+      </>
+    );
+  }
+
   function handleStartEditing(entry: LibraryEntry) {
     closeRowActions();
     setEditingDraftId(entry.draftId);
@@ -457,10 +539,30 @@ export function LibraryScreen() {
   const upcomingCount = visibleCalendarItems.filter((i) => i.status !== "published").length;
   const publishedCount = visibleCalendarItems.filter((i) => i.status === "published").length;
 
-  const draftsCount =
-    visibleEntries.length === entries.length
-      ? `${visibleEntries.length} brouillon${visibleEntries.length > 1 ? "s" : ""}`
-      : `${visibleEntries.length} sur ${entries.length}`;
+  /**
+   * Mesures de la section, en une seule phrase alignee a droite de son titre.
+   * Elles portent sur les brouillons AFFICHES, pas sur la totalite : c est la
+   * lecture coherente avec « 12 sur 30 », qui decrit deja le sous-ensemble.
+   * La moyenne disparait quand il n y a rien a moyenner.
+   */
+  const draftsCount = useMemo(() => {
+    const scope =
+      visibleEntries.length === entries.length
+        ? `${visibleEntries.length}`
+        : `${visibleEntries.length} sur ${entries.length}`;
+
+    if (visibleEntries.length === 0) {
+      return scope;
+    }
+
+    const totalChars = visibleEntries.reduce(
+      (sum, entry) => sum + measurePost(entry.bodyMarkdown).chars,
+      0
+    );
+    const average = Math.round(totalChars / visibleEntries.length);
+
+    return `${scope}, longueur moyenne ${average.toLocaleString("fr-FR")} caractères`;
+  }, [visibleEntries, entries.length]);
 
   // Filtres et bascule de vue : de portee ecran, donc dans la barre de page.
   const pageActions = (
@@ -524,9 +626,7 @@ export function LibraryScreen() {
       {activeTab === "drafts" && (
         <>
           <div className="library-head">
-            <span className="eyebrow library-head__title">
-              Brouillons <InfoHint term="draft" />
-            </span>
+            <span className="eyebrow library-head__title">Brouillons</span>
             <span className="library-head__count">{loading ? "…" : draftsCount}</span>
           </div>
 
@@ -624,11 +724,21 @@ export function LibraryScreen() {
                           <MetaLine
                             parts={[
                               <span className="library-row__pillar" key="pillar">
-                                {entry.pillarLabel}
+                                <PillarDot />
+                                <span className="library-row__pillar-name">
+                                  {entry.pillarLabel}
+                                </span>
                               </span>,
-                              <span className="library-row__status" key="status">
-                                {formatLibraryStatus(entry.status)}
-                              </span>,
+                              // « Brouillon » repete sur chaque ligne d un onglet
+                              // qui s appelle deja Brouillons n apprend rien. Seul
+                              // l etat qui sort de l ordinaire est dit.
+                              ...(entry.status === "draft"
+                                ? []
+                                : [
+                                    <span className="library-row__status" key="status">
+                                      {formatLibraryStatus(entry.status)}
+                                    </span>
+                                  ]),
                               ...(plannedDate
                                 ? [
                                     <span className="library-row__num" key="date">
@@ -644,19 +754,20 @@ export function LibraryScreen() {
                               >
                                 {formatCharCount(entry.bodyMarkdown)}
                               </span>,
-                              ...shownTags.map((tag, tagIndex) => (
-                                <span className="library-row__tag" key={`tag-${tagIndex}-${tag}`}>
-                                  {tag}
-                                </span>
-                              )),
-                              ...(hiddenTags.length > 0
+                              ...(shownTags.length > 0
                                 ? [
-                                    <span
-                                      className="library-row__more"
-                                      key="more"
-                                      title={hiddenTags.join(", ")}
-                                    >
-                                      +{hiddenTags.length}
+                                    <span className="library-row__tags" key="tags">
+                                      <span className="library-row__tag-list">
+                                        {shownTags.join(", ")}
+                                      </span>
+                                      {hiddenTags.length > 0 ? (
+                                        <span
+                                          className="library-row__more"
+                                          title={hiddenTags.join(", ")}
+                                        >
+                                          +{hiddenTags.length}
+                                        </span>
+                                      ) : null}
                                     </span>
                                   ]
                                 : [])
@@ -665,13 +776,23 @@ export function LibraryScreen() {
                         </div>
 
                         {/*
-                         * Une seule action en clair, le reste derriere un
-                         * revelateur. Cinq actions ecrites sur chaque ligne
-                         * faisaient de « Supprimer » le motif le plus repete de
-                         * l ecran, alors que c est l action la moins
-                         * souhaitable.
+                         * Deux etats, comme la maquette. Au repos, « Modifier »
+                         * et le revelateur : cinq actions ecrites sur chaque
+                         * ligne faisaient de « Supprimer » le motif le plus
+                         * repete de l ecran, alors que c est l action la moins
+                         * souhaitable. Au survol ou au focus clavier, les quatre
+                         * autres se decouvrent par-dessus, sans rien remplacer.
+                         *
+                         * Le groupe revele n est pas rendu quand le panneau du
+                         * revelateur est ouvert : il porterait les memes quatre
+                         * actions, en double sur la meme ligne.
                          */}
                         <div className="library-row__actions library-row__actions--compact">
+                          {!actionsOpen && (
+                            <div className="library-row__actions-extra">
+                              {secondaryActions(entry, false)}
+                            </div>
+                          )}
                           <Button
                             variant="secondary"
                             size="sm"
@@ -681,12 +802,13 @@ export function LibraryScreen() {
                             Modifier
                           </Button>
                           <Button
-                            variant="ghost"
+                            className="library-row__disclosure"
+                            variant="secondary"
                             size="sm"
                             aria-expanded={actionsOpen}
                             aria-controls={actionsOpen ? actionsPanelId : undefined}
                             aria-label={actionsLabel}
-                            iconTrailing={<ChevronDownIcon />}
+                            title="Autres actions"
                             onClick={() => {
                               if (actionsOpen) {
                                 closeRowActions();
@@ -695,7 +817,7 @@ export function LibraryScreen() {
                               }
                             }}
                           >
-                            Autres actions
+                            <MoreHorizontalIcon />
                           </Button>
                         </div>
                       </article>
@@ -708,60 +830,7 @@ export function LibraryScreen() {
                         role="group"
                         aria-label={actionsLabel}
                       >
-                        {confirmingVariantId === entry.draftId ? (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            loading={busyDraftId === entry.draftId}
-                            disabled={busyDraftId !== null}
-                            onClick={() => {
-                              setConfirmingVariantId(null);
-                              void handleCreateDivergentVariant(entry.draftId);
-                            }}
-                          >
-                            Confirmer ?
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={busyDraftId !== null}
-                            onClick={() => setConfirmingVariantId(entry.draftId)}
-                          >
-                            Variante
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busyDraftId !== null}
-                          onClick={(event) => {
-                            // Le panneau se referme au profit de la bande de
-                            // planification : deux bandes empilees sous la meme
-                            // ligne n auraient plus de lecture possible.
-                            const alreadyScheduling = schedulingDraftId === entry.draftId;
-                            setSchedulingDraftId(alreadyScheduling ? null : entry.draftId);
-                            setSchedulingDate("");
-                            collapseRowActions(event.currentTarget);
-                          }}
-                        >
-                          Planifier
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
-                        >
-                          Retravailler
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          disabled={busyDraftId !== null}
-                          onClick={() => setDeletingDraftId(entry.draftId)}
-                        >
-                          Supprimer
-                        </Button>
+                        {secondaryActions(entry, true)}
                       </div>
                     )}
 
@@ -862,7 +931,10 @@ export function LibraryScreen() {
                               {formatCalendarStatus(calItem.status)}
                             </span>,
                             <span className="library-row__pillar" key="pillar">
-                              {calItem.pillarLabel}
+                              <PillarDot />
+                              <span className="library-row__pillar-name">
+                                {calItem.pillarLabel}
+                              </span>
                             </span>
                           ]}
                         />

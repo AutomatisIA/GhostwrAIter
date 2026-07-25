@@ -15,10 +15,11 @@ type FoundationSectionProps = {
 /**
  * Onglet « Socle editorial ».
  *
- * Le bouton de generation n est plus ici : il a rejoint la barre de page, ou il
- * est atteignable depuis les six onglets. Ce qui reste dans le corps est ce qui
- * ne concerne que cet onglet : l explication, l avertissement de peremption, la
- * retouche a la main et le socle lui-meme.
+ * Le bouton de generation n est pas ici : il vit dans le panneau de droite de
+ * l ecran, ou il est atteignable depuis les six onglets sans concurrencer
+ * l enregistrement. Ce qui reste dans le corps est ce qui ne concerne que cet
+ * onglet : l explication, l avertissement de peremption, la retouche a la main
+ * et le socle lui-meme.
  */
 export function FoundationSection({
   summary,
@@ -72,7 +73,9 @@ export function FoundationSection({
             aria-label="Socle éditorial"
           />
           <div className="strategy-foundation-actions">
-            <Button variant="primary" onClick={applyEdit}>
+            {/* Bordé et non plein : le seul bouton plein de l ecran est
+                « Enregistrer », dans la barre de page. */}
+            <Button variant="secondary" onClick={applyEdit}>
               Appliquer les modifications
             </Button>
             <Button variant="secondary" onClick={() => setIsEditing(false)}>
@@ -85,7 +88,7 @@ export function FoundationSection({
       ) : (
         <p className="strategy-foundation-hint">
           Aucun socle éditorial généré. Remplissez d'abord les onglets Profil, Offres, ICPs et
-          Piliers, puis lancez la génération depuis la barre en haut de l'écran.
+          Piliers, puis lancez la génération depuis le panneau à droite de l'écran.
         </p>
       )}
     </section>

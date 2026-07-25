@@ -59,47 +59,75 @@
   white-space: nowrap;
 }
 
+/* Decompte des elements saisis, a droite du libelle d onglet. Il remplace six
+   coches vertes identiques, qui ne hierarchisaient rien et epuisaient une
+   couleur reservee au terminal, le post publie. Encre tertiaire, chiffres
+   tabulaires pour que la largeur ne saute pas quand le compte change. */
 .strategy-tab-mark {
   display: inline-flex;
   align-items: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
 }
 
-.strategy-tab-mark[data-state="ok"] {
-  color: var(--state-ok);
-}
-
-.strategy-tab-mark[data-state="warn"] {
+/* Seul le socle perime porte une teinte : l ambre signale ce sur quoi il y a
+   quelque chose a faire, jamais un etat satisfaisant. */
+.strategy-tab-mark[data-tone="attention"] {
   color: var(--amber-ink);
+  font-variant-numeric: normal;
 }
 
+/* Confort de lecture, pas action metier : ce controle ne porte donc pas de
+   bordure, qui le mettrait au rang des actions reelles de l ecran. Texte seul,
+   aligne sur la ligne des onglets. */
 .strategy-help-master {
   flex: none;
   align-self: center;
-  height: 28px;
-  padding: 0 12px;
+  height: 26px;
+  padding: 0 10px;
   font-family: inherit;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   line-height: 1;
-  color: var(--ink-muted);
+  color: var(--ink-subtle);
   background: transparent;
-  border: 1px solid var(--line-field);
+  border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
-  transition: background var(--duration-fast) var(--ease-standard);
+  transition: color var(--duration-fast) var(--ease-standard);
 }
 
 .strategy-help-master:hover {
-  background: var(--surface-sunken);
+  color: var(--ink);
 }
 
 /* ---------------------------------------------------------------------------
  * Corps de l onglet
  * ------------------------------------------------------------------------- */
 
+/* Deux colonnes : la saisie a gauche, le panneau d effet a droite. Avant, le
+   formulaire occupait une colonne de 860px et laissait tout le reste vide, a
+   droite comme en dessous, sur un ecran par ailleurs juge trop long.
+   `flex-wrap` fait passer le panneau sous le formulaire quand la fenetre est
+   trop etroite pour les deux : jamais de colonne ecrasee. */
+.strategy-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+/* Base a 760px et non a la largeur minimale souhaitable : une base plus basse
+   fait partager l espace libre a parts egales avec le panneau, et le
+   formulaire se stabilise 76px sous sa largeur de dessin. Le champ y perd
+   autant, ce qui est precisement l ecart que la colonne de 168px corrige. */
 .strategy-panel {
-  max-width: 860px;
+  flex: 1 1 760px;
+  min-width: 0;
+  max-width: 760px;
 }
 
 .strategy-section {
@@ -180,13 +208,24 @@
 
 /* Une ligne = un champ. `align-items: center` pour les champs d une ligne,
    `start` pour les zones de texte, dont le libelle descend alors de 8px pour
-   s aligner sur la premiere ligne saisie. */
+   s aligner sur la premiere ligne saisie.
+   La colonne de libelles fait 168px : au-dela, le libelle et son champ sont
+   separes par assez de vide pour que l oeil perde l association entre les
+   deux. Le champ porte un plafond de 592px pour la meme raison en sens
+   inverse, une ligne de saisie plus large qu une ligne de lecture ne se
+   relisant plus. Dans la colonne de 760px ce plafond n est pas atteint : la
+   piste vaut 540px. Il ne mord que si la colonne s elargit un jour. */
 .strategy-row {
   display: grid;
-  grid-template-columns: 176px 1fr;
+  grid-template-columns: 168px 1fr;
   gap: 14px;
   align-items: center;
-  padding: 12px 18px;
+  /* 10px et non les 11 du dessin : la zone de deux lignes du Positionnement
+     ajoute 30px a la surface des champs du Profil, qui se mesure contre 340px,
+     et l onglet entier contre 420. A 11px le calcul tombait a 419 sur un
+     profil vide, ou la ligne de consequence occupe deux lignes. Un pixel de
+     rembourrage ne se voit pas ; une porte qui casse, si. */
+  padding: 10px 18px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -279,6 +318,7 @@
 .strategy-row > textarea {
   width: 100%;
   min-width: 0;
+  max-width: 592px;
   font-family: inherit;
   font-size: var(--font-size-base);
   color: var(--ink);
@@ -290,7 +330,7 @@
 
 .strategy-row > input,
 .strategy-row > select {
-  height: 36px;
+  height: 34px;
   padding: 0 12px;
 }
 
@@ -299,6 +339,17 @@
   padding: 9px 12px;
   line-height: var(--line-height-normal);
   resize: vertical;
+}
+
+/* Zone de deux lignes, pour les champs dont la valeur depasse regulierement
+   90 caracteres : sur une seule ligne, la fin sortait du champ et ne se
+   relisait plus. La hauteur est calculee, jamais recopiee : deux lignes
+   pleines, plus le rembourrage et le trait. Une valeur figee a l oeil tronque
+   la deuxieme ligne des que l interlignage bouge. Le rembourrage vaut 18px et
+   le trait 2 : les 22px comptes laissent deux pixels de jeu, de quoi absorber
+   l arrondi sous-pixel plutot que de rogner le jambage de la seconde ligne. */
+.strategy-row > textarea[rows="2"] {
+  height: calc(2 * var(--font-size-base) * var(--line-height-normal) + 22px);
 }
 
 .strategy-row > input:focus,
@@ -347,13 +398,20 @@
   gap: var(--space-3);
 }
 
+/* Un segment par element compte, jamais une resolution fixe : cinq segments
+   sous « 4 sur 4 » laissaient une case grise a cote d un decompte complet, et
+   l indicateur se contredisait. La jauge garde une largeur constante quel que
+   soit le nombre de segments, sinon elle s allongerait avec le nombre de
+   regles de voix. A quatre segments, chacun retombe sur les 44px du dessin. */
 .strategy-completeness__segments {
   display: flex;
   gap: 3px;
+  width: 185px;
 }
 
 .strategy-completeness__segment {
-  width: 44px;
+  flex: 1 1 0;
+  min-width: 4px;
   height: 4px;
   border-radius: var(--radius-pill);
   background: var(--line-strong);
@@ -387,6 +445,74 @@
 .strategy-completeness__consequence svg {
   flex: none;
   margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Panneau de droite
+ * ------------------------------------------------------------------------- */
+
+/* Les classes de ce panneau ne reprennent ni `strategy-section` ni
+   `strategy-surface` : ces deux noms sont les reperes de mesure des portes de
+   recette geometriques, qui visent la premiere occurrence dans le document.
+   Les reutiliser ici ferait mesurer la mauvaise boite. */
+.strategy-aside {
+  flex: 1 1 280px;
+  min-width: 0;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.strategy-aside__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.strategy-aside__lead {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--ink-muted);
+}
+
+.strategy-aside__rule {
+  height: 1px;
+  background: var(--line);
+}
+
+.strategy-aside__status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.strategy-aside__status-label {
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+}
+
+.strategy-aside__status-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink);
+}
+
+.strategy-aside__status-value[data-tone="attention"] {
+  color: var(--amber-ink);
+}
+
+.strategy-aside__note {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
 }
 
 /* ---------------------------------------------------------------------------

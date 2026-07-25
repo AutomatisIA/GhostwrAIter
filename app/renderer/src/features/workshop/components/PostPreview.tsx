@@ -7,6 +7,20 @@ type PostPreviewProps = {
 };
 
 /**
+ * Vrai quand le repli tombe entre deux caracteres non blancs, donc au milieu
+ * d un mot. Le decoupage se fait sur le meme tableau de points de code que
+ * `measurePost` : avec `charAt`, un caractere hors BMP decalerait le verdict
+ * d une position.
+ */
+function foldCutsAWord(text: string): boolean {
+  const codePoints = [...(text ?? "")];
+  if (codePoints.length <= LINKEDIN_FOLD_CHARS) return false;
+  const before = codePoints[LINKEDIN_FOLD_CHARS - 1] ?? "";
+  const after = codePoints[LINKEDIN_FOLD_CHARS] ?? "";
+  return /\S/u.test(before) && /\S/u.test(after);
+}
+
+/**
  * Apercu du post tel qu il paraitra sur le fil.
  *
  * La seule mesure qui compte avant publication est celle-la : ce qui passe
@@ -58,6 +72,18 @@ export function PostPreview({ bodyMarkdown, contextUsed }: PostPreviewProps) {
           <p className="post-preview__note">
             Ce qui est au-dessus du trait décide de la lecture. Le reste ne s&apos;affiche
             qu&apos;après un clic sur « voir plus ».
+            {/* La coupe au milieu d un mot est l information utile de cet
+                apercu : elle se commente, sinon elle se lit comme un defaut de
+                rendu. La phrase n apparait que quand la coupe tombe vraiment
+                entre deux lettres. */}
+            {foldCutsAWord(bodyMarkdown) ? (
+              <>
+                {" "}
+                Ici la coupe tombe au milieu d&apos;un mot : l&apos;accroche gagnerait à
+                finir avant <span className="tabular">{LINKEDIN_FOLD_CHARS}</span>{" "}
+                caractères.
+              </>
+            ) : null}
           </p>
         ) : (
           <p className="post-preview__note">

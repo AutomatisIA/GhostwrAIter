@@ -4,7 +4,15 @@ import { STEP_LABELS, TYPOLOGIES, formatObjectiveLabel } from "../constants";
 
 type WorkshopContextBarProps = {
   step: number;
-  status: string;
+  /**
+   * Etat courant du parcours. Il n est PLUS rendu ici : pose entre la rangee
+   * d etiquettes et le retour au cadrage, il ecrasait les deux. La bande porte
+   * desormais trois elements seulement, chacun de largeur bornee. La progression
+   * d une generation est portee par l ecran d attente, une erreur par le bandeau
+   * d erreur ; l etat calme a sa place dans l en-tete de page, qui appartient a
+   * l ecran appelant.
+   */
+  status?: string;
   typology: PostTypology;
   objective: PostObjective;
   selectedStructure: StructureOption | undefined;
@@ -15,14 +23,6 @@ type WorkshopContextBarProps = {
   /** Absent pendant une generation : le cadrage ne se rouvre pas a chaud. */
   onReopenCadrage?: () => void;
 };
-
-const CHIP_MAX_CHARS = 46;
-
-function shorten(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length <= CHIP_MAX_CHARS) return trimmed;
-  return `${trimmed.slice(0, CHIP_MAX_CHARS - 1)}…`;
-}
 
 function readableStructure(label: string): string {
   return label
@@ -37,17 +37,18 @@ function readableStructure(label: string): string {
  *
  * Elle remplace le guide lateral de 340 px, qui rappelait sur trois cartes ce
  * que l utilisateur venait de choisir et prenait un tiers de la largeur pour
- * le faire. Les memes decisions tiennent ici sur une ligne de 52 px, et la
+ * le faire. Les memes decisions tiennent ici sur une ligne de 48 px, et la
  * place recuperee revient au texte du post et a son apercu.
  *
- * Rien n est perdu au passage : la position dans le parcours, les quatre
- * decisions et l etat courant sont tous portes ici. L aide de vocabulaire, qui
- * vivait sur le guide, reste attachee aux ecrans ou la decision se prend, et
- * revient sur le panneau de rappel de l ecran d attente.
+ * La bande a d abord porte cinq elements, dont un etat de longueur libre et une
+ * accroche de plus de soixante caracteres : ils se recouvraient. La correction
+ * n est pas d en rendre la rangee defilante, un bord tranche un mot aussi bien
+ * dans une rangee qui defile que dans une rangee qui deborde. Elle est d en
+ * SORTIR ce qui n avait pas a y etre, et de borner ce qui reste : chaque
+ * etiquette s arrete a 26 caracteres et donne son texte entier en infobulle.
  */
 export function WorkshopContextBar({
   step,
-  status,
   typology,
   objective,
   selectedStructure,
@@ -57,20 +58,23 @@ export function WorkshopContextBar({
   onReopenCadrage
 }: WorkshopContextBarProps) {
   const hookText = selectedHook?.text ?? fallbackHookText;
-  const chips: { key: string; role: string; value: string }[] = [];
+  const chips: { key: string; role: string; value: string; display: string }[] = [];
+
+  function pushChip(key: string, role: string, value: string, display = value) {
+    chips.push({ key, role, value, display });
+  }
 
   const typologyLabel = TYPOLOGIES.find((item) => item.value === typology)?.label;
-  if (typologyLabel) chips.push({ key: "typologie", role: "Typologie", value: typologyLabel });
-  chips.push({ key: "objectif", role: "Objectif", value: formatObjectiveLabel(objective) });
+  if (typologyLabel) pushChip("typologie", "Typologie", typologyLabel);
+  pushChip("objectif", "Objectif", formatObjectiveLabel(objective));
   if (selectedStructure?.label) {
-    chips.push({
-      key: "structure",
-      role: "Structure",
-      value: readableStructure(selectedStructure.label)
-    });
+    pushChip("structure", "Structure", readableStructure(selectedStructure.label));
   }
-  if (hookText) chips.push({ key: "accroche", role: "Accroche", value: hookText });
-  if (pillarLabel) chips.push({ key: "pilier", role: "Pilier éditorial", value: pillarLabel });
+  // L accroche est la seule decision qui s ecrit en phrase. Son role est donc
+  // prefixe au texte visible : coupee a 26 caracteres, « Si vos equipes
+  // bloquent des qu un outil… » ne se distinguerait pas d un titre de post.
+  if (hookText) pushChip("accroche", "Accroche", hookText, `Accroche : ${hookText}`);
+  if (pillarLabel) pushChip("pilier", "Pilier éditorial", pillarLabel);
 
   return (
     <div className="workshop-context">
@@ -86,12 +90,10 @@ export function WorkshopContextBar({
             title={`${chip.role} : ${chip.value}`}
             aria-label={`${chip.role} : ${chip.value}`}
           >
-            {shorten(chip.value)}
+            {chip.display}
           </span>
         ))}
       </div>
-
-      <span className="workshop-context__status">{status}</span>
 
       {onReopenCadrage ? (
         <Button variant="ghost" size="sm" onClick={onReopenCadrage}>

@@ -1,10 +1,12 @@
-const SEGMENT_COUNT = 5;
-
 export type CompletenessIndicatorProps = {
   /** Nombre d elements renseignes. */
   filled: number;
   /** Nombre d elements declares. Zero signifie section vide. */
   total: number;
+  /** Nom de l unite comptee, au singulier : « champ », « offre »... */
+  unitOne: string;
+  /** Le meme nom au pluriel. Le francais ne se deduit pas d un `+ s`. */
+  unitMany: string;
   /** Libelle affiche a la place du decompte quand la section est vide. */
   emptyLabel: string;
   /** Ce que l etat actuel change a la generation. `null` quand tout est en place. */
@@ -50,34 +52,44 @@ function InfoGlyph() {
  * desormais ce qui manque et l effet reel, sans exagerer un echec qui ne se
  * produit pas.
  *
- * La jauge est une resolution fixe de cinq segments, pas un segment par champ :
- * elle se lit d un coup d oeil quelle que soit la section, et le decompte a
- * cote donne le chiffre exact. Les segments sont donc decoratifs pour un
- * lecteur d ecran, l information etant portee par le texte adjacent.
+ * La jauge porte UN segment par element compte, jamais une resolution fixe.
+ * La version precedente en dessinait cinq quelle que soit la section : sous
+ * l onglet Profil, quatre champs tous remplis laissaient un segment gris a
+ * cote de la mention « 4 sur 4 », et l indicateur se contredisait lui-meme.
+ * Une jauge dont le nombre de cases est le nombre de choses a remplir est
+ * lisible sans legende.
+ *
+ * Le decompte nomme desormais son unite (« 4 champs sur 4 ») : « 4 sur 4 »
+ * seul obligeait a deviner ce qui etait compte. Les segments restent
+ * decoratifs pour un lecteur d ecran, l information etant portee par ce texte.
  */
 export function CompletenessIndicator({
   filled,
   total,
+  unitOne,
+  unitMany,
   emptyLabel,
   consequence
 }: CompletenessIndicatorProps) {
-  const ratio = total === 0 ? 0 : Math.max(0, Math.min(1, filled / total));
-  const lit = Math.round(ratio * SEGMENT_COUNT);
-  const countText = total === 0 ? emptyLabel : `${filled} sur ${total}`;
+  const lit = Math.max(0, Math.min(total, filled));
+  const countText =
+    total === 0 ? emptyLabel : `${filled} ${total > 1 ? unitMany : unitOne} sur ${total}`;
 
   return (
     <div className="strategy-completeness">
       <div className="strategy-completeness__row">
         <span className="eyebrow">Complétude</span>
-        <div className="strategy-completeness__segments" aria-hidden="true">
-          {Array.from({ length: SEGMENT_COUNT }, (_, index) => (
-            <span
-              key={index}
-              className="strategy-completeness__segment"
-              data-lit={index < lit ? "true" : undefined}
-            />
-          ))}
-        </div>
+        {total > 0 ? (
+          <div className="strategy-completeness__segments" aria-hidden="true">
+            {Array.from({ length: total }, (_, index) => (
+              <span
+                key={index}
+                className="strategy-completeness__segment"
+                data-lit={index < lit ? "true" : undefined}
+              />
+            ))}
+          </div>
+        ) : null}
         <span className="strategy-completeness__count" role="status">
           {countText}
         </span>

@@ -126,12 +126,9 @@
   margin-bottom: 10px;
 }
 
-.library-head__title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
+/* Le titre de section ne porte plus que son etiquette en capitales. L infobulle
+   qui l accompagnait n expliquait rien d ambigu : « Brouillons » se comprend
+   seul, et la barre d ecran dit deja ou l on est. */
 .library-head__count {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -208,6 +205,9 @@
   overflow: hidden;
 }
 
+/* `white-space` est heritee : la poser sur les enfants directs suffit a couvrir
+   le nom du pilier, la liste de mots cles et le « +N », qui sont des
+   petits-enfants depuis leur regroupement. */
 .library-row__meta > * {
   white-space: nowrap;
 }
@@ -223,30 +223,67 @@
  * Le pilier absorbe la contrainte de largeur en premier : c est le fragment le
  * plus long et le plus previsible. `min-width` le protege de l ecrasement total,
  * qui le reduisait a « P… », une seule lettre suivie de points de suspension.
+ *
+ * La pastille vit DANS ce fragment, pas en tete de rangee : elle annonce le
+ * pilier, elle ne flotte pas devant un separateur.
  */
 .library-row__pillar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   flex: 0 1 auto;
-  min-width: 7ch;
-  max-width: 26ch;
+  min-width: 9ch;
+  max-width: 28ch;
+  overflow: hidden;
+}
+
+.library-row__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-circle);
+  background: currentColor;
+}
+
+/* C est le nom, pas le fragment, qui porte les points de suspension : un
+   `text-overflow` sur un conteneur flex ne s applique jamais. */
+.library-row__pillar-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Etiquette libre. Bornee en largeur pour qu un mot long ne mange pas la rangee,
-   et abregee proprement au dela. */
-.library-row__tag {
+/*
+ * Mots cles : un seul fragment, separes par des virgules et non par des points
+ * medians. Le point median separe des metadonnees de nature differente ; entre
+ * trois mots d une meme liste il donne trois fragments de meme rang que le
+ * pilier et le compteur, et la rangee perd sa hierarchie.
+ */
+/* Pas d `overflow: hidden` ici : le groupe n a rien a rogner, la troncature est
+   portee par la liste de mots a l interieur. En le rognant pour son propre
+   compte, il coupait net le « +N » qui le suit, c est-a-dire le defaut d origine
+   deplace d un niveau. */
+.library-row__tags {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   flex: 0 1 auto;
-  min-width: 5ch;
-  max-width: 16ch;
+  min-width: 8ch;
+}
+
+.library-row__tag-list {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Reste des etiquettes, replie en « +N ». Le detail est dans son `title`, d ou
-   le curseur d aide : sans lui, rien n indique qu il y a quelque chose a lire. */
+/* Reste des etiquettes, replie en « +N », dans l encre de la rangee : il compte
+   ce qui n est pas montre, il n attire pas l oeil. Le detail est dans son
+   `title`, d ou le curseur d aide, sans lequel rien n indique qu il y a quelque
+   chose a lire. */
 .library-row__more {
   flex: none;
-  color: var(--ink-muted);
+  color: var(--ink-subtle);
   font-variant-numeric: tabular-nums;
   cursor: help;
 }
@@ -277,10 +314,10 @@
 }
 
 /*
- * Ligne de brouillon : deux boutons, jamais renvoyes a la ligne. C est ce qui
- * garantit une hauteur de ligne constante, quel que soit l etat du revelateur.
- * Le modificateur est necessaire parce que `.library-row__actions` habille aussi
- * le Planning, dont « Copier et marquer publié » a besoin du retour a la ligne.
+ * Ligne de brouillon : jamais de retour a la ligne. C est ce qui garantit une
+ * hauteur de ligne constante, que le groupe revele soit visible ou non. Le
+ * modificateur est necessaire parce que `.library-row__actions` habille aussi le
+ * Planning, dont « Copier et marquer publié » a besoin du retour a la ligne.
  */
 .library-row__actions--compact {
   flex-wrap: nowrap;
@@ -305,34 +342,71 @@
   border-top: 1px solid var(--line);
 }
 
-/* Le chevron indique le sens du geste : vers le bas pour deployer, retourne une
-   fois le panneau ouvert. */
-.library-row__actions .ds-button[aria-expanded] .ds-button__icon {
-  display: inline-flex;
-  transition: transform var(--duration-fast) var(--ease-standard);
+/*
+ * Les quatre actions secondaires, decouvertes au survol de la ligne ou des qu un
+ * de ses elements prend le focus. Les trois contraintes tiennent ensemble, et
+ * chacune tient pour une raison differente :
+ *
+ * - Rien d invisible et cliquable : `pointer-events: none` neutralise le clic
+ *   souris tant que le groupe est transparent. Les deux proprietes basculent
+ *   dans la meme regle, donc cliquable et visible sont toujours le meme etat.
+ * - Clavier : `opacity` ne retire pas de l ordre de tabulation. La tabulation
+ *   atteint le bouton, `:focus-within` revele le groupe au moment meme ou le
+ *   focus y entre. Aucun instant ou un element focalise resterait invisible,
+ *   d ou l absence de `transition` sur `opacity` : elle rouvrirait cette
+ *   fenetre-la.
+ * - Hauteur : le groupe reste dans le flux, la place est reservee en
+ *   permanence. Ni la ligne ni la colonne de titre ne se recomposent au survol.
+ *
+ * Le revelateur, lui, n est jamais masque : `opacity: 0` sur un bouton qui peut
+ * recevoir le focus est exactement ce que la premiere contrainte interdit.
+ */
+.library-row__actions-extra {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  opacity: 0;
+  pointer-events: none;
 }
 
-.library-row__actions .ds-button[aria-expanded="true"] .ds-button__icon {
-  transform: rotate(180deg);
+.library-row:hover .library-row__actions-extra,
+.library-row:focus-within .library-row__actions-extra {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .library-row__actions .ds-button[aria-expanded] .ds-button__icon {
-    transition: none;
-  }
+/*
+ * Revelateur : un carre, pas un libelle. « Autres actions » ecrit en toutes
+ * lettres sur trente lignes reprend en largeur ce que le repli des quatre
+ * actions venait de rendre. Le nom reste porte par `aria-label` pour la lecture
+ * d ecran et par `title` pour le survol.
+ */
+.library-row__disclosure {
+  width: 28px;
+  padding: 0;
+  color: var(--ink-subtle);
+}
+
+/* Ouvert : sans chevron a retourner, c est le contour qui porte l etat. La
+   surface de page tranche sur la surface de liste comme sur la ligne survolee,
+   ce que `--surface-sunken` ne ferait pas. */
+.library-row__disclosure[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--surface-app);
+  border-color: var(--line-strong);
 }
 
 /*
  * Suppression : la variante `danger` est conservee, c est elle qui porte le sens
- * pour la lecture du code et pour la boite de confirmation. Son aplat rouge,
- * repete sur chaque ligne d une liste dense, deviendrait le point le plus
- * appuye de l ecran alors que c est l action la moins souhaitable. Elle est donc
- * ramenee ici a une encre d erreur sans surface, et ne reprend du poids qu au
- * survol.
+ * pour la lecture du code et pour la boite de confirmation. Son aplat rouge est
+ * reserve a la boite de confirmation ; en liste, l action la moins souhaitable
+ * ne peut pas etre la plus coloree de l ecran. Elle se reduit donc a une encre
+ * d erreur, sans surface ni trait, soulignee au survol.
  */
 .library-row__actions .ds-button[data-variant="danger"],
 .library-actions .ds-button[data-variant="danger"] {
   background: transparent;
+  border-color: transparent;
   color: var(--state-ko);
   font-weight: var(--font-weight-medium);
 }
@@ -340,7 +414,8 @@
 .library-row__actions .ds-button[data-variant="danger"]:not(:disabled):hover,
 .library-actions .ds-button[data-variant="danger"]:not(:disabled):hover {
   filter: none;
-  background: var(--state-ko-tint);
+  background: transparent;
+  text-decoration: underline;
 }
 
 /* ---------------------------------------------------------------------------

@@ -87,28 +87,25 @@ export function SettingsScreen() {
           <header className="settings-section-head">
             <h2 className="settings-section-title">Application</h2>
             <p className="settings-section-desc">
-              Le thème suit le réglage de votre ordinateur si vous choisissez « Système ».
+              « Système » suit le réglage clair ou sombre de votre ordinateur.
             </p>
           </header>
 
           <div className="settings-form">
-            <div className="settings-row settings-row--top">
+            <div className="settings-row">
               <span className="settings-row__label">Thème</span>
               <div className="settings-row__control">
                 <ThemeSelector />
               </div>
             </div>
 
-            <div className="settings-row settings-row--top">
+            <div className="settings-row">
               <span className="settings-row__label">Visite guidée</span>
               <div className="settings-row__control">
                 <Button variant="secondary" size="sm" onClick={() => tour.open()}>
                   Revoir la visite guidée
                 </Button>
-                <p className="settings-row__hint">
-                  Présente les écrans et l'ordre du parcours conseillé : stratégie, puis création,
-                  puis bibliothèque.
-                </p>
+                <p className="settings-row__hint">Sept étapes pour situer chaque écran</p>
               </div>
             </div>
           </div>
@@ -120,10 +117,8 @@ export function SettingsScreen() {
             <h2 className="settings-section-title">Moteur d'exécution</h2>
             <p className="settings-section-desc">
               Le moteur IA
-              <InfoHint term="moteur-ia" /> qui rédige vos contenus. Chaque moteur passe par son
-              outil officiel : installez-le, connectez votre compte
-              <InfoHint term="oauth" />, puis sélectionnez-le. Le moteur retenu est rappelé en
-              permanence au pied de la navigation.
+              <InfoHint term="moteur-ia" /> retenu est contraignant : s'il n'est pas connecté
+              <InfoHint term="oauth" />, la génération échoue en le nommant.
             </p>
           </header>
           <EnginePanel />
@@ -134,7 +129,7 @@ export function SettingsScreen() {
           <header className="settings-section-head">
             <h2 className="settings-section-title">Diagnostics</h2>
             <p className="settings-section-desc">
-              L'historique des générations passées, utile pour comprendre une erreur.
+              Utile pour comprendre une erreur : l'historique des générations passées.
             </p>
           </header>
           <DiagnosticsPanel defaultExpanded={autoExpandDiagnostics} />
@@ -145,28 +140,34 @@ export function SettingsScreen() {
           <header className="settings-section-head">
             <h2 className="settings-section-title">Données</h2>
             <p className="settings-section-desc">
-              Vos données restent sur votre ordinateur. L'export, en haut de cet écran, crée une
-              sauvegarde de votre espace de travail (stratégie, inventaire des fichiers et journaux
-              de génération) dans un fichier JSON.
+              Tout reste sur votre ordinateur ; l'export, en haut de l'écran, en fait une sauvegarde
+              JSON.
             </p>
           </header>
 
           <div className="settings-form">
-            <div className="settings-row settings-row--top">
+            <div className="settings-row">
               <span className="settings-row__label">Journaux techniques</span>
               <div className="settings-row__control">
-                <Button variant="danger" size="sm" onClick={handleAskConfirm}>
+                {/* Bordé, encre rouge. L action la plus destructive de l ecran est
+                    aussi la plus rare : le rouge plein est garde pour la
+                    confirmation, ou il porte enfin une decision. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="settings-danger"
+                  onClick={handleAskConfirm}
+                >
                   Purger les journaux
                 </Button>
                 <p className="settings-row__hint">
-                  Les journaux ne servent qu'au diagnostic. Vos contenus et votre stratégie ne sont
-                  pas concernés.
+                  Vos contenus et votre stratégie ne sont pas concernés
                 </p>
               </div>
             </div>
 
             {exportPath ? (
-              <div className="settings-row settings-row--top">
+              <div className="settings-row">
                 <span className="settings-row__label">Dernière sauvegarde</span>
                 <div className="settings-row__control">
                   <code className="settings-path">{exportPath}</code>

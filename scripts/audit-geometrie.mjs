@@ -1,6 +1,6 @@
 /* global window, document, getComputedStyle */
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, existsSync, mkdtempSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { _electron as electron } from "playwright";
 
@@ -30,12 +30,31 @@ function porte(nom, attendu, obtenu, passe) {
 }
 
 const maison = mkdtempSync(join(tmpdir(), "ghostwraiter-geometrie-"));
+const espace = join(maison, "workspace");
+
+/*
+ * On mesure sur une COPIE de l espace reel quand il existe.
+ *
+ * Sur un espace vierge, la Bibliotheque ne rend aucune ligne, et les portes qui
+ * portent sur une ligne ne trouvent rien a mesurer : elles s esquivaient en
+ * silence et le total annoncait « tenues » sans les avoir jouees. C est
+ * exactement le defaut trouve dans le test d accessibilite de cet ecran, dont
+ * le montage mockait la liste a vide : il aurait passe en cassant tout l acces
+ * clavier. Une porte qui ne peut pas mesurer doit le DIRE, jamais disparaitre.
+ *
+ * L espace d origine n est jamais ouvert : Electron ecrit dans la copie.
+ */
+const espaceReel = join(homedir(), "Library", "Application Support", "ghostwraiter", "workspace");
+const surDonneesReelles = existsSync(espaceReel);
+if (surDonneesReelles) {
+  cpSync(espaceReel, espace, { recursive: true });
+}
 
 const app = await electron.launch({
   args: ["dist-electron/main/index.js"],
   env: {
     ...process.env,
-    LINKEDIN_POSTER_WORKSPACE_ROOT: join(maison, "workspace")
+    LINKEDIN_POSTER_WORKSPACE_ROOT: espace
   }
 });
 
@@ -228,6 +247,86 @@ try {
     );
   } else {
     porte("Action primaire de Creer", "au moins une", "aucun bouton primaire", false);
+  }
+
+  // ---- Porte : les actions de ligne masquees ne sont pas cliquables, mais
+  // restent atteignables au clavier.
+  //
+  // Cette porte existe parce qu aucun test unitaire ne peut la jouer : jsdom
+  // n evalue pas `:focus-within`, et le chantier Bibliotheque l a mesure. Apres
+  // `focus()` sur un bouton du groupe, `pointer-events` y restait `none` sous
+  // jsdom alors qu un vrai navigateur l aurait bascule. La branche clavier de
+  // ce correctif, qui est justement celle qui porte la contrainte
+  // d accessibilite, n etait donc garantie par aucune mesure. Elle l est ici.
+  //
+  // Les deux exigences sont contradictoires en apparence, d ou la mesure :
+  // au repos la souris ne doit pas pouvoir declencher une suppression sur un
+  // element invisible, et au clavier l action doit rester joignable.
+  await page.evaluate(() => {
+    window.location.hash = "#/bibliotheque";
+  });
+  await page.waitForTimeout(1200);
+  const actions = await page.evaluate(() => {
+    const groupe = document.querySelector(".library-row__actions-extra");
+    if (!groupe) return null;
+    const auRepos = getComputedStyle(groupe).pointerEvents;
+    const bouton = groupe.querySelector("button");
+    if (!bouton) return { auRepos, apresFocus: null, focalisable: false };
+    bouton.focus();
+    const apresFocus = getComputedStyle(groupe).pointerEvents;
+    const opacite = getComputedStyle(groupe).opacity;
+    const focalise = document.activeElement === bouton;
+    bouton.blur();
+    return { auRepos, apresFocus, opacite, focalisable: focalise };
+  });
+  // Stabilite de hauteur au survol. La place des actions est reservee en
+  // permanence pour que la ligne ne saute pas quand la souris la traverse : sur
+  // une liste de trente, un decalage de quelques pixels par ligne survolee rend
+  // la lecture impossible. Ni un test unitaire ni une lecture de CSS ne peuvent
+  // le verifier, il faut un survol reel.
+  const ligne = page.locator(".library-row").first();
+  if ((await ligne.count()) === 0) {
+    porte(
+      "Hauteur de ligne stable au survol",
+      "au moins une ligne de bibliotheque a mesurer",
+      surDonneesReelles ? "aucune ligne rendue" : "espace vierge, mesure impossible",
+      false
+    );
+  } else {
+    const avantSurvol = await ligne.evaluate((n) => Math.round(n.getBoundingClientRect().height));
+    await ligne.hover();
+    await page.waitForTimeout(250);
+    const apresSurvol = await ligne.evaluate((n) => Math.round(n.getBoundingClientRect().height));
+    porte(
+      "Hauteur de ligne stable au survol",
+      "aucun deplacement",
+      `${avantSurvol} px puis ${apresSurvol} px`,
+      avantSurvol === apresSurvol
+    );
+  }
+
+  if (!actions) {
+    porte(
+      "Actions de ligne inertes a la souris au repos",
+      "un groupe .library-row__actions-extra a mesurer",
+      surDonneesReelles ? "groupe introuvable" : "espace vierge, mesure impossible",
+      false
+    );
+  } else {
+    porte(
+      "Actions de ligne inertes a la souris au repos",
+      "pointer-events: none",
+      actions.auRepos,
+      actions.auRepos === "none"
+    );
+    porte(
+      "Actions de ligne joignables au clavier",
+      "le focus les rend cliquables et visibles",
+      `focalisable ${actions.focalisable}, pointer-events ${actions.apresFocus}, opacite ${actions.opacite}`,
+      actions.focalisable === true &&
+        actions.apresFocus === "auto" &&
+        Number(actions.opacite) > 0.9
+    );
   }
 
   // ---- Porte 6 : aucune ombre portee sur les cartes.

@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -164,5 +166,79 @@ describe("LibraryScreen", () => {
     expect(await screen.findByRole("button", { name: "Confirmer ?" })).toBeTruthy();
 
     resolveVariant?.();
+  });
+
+  /**
+   * Garantie anti-clic accidentel sur une action destructive.
+   *
+   * Les quatre actions secondaires d'une ligne sont dans le DOM au repos, donc
+   * dans l'ordre de tabulation, mais rendues transparentes et neutralisees par
+   * `pointer-events: none` jusqu'au survol ou au focus de la ligne. C'est CETTE
+   * neutralisation qui remplace l'ancienne preuve par absence du DOM, et elle se
+   * mesure sur l'element rendu plutot que par une lecture de la feuille.
+   *
+   * La feuille est injectee a la main : vitest n'applique aucun CSS par defaut
+   * (`document.styleSheets.length` vaut 0, mesure), et sans elle
+   * `getComputedStyle` renverrait `auto`, soit l'inverse du vrai. Le fichier est
+   * lu par `node:fs` et non par un import `?raw` : vitest stube les modules CSS,
+   * `?raw` y renvoie une chaine vide (mesure).
+   *
+   * Ce que ce test NE couvre PAS : la revelation elle-meme. jsdom n'evalue pas
+   * `:focus-within`, `pointer-events` y reste `none` apres un `focus()` sur un
+   * bouton du groupe (mesure). L'etat revele n'est verifie par aucun test.
+   */
+  it("neutralise le clic sur les actions secondaires tant qu'elles sont transparentes", async () => {
+    window.linkedinPoster = {
+      platform: "darwin",
+      appName: "GhostwrAIter",
+      strategy: { getActiveBundle: vi.fn(), saveBundle: vi.fn() },
+      ideas: { listIdeas: vi.fn(), createIdea: vi.fn() },
+      workshop: {
+        generateFromIdea: vi.fn(),
+        correctDraft: vi.fn(),
+        getSessionByIdeaId: vi.fn()
+      },
+      library: mockLibrary(),
+      calendar: { listItems: vi.fn().mockResolvedValue([]), scheduleDraft: vi.fn() },
+      execution: { listRuns: vi.fn().mockResolvedValue([]), getDiagnostics: vi.fn(), openRunLog: vi.fn() },
+      settings: { getPreference: vi.fn().mockResolvedValue({ key: "theme", value: null }) }
+    } as unknown as typeof window.linkedinPoster;
+
+    const style = document.createElement("style");
+    style.textContent = readFileSync(
+      path.join(process.cwd(), "app/renderer/src/features/library/library.css"),
+      "utf8"
+    );
+    document.head.appendChild(style);
+
+    try {
+      render(
+        <ToastProvider>
+          <MemoryRouter>
+            <LibraryScreen />
+          </MemoryRouter>
+        </ToastProvider>
+      );
+
+      expect(await screen.findByText("Le premier draft")).toBeTruthy();
+
+      // Garde-fou de la mesure : sans feuille appliquee, les assertions qui
+      // suivent liraient les valeurs initiales du navigateur et conclueraient
+      // pour une raison etrangere au sujet.
+      expect(document.styleSheets.length).toBeGreaterThan(0);
+
+      for (const label of ["Variante", "Planifier", "Retravailler", "Supprimer"]) {
+        const action = screen.getByRole("button", { name: label });
+        expect(getComputedStyle(action).pointerEvents).toBe("none");
+      }
+
+      // Le revelateur, lui, n'est jamais masque : un bouton focalisable rendu
+      // transparent est exactement ce que la contrainte interdit.
+      const disclosure = screen.getByRole("button", { name: /Autres actions/ });
+      expect(getComputedStyle(disclosure).pointerEvents).not.toBe("none");
+      expect(getComputedStyle(disclosure).opacity).toBe("1");
+    } finally {
+      style.remove();
+    }
   });
 });

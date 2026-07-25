@@ -9,12 +9,13 @@ const options: { value: ThemePreference; label: string }[] = [
   { value: "dark", label: "Sombre" }
 ];
 
-const HINTS: Record<ThemePreference, string> = {
-  system: "Suit automatiquement le réglage clair ou sombre de votre ordinateur.",
-  light: "Interface claire, idéale en pleine lumière.",
-  dark: "Interface sombre, plus reposante le soir."
-};
-
+/**
+ * Le controle segmente, sans legende.
+ *
+ * Une phrase changeait sous les trois onglets pour dire ce que « Clair »,
+ * « Sombre » et « Systeme » disent deja. La consequence du reglage tient dans
+ * la phrase de section, une fois.
+ */
 export function ThemeSelector() {
   const [current, setCurrent] = useState<ThemePreference>("system");
 
@@ -50,7 +51,6 @@ export function ThemeSelector() {
         value={current}
         onChange={(value) => handleChange(value as ThemePreference)}
       />
-      <p className="settings-row__hint">{HINTS[current]}</p>
     </div>
   );
 }

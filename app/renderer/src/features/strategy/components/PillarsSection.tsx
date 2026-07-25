@@ -52,6 +52,8 @@ export function PillarsSection({
       <CompletenessIndicator
         filled={complete}
         total={pillars.length}
+        unitOne="pilier"
+        unitMany="piliers"
         emptyLabel="Aucun pilier"
         consequence={consequence}
       />

@@ -47,6 +47,8 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
       <CompletenessIndicator
         filled={complete}
         total={icps.length}
+        unitOne="ICP"
+        unitMany="ICPs"
         emptyLabel="Aucun ICP"
         consequence={consequence}
       />

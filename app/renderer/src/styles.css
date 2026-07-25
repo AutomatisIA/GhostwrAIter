@@ -317,6 +317,13 @@ a {
   min-width: 0;
 }
 
+/* Mention discrete dans la barre de page : un fait, jamais une action. */
+.page__note {
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+
 .page__body {
   flex: 1;
   min-height: 0;

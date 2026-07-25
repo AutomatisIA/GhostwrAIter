@@ -1,44 +1,24 @@
 import { useEffect, useState, useCallback } from "react";
 import type { CliEngineStatus, CliEngineName } from "@shared/types/settings";
-import {
-  Button,
-  Skeleton,
-  useToast,
-  AlertTriangleIcon,
-  CheckCircleIcon,
-  XCircleIcon
-} from "../../../design-system/primitives";
+import { Button, Skeleton, useToast, CheckCircleIcon } from "../../../design-system/primitives";
 
 /**
- * Pastille d etat.
+ * Etat d un moteur, en clair et sans couleur.
  *
- * Trois etats, trois encres, et la partition est celle de la direction : vert de
- * validation quand le moteur repond, ambre d attention quand il est installe
- * mais qu il reste une action a faire, encre discrete quand il est absent. Un
- * moteur absent n est pas une erreur : c est un choix que l utilisateur n a pas
- * fait, il ne merite pas de rouge.
+ * Trois pastilles vertes « Connecte » alignees sur trois lignes disaient la
+ * meme chose trois fois et ne repondaient pas a la seule question de l ecran :
+ * lequel travaille. La marque coloree est desormais unique, elle est bleue et
+ * elle revient au moteur actif. Les autres enoncent leur etat en texte.
  */
-function statusBadge(installState: CliEngineStatus["installState"]) {
-  switch (installState) {
-    case "authenticated":
-      return (
-        <span className="engine-badge engine-badge--ok">
-          <CheckCircleIcon size={13} /> Connecté
-        </span>
-      );
-    case "installed":
-      return (
-        <span className="engine-badge engine-badge--warn">
-          <AlertTriangleIcon size={13} /> À connecter
-        </span>
-      );
-    case "not-installed":
-      return (
-        <span className="engine-badge engine-badge--off">
-          <XCircleIcon size={13} /> Non installé
-        </span>
-      );
-  }
+function stateLabel(engine: CliEngineStatus) {
+  const state =
+    engine.installState === "authenticated"
+      ? "Connecté"
+      : engine.installState === "installed"
+        ? "Installé, non connecté"
+        : "Non installé";
+
+  return engine.subscriptionLabel ? `${state} · ${engine.subscriptionLabel}` : state;
 }
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -155,14 +135,20 @@ export function EnginePanel() {
         const isInstalled = engine.installState !== "not-installed";
 
         return (
-          <div className="settings-engine" key={engine.name}>
+          <div
+            className={
+              isActive ? "settings-engine settings-engine--active" : "settings-engine"
+            }
+            key={engine.name}
+          >
             <div className="settings-engine__head">
               <span className="settings-engine__name">{engine.displayName}</span>
-              {statusBadge(engine.installState)}
-              <span className="settings-engine__sub">{engine.subscriptionLabel}</span>
+              <span className="settings-engine__state">{stateLabel(engine)}</span>
               <div className="settings-engine__action">
                 {isActive ? (
-                  <span className="settings-engine__active">Moteur actif</span>
+                  <span className="settings-engine__active">
+                    <CheckCircleIcon size={13} aria-hidden="true" /> Moteur actif
+                  </span>
                 ) : (
                   <Button
                     variant="secondary"

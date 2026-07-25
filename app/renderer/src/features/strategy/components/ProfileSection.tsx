@@ -55,8 +55,15 @@ export function ProfileSection({ profile, onUpdate }: ProfileSectionProps) {
           controlId="profile-positioning"
           label="Positionnement"
           help="En une phrase : pour qui vous travaillez et le problème que vous résolvez. C'est la ligne la plus utilisée par le modèle, plus elle est précise, moins les posts sont génériques."
+          align="start"
         >
-          <input
+          {/* Zone de deux lignes et non champ d une ligne : un positionnement
+              utile depasse regulierement 90 caracteres, et sur une seule ligne
+              sa fin sortait du champ. L utilisateur ne pouvait plus relire ce
+              qu il avait ecrit sans se deplacer au clavier dans le champ.
+              `rows` porte la mesure, le CSS s y accroche par attribut. */}
+          <textarea
+            rows={2}
             value={profile.positioning}
             onChange={(event) => onUpdate("positioning", event.target.value)}
             placeholder="Ex. Consultant IA générative pour PME industrielles"
@@ -95,6 +102,8 @@ export function ProfileSection({ profile, onUpdate }: ProfileSectionProps) {
       <CompletenessIndicator
         filled={filled}
         total={4}
+        unitOne="champ"
+        unitMany="champs"
         emptyLabel="Aucun champ renseigné"
         consequence={consequence}
       />

@@ -52,6 +52,8 @@ export function VoiceRulesSection({
       <CompletenessIndicator
         filled={complete}
         total={voiceRules.length}
+        unitOne="règle"
+        unitMany="règles"
         emptyLabel="Aucune règle"
         consequence={consequence}
       />

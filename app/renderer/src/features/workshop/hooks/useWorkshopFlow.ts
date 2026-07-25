@@ -110,7 +110,7 @@ export function useWorkshopFlow(ideaId: string | null) {
       setSelectedHookId(restoredHookId);
       setSession(result);
       setStep(4);
-      setStatus("Draft prêt.");
+      setStatus("Brouillon prêt");
     });
   }, [ideaId]);
 

@@ -47,6 +47,8 @@ export function OffersSection({ offers, onAdd, onRemove, onUpdate }: OffersSecti
       <CompletenessIndicator
         filled={complete}
         total={offers.length}
+        unitOne="offre"
+        unitMany="offres"
         emptyLabel="Aucune offre"
         consequence={consequence}
       />

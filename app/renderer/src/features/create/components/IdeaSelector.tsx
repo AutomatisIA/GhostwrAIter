@@ -1,6 +1,13 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import type { IdeaInput, IdeaRecord, NewsSourceInput } from "@shared/types/ideas";
-import { Button, EmptyState, Skeleton, Tabs, useToast } from "../../../design-system/primitives";
+import {
+  Button,
+  EmptyState,
+  Skeleton,
+  Tabs,
+  Tooltip,
+  useToast
+} from "../../../design-system/primitives";
 import { useAiProgress } from "../../../feedback/useAiProgress";
 import { InfoHint } from "../../../help";
 import { GenerationPulse } from "../../workshop/components/GenerationPulse";
@@ -25,13 +32,6 @@ const MODES: { key: CreateMode; label: string }[] = [
   { key: "strategy", label: "Depuis la stratégie" }
 ];
 
-const MODE_INTRO: Record<CreateMode, string> = {
-  idea: "Vous avez déjà le sujet en tête. Trois champs, puis l'idée rejoint le backlog ou passe directement dans l'atelier.",
-  news: "Vous réagissez à une publication externe. Collez son titre et son résumé, l'application en tire un brouillon initial.",
-  strategy:
-    "L'application propose des sujets à partir de vos piliers éditoriaux, de vos clients visés et de vos offres. Les sujets rejoignent le backlog, vous choisissez ensuite lequel travailler."
-};
-
 type IdeaSelectorProps = {
   onSelect: (ideaId: string) => void;
 };
@@ -42,16 +42,66 @@ function describeError(error: unknown, fallback: string): string {
 }
 
 /**
+ * Aide de champ.
+ *
+ * Deux motifs d aide coexistaient sur cet ecran : « Titre du sujet » et
+ * « Angle » posaient leur phrase d aide dans le flux, sous le champ, en
+ * permanence, pendant que « Pilier editorial » la cachait derriere un point
+ * d interrogation. Une phrase lue une fois qui reste ensuite affichee pour
+ * toujours occupe la place du champ suivant sans plus rien apprendre.
+ *
+ * Le motif est donc unique : libelle, bouton d aide, champ. Rien dans le flux
+ * tant que l aide n est pas demandee.
+ *
+ * `InfoHint` ne convient que pour un terme du glossaire, et « Titre du sujet »
+ * n est pas du jargon a definir mais un champ a renseigner. Ce composant reprend
+ * donc la meme forme et le meme geste (`Tooltip`, survol et focus clavier,
+ * `aria-describedby`, fermeture par Echap) avec la classe `ds-info-hint`, pour
+ * que les deux aides restent indiscernables a l oeil et a l usage. Le nom
+ * accessible reprend celui d `InfoHint` : « Aide : <libelle du champ> ».
+ */
+function FieldHelp({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <Tooltip content={children}>
+      <button type="button" className="ds-info-hint" aria-label={`Aide : ${label}`}>
+        <span aria-hidden="true">?</span>
+      </button>
+    </Tooltip>
+  );
+}
+
+const DAY_MONTH_FR = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
+
+/**
+ * Ligne de provenance d une idee sans titre.
+ *
+ * La generation depuis la strategie et la transformation de veille produisent
+ * des idees dont le titre peut rester vide : la ligne du backlog n affichait
+ * alors que son pilier, « Veille » ou « General », soit une ligne cliquable
+ * sans contenu lisible. Le repli nomme ce qui manque et date la provenance,
+ * ce qui suffit a decider d ouvrir la ligne ou de la laisser.
+ */
+function describeProvenance(idea: IdeaRecord): string {
+  const source = idea.pillarLabel.trim() || "Idée";
+  const created = new Date(idea.createdAt);
+  if (Number.isNaN(created.getTime())) return `${source}, à nommer`;
+  return `${source} du ${DAY_MONTH_FR.format(created)}, à nommer`;
+}
+
+/**
  * Ecran « Creer ».
  *
  * Trois portes d entree occupaient auparavant trois colonnes egales, dont la
  * troisieme ne portait qu un bouton, et le backlog des idees se trouvait
  * repousse sous le pli. Les trois modes sont devenus trois onglets d une meme
- * carte de 640 px, et la colonne recuperee sert la liste des idees en attente,
+ * carte de 700 px, et la colonne recuperee sert la liste des idees en attente,
  * qui est la raison pour laquelle on revient sur cet ecran.
  *
- * La barre d action est collee au bas de la carte, hors du flux qui defile :
- * l action primaire est atteignable sans jamais faire defiler la page.
+ * La carte s arrete a la hauteur de son contenu : la barre d action suit le
+ * dernier champ au lieu d etre plaquee au bas d une carte pleine hauteur, qui
+ * laissait quatre cents pixels de vide entre les deux. Quand le contenu depasse
+ * la fenetre, la carte se borne et c est son corps qui defile, l action primaire
+ * restant visible.
  */
 export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   const toast = useToast();
@@ -229,14 +279,15 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
             />
           ) : null}
 
-          <p className="create-intro">{MODE_INTRO[mode]}</p>
-
           {mode === "idea" ? (
             <form id="create-idea-form" className="create-form" onSubmit={handleOpenInWorkshop}>
               <div className="create-row">
-                <label className="create-label" htmlFor="idea-title">
-                  Titre du sujet
-                </label>
+                <div className="create-label">
+                  <label htmlFor="idea-title">Titre du sujet</label>
+                  <FieldHelp label="Titre du sujet">
+                    Le sujet en une phrase, tel que vous le présenteriez à voix haute.
+                  </FieldHelp>
+                </div>
                 <div className="create-control">
                   <input
                     id="idea-title"
@@ -247,16 +298,17 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                       setForm((current) => ({ ...current, title: event.target.value }))
                     }
                   />
-                  <span className="create-hint">
-                    Le sujet en une phrase, tel que vous le présenteriez à voix haute.
-                  </span>
                 </div>
               </div>
 
               <div className="create-row create-row--top">
-                <label className="create-label" htmlFor="idea-angle">
-                  Angle
-                </label>
+                <div className="create-label">
+                  <label htmlFor="idea-angle">Angle</label>
+                  <FieldHelp label="Angle">
+                    Le point de vue ou la promesse : ce qui rend le post différent d&apos;un
+                    autre sur le même sujet.
+                  </FieldHelp>
+                </div>
                 <div className="create-control">
                   <textarea
                     id="idea-angle"
@@ -268,16 +320,14 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                       setForm((current) => ({ ...current, angle: event.target.value }))
                     }
                   />
-                  <span className="create-hint">
-                    Le point de vue ou la promesse : ce qui rend le post différent.
-                  </span>
                 </div>
               </div>
 
               <div className="create-row create-row--top">
-                <span className="create-label" id="idea-pillar-label">
-                  Pilier éditorial <InfoHint term="pilier" />
-                </span>
+                <div className="create-label">
+                  <span id="idea-pillar-label">Pilier éditorial</span>
+                  <InfoHint term="pilier" />
+                </div>
                 <div className="create-control">
                   {strategyPillars.length > 0 ? (
                     <div
@@ -306,6 +356,7 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                     <input
                       id="idea-pillar"
                       className="create-input"
+                      aria-labelledby="idea-pillar-label"
                       value={form.pillarLabel}
                       placeholder="Aucun pilier défini : remplissez la stratégie d'abord"
                       onChange={(event) =>
@@ -313,10 +364,6 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                       }
                     />
                   )}
-                  <span className="create-hint">
-                    Le grand thème auquel rattacher cette idée. Un seul, pour garder une
-                    ligne lisible.
-                  </span>
                 </div>
               </div>
             </form>
@@ -325,9 +372,12 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
           {mode === "news" ? (
             <form id="create-news-form" className="create-form" onSubmit={handleNewsSubmit}>
               <div className="create-row">
-                <label className="create-label" htmlFor="news-title">
-                  Titre source
-                </label>
+                <div className="create-label">
+                  <label htmlFor="news-title">Titre source</label>
+                  <FieldHelp label="Titre source">
+                    Le titre de l&apos;article ou de la publication à laquelle vous réagissez.
+                  </FieldHelp>
+                </div>
                 <div className="create-control">
                   <input
                     id="news-title"
@@ -341,16 +391,16 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                       }))
                     }
                   />
-                  <span className="create-hint">
-                    Le titre de l&apos;article ou de la publication à laquelle vous réagissez.
-                  </span>
                 </div>
               </div>
 
               <div className="create-row create-row--top">
-                <label className="create-label" htmlFor="news-summary">
-                  Résumé source
-                </label>
+                <div className="create-label">
+                  <label htmlFor="news-summary">Résumé source</label>
+                  <FieldHelp label="Résumé source">
+                    Les points clés de la source, pour que le moteur sache à quoi réagir.
+                  </FieldHelp>
+                </div>
                 <div className="create-control">
                   <textarea
                     id="news-summary"
@@ -365,18 +415,19 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                       }))
                     }
                   />
-                  <span className="create-hint">
-                    Les points clés de la source, pour que le moteur sache à quoi réagir.
-                  </span>
                 </div>
               </div>
             </form>
           ) : null}
 
+          {/* Seul mode sans champ : la phrase n est pas une aide posee a cote
+              d une saisie, c est le contenu du panneau. */}
           {mode === "strategy" ? (
             <p className="create-strategy-note">
-              Rien à saisir ici. Si votre stratégie est vide, remplissez-la d&apos;abord : la
-              génération n&apos;aurait rien sur quoi s&apos;appuyer.
+              L&apos;application propose des sujets à partir de vos piliers éditoriaux, de vos
+              clients visés et de vos offres, et les dépose dans le backlog. Rien à saisir
+              ici : si votre stratégie est vide, remplissez-la d&apos;abord, la génération
+              n&apos;aurait rien sur quoi s&apos;appuyer.
             </p>
           ) : null}
         </div>
@@ -476,18 +527,31 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
 
         {!loading && visibleIdeas.length > 0 ? (
           <ul className="create-backlog__list">
-            {visibleIdeas.map((idea) => (
-              <li key={idea.id}>
-                <button
-                  type="button"
-                  className="create-backlog__row"
-                  onClick={() => onSelect(idea.id)}
-                >
-                  <span className="create-backlog__title">{idea.title}</span>
-                  <span className="create-backlog__pillar">{idea.pillarLabel}</span>
-                </button>
-              </li>
-            ))}
+            {visibleIdeas.map((idea) => {
+              const title = idea.title.trim();
+              return (
+                <li key={idea.id}>
+                  <button
+                    type="button"
+                    className="create-backlog__row"
+                    onClick={() => onSelect(idea.id)}
+                  >
+                    <span
+                      className={
+                        title
+                          ? "create-backlog__title"
+                          : "create-backlog__title create-backlog__title--untitled"
+                      }
+                    >
+                      {title || "Idée sans titre"}
+                    </span>
+                    <span className="create-backlog__pillar">
+                      {title ? idea.pillarLabel : describeProvenance(idea)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
       </section>

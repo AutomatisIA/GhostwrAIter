@@ -27,7 +27,7 @@
    Trois portes d entree occupaient trois colonnes egales, dont la troisieme
    ne portait qu un bouton, pendant que la liste des idees, seule raison de
    revenir sur cet ecran, se trouvait sous le pli. Les trois modes sont
-   devenus trois onglets d une carte de 640 px et la colonne liberee sert la
+   devenus trois onglets d une carte de 700 px et la colonne liberee sert la
    liste.
    ===================================================================== */
 
@@ -43,9 +43,20 @@
   gap: var(--space-5);
 }
 
+/* `align-self: flex-start` et non l etirement par defaut d un element flex.
+   La carte s etirait sur toute la hauteur du corps de page, ce qui plaquait sa
+   barre d action tout en bas et laissait environ quatre cents pixels de vide
+   entre le dernier champ et les boutons : le plan de saisie flottait au-dessus
+   d un trou. La carte prend maintenant la hauteur de son contenu.
+   `max-height: 100%` la borne a la fenetre, faute de quoi un formulaire plus
+   haut que le corps de page ferait defiler `.page__body` et emporterait la
+   barre d action sous le pli. Le pourcentage se resout parce que
+   `.create-screen` a une hauteur definie. */
 .create-card {
-  width: 640px;
+  width: 700px;
   flex: none;
+  align-self: flex-start;
+  max-height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -79,24 +90,19 @@
   gap: var(--space-4);
 }
 
-.create-intro {
-  margin: 0;
-  max-width: 62ch;
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
-  color: var(--ink-muted);
-}
-
 .create-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
+/* Colonne de libelles de 150 px. A 176 px, le champ commencait a 767 px du bord
+   de la fenetre : entre le libelle et sa saisie s ouvrait une bande vide assez
+   large pour casser l association oeil, libelle, champ. */
 .create-row {
   display: grid;
-  grid-template-columns: 176px minmax(0, 1fr);
-  gap: var(--space-3);
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
   align-items: center;
 }
 
@@ -111,6 +117,43 @@
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-medium);
   color: var(--ink);
+}
+
+/* Le bouton d aide vaut 20 px sur cet ecran, contre 16 px ailleurs : pose a
+   cote d un champ de 36 px il doit rester une cible atteignable, la ou il
+   n accompagne qu un titre de section dans les autres ecrans. La marge de la
+   primitive est reprise par la gouttiere du libelle, sinon les deux s ajoutent. */
+.create-label .ds-info-hint {
+  width: 20px;
+  height: 20px;
+  margin-inline-start: 0;
+}
+
+/* La bulle d aide est posee en absolu, et elle vit ici dans deux conteneurs qui
+   decoupent leur debordement : `.create-card` en `overflow: hidden` et son corps
+   en `overflow-y: auto`, qui calcule `overflow-x: auto` par consequence. Une
+   bulle qui sort de la carte n est donc pas seulement mal placee, elle est
+   tranchee.
+
+   Horizontalement, la primitive centre la bulle sur son declencheur. Le
+   declencheur suit un libelle court, a une centaine de pixels du bord gauche,
+   et une bulle de 288 px centree la debordait de plusieurs dizaines de pixels
+   par la gauche. Elle est donc alignee sur le bord gauche du declencheur et
+   s etend vers la droite, ou la colonne de saisie laisse pres de 500 px.
+
+   Verticalement, la primitive ouvre vers le haut. Cela convient a toutes les
+   rangees sauf la premiere, dont le declencheur est a une trentaine de pixels du
+   haut du corps : la bulle y perdait la majeure partie de sa hauteur. Seule
+   cette rangee ouvre vers le bas, ou les rangees suivantes lui laissent la
+   place. */
+.create-label .ds-tooltip__bubble {
+  left: 0;
+  transform: none;
+}
+
+.create-row:first-child .create-label .ds-tooltip__bubble {
+  bottom: auto;
+  top: calc(100% + var(--space-2));
 }
 
 .create-row--top .create-label {
@@ -156,24 +199,21 @@
   box-shadow: var(--focus-ring);
 }
 
-.create-hint {
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-snug);
-  color: var(--ink-subtle);
-}
-
 /* Le pilier se choisit parmi une liste courte et connue : des etiquettes
    montrent les options disponibles d un coup d oeil, la ou une liste deroulante
-   les cache derriere un clic. */
+   les cache derriere un clic.
+   Rangee a retour automatique et non colonne : a 32 px de haut dans une colonne
+   de saisie trop etroite, cinq piliers se posaient un par ligne et la taxonomie
+   devenait le plus gros bloc de l ecran, plus haute que le champ d angle. */
 .create-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 6px;
 }
 
 .create-chip {
-  height: 32px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 11px;
   font: inherit;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
@@ -210,7 +250,7 @@
   color: var(--ink-subtle);
 }
 
-/* Barre d action collee au bas de la carte, hors du flux qui defile. */
+/* Barre d action posee sous le dernier champ, hors du flux qui defile. */
 .create-actions {
   flex: none;
   display: flex;
@@ -219,6 +259,22 @@
   padding: 14px 22px;
   border-top: 1px solid var(--line);
   background: var(--surface-sunken);
+}
+
+/* La barre est creusee, et l action secondaire du design system est
+   transparente : « Ajouter au backlog » se lisait donc en gris sur gris, soit
+   l apparence exacte d un bouton desactive, alors que l action est disponible.
+   Elle reprend la surface haute pour se detacher de la barre : surface, trait
+   de un pixel, encre secondaire. Un vrai desactive reste distinct, la primitive
+   lui appliquant son opacite reduite. */
+.create-actions .ds-button[data-variant="secondary"]:not(:disabled) {
+  background: var(--surface-raised);
+}
+
+/* Le survol de la primitive ramenerait la surface creusee, donc le gris sur
+   gris que l on vient de corriger. Il descend d un cran au lieu de monter. */
+.create-actions .ds-button[data-variant="secondary"]:not(:disabled):hover {
+  background: var(--surface-app);
 }
 
 .create-backlog {
@@ -298,6 +354,15 @@
   color: var(--ink);
 }
 
+/* Une idee sans titre garde une etiquette explicite plutot qu une ligne vide.
+   L italique et l encre tertiaire disent que le texte n est pas de l utilisateur
+   mais un repli de l application : la graisse de titre affirmerait un titre. */
+.create-backlog__title--untitled {
+  font-weight: var(--font-weight-medium);
+  font-style: italic;
+  color: var(--ink-subtle);
+}
+
 .create-backlog__pillar {
   font-size: var(--font-size-sm);
   color: var(--ink-subtle);
@@ -320,27 +385,31 @@
   flex-direction: column;
 }
 
-/* Bande de contexte : la position dans le parcours, les decisions prises, l
-   etat courant. Elle remplace un guide lateral de 340 px qui portait la meme
-   information sur trois cartes empilees. */
+/* Bande de contexte : la position dans le parcours et les decisions prises.
+   Elle remplace un guide lateral de 340 px qui portait la meme information sur
+   trois cartes empilees.
+
+   Elle a d abord porte cinq elements de largeur libre, dont l etat courant et
+   une accroche de plus de soixante caracteres. Ils se recouvraient : la
+   derniere etiquette etait tranchee, l etat se collait a elle et le retour au
+   cadrage se faisait ecraser. Rendre la rangee defilante ne reglait rien, un
+   bord tranche un mot aussi bien dans une rangee qui defile. La correction est
+   d avoir SORTI de la bande ce qui n avait pas a y etre : l etat va a l en-tete
+   de page, les deux mesures du brouillon vont a droite de son titre. Ce qui
+   reste tient sur trois elements, chacun borne. */
 .workshop-context {
-  height: 52px;
+  height: 48px;
   flex: none;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-4);
   padding: 0 28px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-raised);
 }
 
 .workshop-context__step {
-  height: 100%;
   flex: none;
-  display: flex;
-  align-items: center;
-  padding-right: 18px;
-  border-right: 1px solid var(--line);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--ink-subtle);
@@ -348,20 +417,16 @@
   white-space: nowrap;
 }
 
-/* La rangee d etiquettes DEFILE, elle ne se coupe pas.
-   Mesure du 25 juillet 2026 : 885 px d etiquettes dans 788 px disponibles. Avec
-   `overflow: hidden`, la derniere etiquette etait tranchee en plein mot, ce qui
-   se lit comme un defaut d affichage et non comme un depassement. Et les
-   decisions hors champ devenaient inatteignables : on ne pouvait plus lire ce
-   qu on avait choisi.
-   La barre de defilement est masquee, le geste reste possible. */
+/* Le defilement horizontal reste en dernier recours : les etiquettes sont
+   desormais bornees a 26 caracteres chacune, mais rien n interdit une session
+   a cinq decisions longues. La barre de defilement est masquee, le geste reste
+   possible, et aucune decision ne devient inatteignable. */
 .workshop-context__chips {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding-left: 18px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -380,30 +445,27 @@
   flex: none;
 }
 
+/* Etiquette bornee a 26 caracteres, texte entier en infobulle. La coupe est
+   faite par le navigateur avec un vrai point de suspension typographique, et
+   non par le composant : une coupe calculee en JavaScript tombait au milieu
+   d un mot et laissait croire a un texte incomplet.
+   `inline-block` et non `inline-flex` : `text-overflow` ne s applique qu au
+   contenu en ligne d un bloc, sur un conteneur flexible l ellipse ne se dessine
+   pas. Le `line-height` remplace donc le centrage vertical, 24 px pour 26 px de
+   haut moins un pixel de bordure de chaque cote. */
 .workshop-context__chip {
   height: 26px;
+  max-width: 26ch;
   flex: none;
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
   padding: 0 10px;
+  line-height: 24px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--ink-muted);
   background: var(--surface-sunken);
   border: 1px solid var(--line);
   border-radius: var(--radius-xs);
-  white-space: nowrap;
-}
-
-.workshop-context__status {
-  margin-left: auto;
-  /* Se reduit AVANT le bouton : un etat tronque reste une information, un
-     bouton tronque n est plus une commande. */
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 34ch;
-  font-size: var(--font-size-sm);
-  color: var(--ink-subtle);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -461,7 +523,7 @@
 
 .draft-title {
   margin: 0;
-  max-width: 34ch;
+  max-width: 44ch;
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-title);
   line-height: var(--line-height-tight);
@@ -469,9 +531,23 @@
   color: var(--ink);
 }
 
+/* Les deux mesures du brouillon, en colonne a droite de son titre. Elles
+   etaient dans la bande de contexte, ou elles disputaient la largeur aux
+   decisions prises ; adossees au titre, elles mesurent ce qui est juste en
+   dessous et ne recouvrent plus rien. */
+.draft-metrics {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
 /* Caracteres RESTANTS, jamais un pourcentage de qualite : le score affiche
    auparavant etait une auto-evaluation du modele, donc un chiffre invente sur
-   un produit dont la premiere regle editoriale interdit les chiffres inventes. */
+   un produit dont la premiere regle editoriale interdit les chiffres inventes.
+   La limite est rappelee dans la meme phrase : un nombre de restants sans
+   reference ne se compare a rien. */
 .draft-remaining {
   flex: none;
   font-size: var(--font-size-sm);
@@ -483,6 +559,51 @@
 
 .draft-remaining[data-over="true"] {
   color: var(--state-ko);
+}
+
+/* Compte de marqueurs d ecriture IA. La mise en garde sur la detection tient
+   dans l infobulle du point d interrogation : elle ne se lit qu une fois, elle
+   n a pas a occuper deux lignes sous le brouillon a chaque affichage. */
+.draft-tells {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* L ambre porte l attention, jamais la validation : il n apparait que quand un
+   marqueur a ete trouve. « Aucun marqueur repere » reste en encre tertiaire,
+   c est un constat, pas un succes. */
+.draft-tells[data-found="true"] {
+  color: var(--amber-ink);
+}
+
+.draft-tells__help {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+  /* --line-field, seule bordure conforme AA pour un composant interactif. */
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-circle);
+  cursor: help;
+}
+
+.draft-tells__help:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .draft-text {
@@ -531,74 +652,6 @@
   outline-offset: 2px;
 }
 
-.tells-banner {
-  max-width: 68ch;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: 11px 14px;
-  background: var(--amber-tint);
-  border: 1px solid var(--amber-line);
-  border-radius: var(--radius-sm);
-}
-
-.tells-banner__line {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.tells-banner__count {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--amber-ink);
-}
-
-.tells-banner__hint {
-  font-size: var(--font-size-sm);
-  color: var(--amber-ink);
-}
-
-.tells-banner__action {
-  margin-left: auto;
-  height: 26px;
-  padding: 0 10px;
-  font: inherit;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  line-height: 1;
-  color: var(--amber-ink);
-  background: transparent;
-  /* --amber-fill et non --amber-line : le contour d un composant interactif
-     doit tenir 3:1 (WCAG 1.4.11), et --amber-line sur --amber-tint ne donne
-     que 1,24:1 en clair. Meme piege que celui qui a fait naitre --line-field. */
-  border: 1px solid var(--amber-fill);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.tells-banner__action:hover {
-  background: var(--surface-raised);
-}
-
-.tells-banner__caveat {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  line-height: var(--line-height-snug);
-  color: var(--amber-ink);
-}
-
-/* Meme mise en garde quand rien n est trouve : la detection sous-compte, et
-   l absence de marqueur repere ne certifie jamais qu un texte est propre. */
-.tells-empty {
-  margin: 0;
-  max-width: 68ch;
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
-  color: var(--ink-subtle);
-}
-
 .draft-edit {
   max-width: 68ch;
   display: flex;
@@ -638,15 +691,43 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Barre d action de la colonne de texte. Hauteur fixe et `flex: none` sous le
+   seul conteneur defilant de l ecran : « Copier le post » est le geste qui
+   TERMINE le parcours, il ne peut pas dependre du defilement pour etre atteint.
+   Le retour a la ligne est interdit : il ferait grandir la barre au detriment
+   du texte, alors que la rangee doit rester a 60 px quoi qu elle porte. */
 .draft-actions {
+  height: 60px;
   flex: none;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-2);
-  padding: 14px 28px;
+  padding: 0 28px;
   border-top: 1px solid var(--line);
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
+  /* La rangee porte cinq actions, soit environ 815 px de boutons, et la fenetre
+     descend jusqu a 1120 px de large (app/main/index.ts), ce qui ne laisse que
+     664 px a la colonne de texte. Elle deborde donc a la fenetre la plus
+     etroite. Le debordement DEFILE, il ne se coupe pas : couper rendrait la
+     derniere action inatteignable sans le moindre indice. La barre de
+     defilement est masquee, elle mangerait la hauteur de 60 px. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.draft-actions::-webkit-scrollbar {
+  display: none;
+}
+
+/* Aucun bouton ne se comprime : un bouton retreci garde son remplissage et son
+   libelle deborde de son propre cadre, sur le voisin. La rangee est un train de
+   largeurs fixes, et son ordre decide de ce qui sort du champ en premier :
+   « Copier le post » est en tete, il est visible sans le moindre geste. */
+.draft-actions > .ds-button {
+  flex: none;
 }
 
 /* Apercu du fil. La seule mesure qui vaille avant publication : ce qui passe
@@ -723,6 +804,9 @@
   color: var(--ink-subtle);
 }
 
+/* L apercu se lit un cran plus petit et un cran plus serre que le brouillon,
+   15 px sur 1,55 contre 16 px sur 1,65 : sans cet ecart, rien ne dit laquelle
+   des deux colonnes est la source et laquelle en est le rendu. */
 .post-preview__text {
   font-size: var(--font-size-md);
   line-height: var(--line-height-normal);
@@ -1235,8 +1319,13 @@
     height: auto;
   }
 
+  /* En colonne, `align-self` pilote la largeur et non plus la hauteur : sans
+     `stretch`, la carte cesserait de suivre la largeur de la fenetre malgre
+     `width: auto`. La borne de hauteur tombe avec le defilement interne. */
   .create-card {
     width: auto;
+    align-self: stretch;
+    max-height: none;
   }
 
   .create-card__body,

@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { useAiProgress } from "../../feedback/useAiProgress";
-import { Button, PageFrame } from "../../design-system/primitives";
+import { PageFrame } from "../../design-system/primitives";
 import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
 import { useWorkshopFlow } from "../workshop/hooks/useWorkshopFlow";
 import { WorkshopContextBar } from "../workshop/components/WorkshopContextBar";
@@ -23,18 +22,24 @@ export function CreateScreen() {
   const [searchParams, setSearchParams] = useSearchParams();
   const ideaIdFromUrl = searchParams.get("ideaId");
 
-  const [mode, setMode] = useState<ScreenMode>(ideaIdFromUrl ? "workshop" : "selecting");
-  const [selectedIdeaId, setSelectedIdeaId] = useState<string | null>(ideaIdFromUrl);
-
-  useEffect(() => {
-    if (ideaIdFromUrl && mode === "selecting") {
-      // Synchronisation depuis la navigation (URL ?ideaId) : ouvrir l'atelier
-      // quand on arrive avec une idee. Sync legitime depuis une source externe.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedIdeaId(ideaIdFromUrl);
-      setMode("workshop");
-    }
-  }, [ideaIdFromUrl, mode]);
+  // L URL est la SEULE source de verite de l ecran ouvert. Ni etat local, ni
+  // effet de synchronisation.
+  //
+  // La version precedente dupliquait l information : `mode` et `selectedIdeaId`
+  // en etat local, plus un effet qui les realignait sur `?ideaId`. Cette
+  // duplication produisait un defaut visible, « il faut cliquer deux fois sur
+  // Changer d idee pour revenir en arriere ». Le premier clic posait
+  // `mode = "selecting"` et demandait le vidage de l URL, mais l URL ne change
+  // pas dans le meme rendu : l effet se declenchait avec `ideaIdFromUrl` encore
+  // renseigne et `mode === "selecting"`, sa condition exacte, et remettait
+  // aussitot `mode = "workshop"`. Le clic etait annule par l effet. Le second
+  // aboutissait parce que l URL etait enfin vide.
+  //
+  // En derivant, l etat contradictoire n existe plus : il n y a plus deux
+  // sources a reconcilier, donc plus de fenetre pendant laquelle elles se
+  // contredisent. Cela supprime aussi l effet et sa derogation eslint.
+  const selectedIdeaId = ideaIdFromUrl;
+  const mode: ScreenMode = selectedIdeaId ? "workshop" : "selecting";
 
   const {
     step,
@@ -95,15 +100,7 @@ export function CreateScreen() {
   const stepVariants = useMotionVariants(fadeInUp);
 
   function handleSelectIdea(ideaId: string) {
-    setSelectedIdeaId(ideaId);
-    setMode("workshop");
     setSearchParams({ ideaId });
-  }
-
-  function handleChangeIdea() {
-    setSelectedIdeaId(null);
-    setMode("selecting");
-    setSearchParams({});
   }
 
   if (mode === "selecting") {
@@ -124,9 +121,11 @@ export function CreateScreen() {
     <PageFrame
       eyebrow={eyebrow}
       actions={
-        <Button variant="ghost" size="sm" onClick={handleChangeIdea}>
-          Changer d&apos;idée
-        </Button>
+        // « Changer d idee » a ete retire : il faisait la meme promesse que
+        // « Revenir au cadrage » du ruban de contexte, deux sorties de meme
+        // poids pour un seul geste. L en-tete porte desormais l information
+        // qui manquait vraiment, celle que rien n est perdu.
+        <span className="page__note">Enregistré automatiquement</span>
       }
     >
       <div className="workshop-screen">

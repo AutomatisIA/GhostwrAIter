@@ -7,7 +7,6 @@ import {
   AI_TELL_FAMILIES_PREFERENCE_KEY,
   parseTellFamiliesPreference
 } from "../../ai-tells/tellsPreference";
-import { AiTellsReport } from "./AiTellsReport";
 import { CorrectionDiff } from "./CorrectionDiff";
 import { PostPreview } from "./PostPreview";
 import { buildMarkedParagraphs, describeFamilies } from "./marked-text";
@@ -22,6 +21,18 @@ type DraftPanelProps = {
   isSavingDraftText: boolean;
 };
 
+/**
+ * Mise en garde sur la detection de marqueurs. Elle occupait deux lignes sous le
+ * brouillon, en permanence, alors qu elle ne se lit qu une fois : elle est
+ * desormais attachee au compte lui-meme, en infobulle.
+ */
+const TELLS_CAVEAT =
+  "La détection sous-compte : elle montre ce qu'elle trouve, elle ne certifie jamais qu'un texte est propre.";
+
+/**
+ * « 1 914 restants » ne dit pas restants sur quoi : la limite est rappelee dans
+ * la meme phrase, sinon le chiffre ne se compare a rien.
+ */
 function formatRemaining(chars: number): { label: string; over: boolean } {
   const remaining = LINKEDIN_MAX_CHARS - chars;
   if (remaining < 0) {
@@ -30,7 +41,15 @@ function formatRemaining(chars: number): { label: string; over: boolean } {
       over: true
     };
   }
-  return { label: `${remaining.toLocaleString("fr-FR")} caractères restants`, over: false };
+  return {
+    label: `${remaining.toLocaleString("fr-FR")} restants sur ${LINKEDIN_MAX_CHARS.toLocaleString("fr-FR")}`,
+    over: false
+  };
+}
+
+function formatTellsCount(count: number): string {
+  if (count === 0) return "Aucun marqueur repéré";
+  return count > 1 ? `${count} marqueurs repérés` : "1 marqueur repéré";
 }
 
 /**
@@ -42,6 +61,11 @@ function formatRemaining(chars: number): { label: string; over: boolean } {
  * reels baissait de pres de deux tiers (docs/audit-2026-07-editorial.md,
  * section 6). Un produit dont la premiere regle editoriale est « zero chiffre
  * invente » ne peut pas en afficher un a chaque brouillon.
+ *
+ * La barre d action est le bas de la colonne de texte, jamais un bloc pose a la
+ * suite du brouillon : « Copier le post » est le geste qui termine le parcours,
+ * il ne peut pas dependre du defilement pour etre atteint. Seul `.draft-scroll`
+ * defile ; la barre est `flex: none` sous lui.
  */
 export function DraftPanel({
   session,
@@ -123,16 +147,36 @@ export function DraftPanel({
     <div className="draft-screen">
       <div className="draft-main">
         <div className="draft-scroll">
+          {/* Les deux mesures du brouillon descendent en colonne a droite du
+              titre. Elles vivaient dans la bande de contexte, ou elles
+              disputaient la largeur aux decisions prises et au retour au
+              cadrage ; ici elles sont adossees au texte qu elles mesurent. */}
           <header className="draft-head">
             <h2 className="draft-title">
               {isEditing ? "Réécriture du post" : session.draft.headline}
             </h2>
-            <span
-              className="draft-remaining"
-              data-over={remaining.over ? "true" : undefined}
-            >
-              {remaining.label}
-            </span>
+            <div className="draft-metrics">
+              <span
+                className="draft-remaining"
+                data-over={remaining.over ? "true" : undefined}
+              >
+                {remaining.label}
+              </span>
+              <span
+                className="draft-tells"
+                data-found={tellReport.hits.length > 0 ? "true" : undefined}
+              >
+                {formatTellsCount(tellReport.hits.length)}
+                <button
+                  type="button"
+                  className="draft-tells__help"
+                  title={TELLS_CAVEAT}
+                  aria-label={TELLS_CAVEAT}
+                >
+                  ?
+                </button>
+              </span>
+            </div>
           </header>
 
           {isEditing ? (
@@ -180,8 +224,6 @@ export function DraftPanel({
                   </p>
                 ))}
               </div>
-
-              <AiTellsReport hits={tellReport.hits} onFix={handleStartEditing} />
 
               {/* Derniere correction premium, s il y en a eu une. `versions` est
                   ordonne du plus ancien au plus recent : la version qui precede
