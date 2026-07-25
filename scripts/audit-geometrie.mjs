@@ -83,7 +83,7 @@ try {
     await page.evaluate((c) => {
       window.location.hash = c;
     }, chemin);
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(900);
 
     const barre = page.locator(".page__bar");
     if ((await barre.count()) === 0) {
@@ -92,10 +92,22 @@ try {
     }
 
     const avant = await barre.evaluate((n) => n.getBoundingClientRect().top);
-    await page.locator(".page__body").evaluate((n) => {
-      n.scrollTop = n.scrollHeight;
+    const releve = await page.evaluate(() => {
+      const corps = document.querySelector(".page__body");
+      if (!corps) return null;
+      corps.scrollTop = 0;
+      corps.scrollTop = 999_999;
+      const atteint = corps.scrollTop;
+      return {
+        atteint,
+        debordant: corps.scrollHeight > corps.clientHeight + 1,
+        hauteurPage: Math.round(
+          document.querySelector(".page")?.getBoundingClientRect().height ?? 0
+        ),
+        hauteurFenetre: window.innerHeight
+      };
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(200);
     const apres = await barre.evaluate((n) => n.getBoundingClientRect().top);
 
     porte(
@@ -104,6 +116,35 @@ try {
       `${avant} px puis ${apres} px`,
       Math.abs(avant - apres) < 1
     );
+
+    // Porte anti-tautologie. La verification ci-dessus poussait `scrollTop` au
+    // maximum puis constatait que l en-tete n avait pas bouge. Quand RIEN ne
+    // defile, `scrollTop` reste a zero et l en-tete aussi : elle passait sans
+    // rien prouver. Elle a effectivement laisse passer un ecran Parametres dont
+    // le bas etait inatteignable, signale par le proprietaire.
+    //
+    // La cause etait `min-height: auto` sur `.page` : un enfant de conteneur
+    // flex refuse de se reduire sous la hauteur de son contenu, donc `flex: 1`
+    // ne le borne pas. `.page` faisait 2 538 px dans un parent de 900, et le
+    // corps heritait de toute la hauteur du contenu. On mesure donc les deux
+    // faits qui l auraient revele.
+    if (releve) {
+      porte(
+        `Hauteur de page bornee sur ${nom}`,
+        "<= hauteur de la fenetre",
+        `${releve.hauteurPage} px sur ${releve.hauteurFenetre} px`,
+        releve.hauteurPage <= releve.hauteurFenetre + 1
+      );
+
+      if (releve.debordant) {
+        porte(
+          `Defilement effectif sur ${nom}`,
+          "contenu debordant, donc scrollTop > 0",
+          `${Math.round(releve.atteint)} px atteints`,
+          releve.atteint > 0
+        );
+      }
+    }
   }
 
   await enTeteFixe("#/", "Cockpit");

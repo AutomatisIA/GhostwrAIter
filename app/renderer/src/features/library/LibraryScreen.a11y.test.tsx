@@ -2,6 +2,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "../../feedback/ToastProvider";
 import { LibraryScreen } from "./LibraryScreen";
@@ -89,5 +90,159 @@ describe("LibraryScreen a11y", () => {
     for (const tab of tabs) {
       expect(tab.tagName).toBe("BUTTON");
     }
+  });
+});
+
+/**
+ * Contrat du revelateur d'actions de ligne (correctif de presentation, juillet
+ * 2026).
+ *
+ * Les tests ci-dessus rendent une bibliotheque VIDE : aucune ligne, donc aucune
+ * action, donc aucune garantie sur l'acces clavier aux actions de ligne. Le bloc
+ * ci-dessous rend de vraies entrees et verifie les trois contraintes qui se
+ * contredisent en apparence :
+ *
+ *   1. les cinq actions restent atteignables au clavier ;
+ *   2. aucune action destructive n'est cliquable derriere un element invisible,
+ *      ce qui se prouve par l'ABSENCE du bouton dans le DOM, pas par une lecture
+ *      du CSS ;
+ *   3. le repli se fait au clavier (Echap) et rend le focus a son declencheur.
+ */
+const SECONDARY_ACTIONS = ["Variante", "Planifier", "Retravailler", "Supprimer"];
+
+function libraryEntry(overrides: Record<string, unknown> = {}) {
+  return {
+    draftId: "draft_1",
+    ideaId: "idea_1",
+    headline: "Un brouillon a reconnaitre",
+    bodyPreview: "Apercu",
+    bodyMarkdown: "Corps du brouillon",
+    qualityScore: 0.8,
+    createdAt: new Date().toISOString(),
+    tags: ["agents", "entreprises", "française", "apprentissage", "generative"],
+    status: "draft",
+    pillarLabel: "Adoption IA",
+    sourceDraftId: null,
+    ...overrides
+  };
+}
+
+function renderLibraryWithEntries() {
+  (globalThis as unknown as { window: Window }).window.linkedinPoster = {
+    library: {
+      listEntries: vi.fn().mockResolvedValue([libraryEntry()]),
+      searchEntries: vi.fn().mockResolvedValue([]),
+      createDivergentVariant: vi.fn(),
+      updateEntryText: vi.fn(),
+      deleteEntry: vi.fn()
+    },
+    calendar: {
+      listItems: vi.fn().mockResolvedValue([]),
+      scheduleDraft: vi.fn()
+    }
+  } as unknown as typeof window.linkedinPoster;
+
+  return render(
+    <MemoryRouter>
+      <ToastProvider>
+        <LibraryScreen />
+      </ToastProvider>
+    </MemoryRouter>
+  );
+}
+
+describe("LibraryScreen actions de ligne", () => {
+  it("garde les actions secondaires hors du DOM tant que le revelateur est replie", async () => {
+    renderLibraryWithEntries();
+
+    await screen.findByText("Un brouillon a reconnaitre");
+
+    // « Modifier » reste en clair : c'est l'action primaire de la ligne.
+    expect(screen.getByRole("button", { name: "Modifier" })).toBeTruthy();
+
+    const disclosure = screen.getByRole("button", { name: /Autres actions/ });
+    expect(disclosure.tagName).toBe("BUTTON");
+    expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+
+    // Rien de destructif ne subsiste derriere un element masque.
+    for (const label of SECONDARY_ACTIONS) {
+      expect(screen.queryByRole("button", { name: label })).toBeNull();
+    }
+  });
+
+  it("expose les quatre actions secondaires apres activation au clavier", async () => {
+    const user = userEvent.setup();
+    renderLibraryWithEntries();
+
+    await screen.findByText("Un brouillon a reconnaitre");
+
+    const disclosure = screen.getByRole("button", { name: /Autres actions/ });
+    disclosure.focus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(disclosure.getAttribute("aria-expanded")).toBe("true");
+    });
+
+    // Le panneau annonce est bien celui qui est rendu.
+    const panelId = disclosure.getAttribute("aria-controls");
+    expect(panelId).toBeTruthy();
+    expect(document.getElementById(panelId!)).toBeTruthy();
+
+    for (const label of SECONDARY_ACTIONS) {
+      const action = screen.getByRole("button", { name: label });
+      expect(action.tagName).toBe("BUTTON");
+    }
+  });
+
+  it("referme le panneau sur Echap et rend le focus au revelateur", async () => {
+    const user = userEvent.setup();
+    renderLibraryWithEntries();
+
+    await screen.findByText("Un brouillon a reconnaitre");
+
+    const disclosure = screen.getByRole("button", { name: /Autres actions/ });
+    disclosure.focus();
+    await user.keyboard("{Enter}");
+
+    const deleteButton = await screen.findByRole("button", { name: "Supprimer" });
+    deleteButton.focus();
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Supprimer" })).toBeNull();
+    });
+    expect(disclosure.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(disclosure);
+  });
+});
+
+describe("LibraryScreen rangee de metadonnees", () => {
+  it("plafonne les etiquettes affichees et replie le reste dans un « +N » titre", async () => {
+    const { container } = renderLibraryWithEntries();
+
+    await screen.findByText("Un brouillon a reconnaitre");
+
+    // Trois etiquettes en clair, pas cinq.
+    const tags = container.querySelectorAll(".library-row__tag");
+    expect(tags).toHaveLength(3);
+    expect([...tags].map((tag) => tag.textContent)).toEqual([
+      "agents",
+      "entreprises",
+      "française"
+    ]);
+
+    // Le reste tient dans un seul fragment, detail complet dans son `title`.
+    const more = container.querySelector(".library-row__more");
+    expect(more?.textContent).toBe("+2");
+    expect(more?.getAttribute("title")).toBe("apprentissage, generative");
+  });
+
+  it("n'ouvre plus la rangee par une pastille decorative", async () => {
+    const { container } = renderLibraryWithEntries();
+
+    await screen.findByText("Un brouillon a reconnaitre");
+
+    expect(container.querySelector(".library-row__dot")).toBeNull();
   });
 });

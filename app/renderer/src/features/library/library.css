@@ -189,6 +189,14 @@
   overflow: hidden;
 }
 
+/*
+ * La rangee tient sur une ligne, mais elle ne rogne plus pour son propre compte.
+ * Un `overflow: hidden` pose sur le conteneur coupe le dernier fragment au pixel
+ * pres, sans marque : on lisait « entrep », « revoluti », « exen ». La contrainte
+ * de largeur est donc reportee sur les fragments elastiques, qui la resolvent en
+ * points de suspension. Le rognage reste en dernier recours, quand meme les
+ * largeurs minimales ne tiennent plus.
+ */
 .library-row__meta {
   display: flex;
   align-items: center;
@@ -197,16 +205,11 @@
   font-size: var(--font-size-sm);
   line-height: var(--line-height-snug);
   color: var(--ink-subtle);
-  white-space: nowrap;
   overflow: hidden;
 }
 
-.library-row__dot {
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-circle);
-  background: currentColor;
+.library-row__meta > * {
+  white-space: nowrap;
 }
 
 /* Point median separateur : il ponctue, il n informe pas. Un ton plus clair que
@@ -216,9 +219,40 @@
   color: var(--line-strong);
 }
 
+/*
+ * Le pilier absorbe la contrainte de largeur en premier : c est le fragment le
+ * plus long et le plus previsible. `min-width` le protege de l ecrasement total,
+ * qui le reduisait a « P… », une seule lettre suivie de points de suspension.
+ */
 .library-row__pillar {
+  flex: 0 1 auto;
+  min-width: 7ch;
+  max-width: 26ch;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Etiquette libre. Bornee en largeur pour qu un mot long ne mange pas la rangee,
+   et abregee proprement au dela. */
+.library-row__tag {
+  flex: 0 1 auto;
+  min-width: 5ch;
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Reste des etiquettes, replie en « +N ». Le detail est dans son `title`, d ou
+   le curseur d aide : sans lui, rien n indique qu il y a quelque chose a lire. */
+.library-row__more {
+  flex: none;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+.library-row__status {
+  flex: none;
 }
 
 .library-row__num {
@@ -243,6 +277,52 @@
 }
 
 /*
+ * Ligne de brouillon : deux boutons, jamais renvoyes a la ligne. C est ce qui
+ * garantit une hauteur de ligne constante, quel que soit l etat du revelateur.
+ * Le modificateur est necessaire parce que `.library-row__actions` habille aussi
+ * le Planning, dont « Copier et marquer publié » a besoin du retour a la ligne.
+ */
+.library-row__actions--compact {
+  flex-wrap: nowrap;
+}
+
+/*
+ * Panneau des actions secondaires, deploye sous la ligne et non par-dessus : la
+ * liste porte un `overflow: hidden` pour le rognage de ses angles, qui couperait
+ * tout element flottant. Il partage la surface creusee de la bande de
+ * planification, meme vocabulaire pour un meme geste.
+ *
+ * Le panneau est monte et demonte, jamais rendu transparent : « Supprimer » ne
+ * peut pas etre atteint sur un element invisible.
+ */
+.library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 8px 16px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--line);
+}
+
+/* Le chevron indique le sens du geste : vers le bas pour deployer, retourne une
+   fois le panneau ouvert. */
+.library-row__actions .ds-button[aria-expanded] .ds-button__icon {
+  display: inline-flex;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+
+.library-row__actions .ds-button[aria-expanded="true"] .ds-button__icon {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-row__actions .ds-button[aria-expanded] .ds-button__icon {
+    transition: none;
+  }
+}
+
+/*
  * Suppression : la variante `danger` est conservee, c est elle qui porte le sens
  * pour la lecture du code et pour la boite de confirmation. Son aplat rouge,
  * repete sur chaque ligne d une liste dense, deviendrait le point le plus
@@ -250,13 +330,15 @@
  * ramenee ici a une encre d erreur sans surface, et ne reprend du poids qu au
  * survol.
  */
-.library-row__actions .ds-button[data-variant="danger"] {
+.library-row__actions .ds-button[data-variant="danger"],
+.library-actions .ds-button[data-variant="danger"] {
   background: transparent;
   color: var(--state-ko);
   font-weight: var(--font-weight-medium);
 }
 
-.library-row__actions .ds-button[data-variant="danger"]:not(:disabled):hover {
+.library-row__actions .ds-button[data-variant="danger"]:not(:disabled):hover,
+.library-actions .ds-button[data-variant="danger"]:not(:disabled):hover {
   filter: none;
   background: var(--state-ko-tint);
 }

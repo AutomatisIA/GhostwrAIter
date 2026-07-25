@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode
+} from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { formatCharCount, measurePost } from "../../../../shared/post-metrics";
 import { motion } from "motion/react";
@@ -46,14 +53,47 @@ function formatCalendarStatus(status: CalendarItem["status"]) {
 }
 
 /**
- * Ligne de metadonnees du modele de liste : une pastille, puis des fragments
- * separes par des points medians. Le separateur est purement typographique,
- * d ou `aria-hidden` : lu a voix haute il n ajoute rien au fragment qu il suit.
+ * Nombre d etiquettes libres affichees en clair sur une ligne de liste. Au dela,
+ * un fragment « +N » porte le reste, detail complet dans son `title`. Une ligne
+ * de liste sert a reconnaitre un brouillon, pas a epuiser ses metadonnees.
+ */
+const MAX_VISIBLE_TAGS = 3;
+
+/**
+ * Chevron du revelateur d actions. Le jeu d icones partage
+ * (`design-system/primitives/icons`) appartient au chantier commun : ce trace
+ * reste confine a l ecran Bibliotheque plutot que d y etre ajoute.
+ */
+function ChevronDownIcon() {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+/**
+ * Ligne de metadonnees du modele de liste : des fragments separes par des points
+ * medians. Le separateur est purement typographique, d ou `aria-hidden` : lu a
+ * voix haute il n ajoute rien au fragment qu il suit.
+ *
+ * La troncature appartient a chaque fragment (voir `library.css`), pas au
+ * conteneur : un rognage de conteneur coupe le dernier fragment en plein milieu
+ * d un mot, sans marque, ce qui donne un texte faux plutot qu un texte abrege.
  */
 function MetaLine({ parts }: { parts: ReactNode[] }) {
   return (
     <span className="library-row__meta">
-      <span className="library-row__dot" aria-hidden="true" />
       {parts.map((part, index) => (
         <Fragment key={index}>
           {index > 0 ? (
@@ -116,6 +156,10 @@ export function LibraryScreen() {
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editHeadline, setEditHeadline] = useState("");
   const [editBody, setEditBody] = useState("");
+
+  // Ligne dont le panneau d actions secondaires est deploye. Une seule a la
+  // fois : ouvrir un panneau referme le precedent.
+  const [expandedActionsId, setExpandedActionsId] = useState<string | null>(null);
 
   // --- Inline scheduling state ---
   const [schedulingDraftId, setSchedulingDraftId] = useState<string | null>(null);
@@ -218,7 +262,56 @@ export function LibraryScreen() {
     }
   }
 
+  /**
+   * Replie le panneau d actions d une ligne. La demande de confirmation de
+   * variante est retiree au passage : elle vit dans le panneau, et un
+   * « Confirmer ? » retrouve tel quel a la reouverture n aurait plus de question
+   * a laquelle repondre.
+   */
+  function closeRowActions() {
+    setExpandedActionsId(null);
+    setConfirmingVariantId(null);
+  }
+
+  /**
+   * Replie le panneau depuis un de ses propres boutons, en rendant le focus au
+   * revelateur. Sans ce rappel, refermer depuis le panneau demonte l element
+   * focalise et renvoie le focus sur `body` : la navigation au clavier repart du
+   * haut de la page. Le revelateur est le seul bouton porteur d `aria-expanded`
+   * dans la ligne, ce qui suffit a le retrouver sans table de refs.
+   */
+  function collapseRowActions(origin: HTMLElement | null) {
+    const disclosure = origin
+      ?.closest(".library-entry")
+      ?.querySelector<HTMLButtonElement>("button[aria-expanded]");
+    closeRowActions();
+    disclosure?.focus();
+  }
+
+  /**
+   * Echap referme le panneau d actions de la ligne ou se trouve le focus. Le
+   * panneau est reellement demonte, jamais rendu transparent : aucune action
+   * destructive ne reste cliquable derriere un element invisible.
+   */
+  function handleEntryKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    const disclosure = event.currentTarget.querySelector<HTMLButtonElement>(
+      "button[aria-expanded]"
+    );
+    if (disclosure?.getAttribute("aria-expanded") !== "true") {
+      return;
+    }
+
+    event.stopPropagation();
+    closeRowActions();
+    disclosure.focus();
+  }
+
   function handleStartEditing(entry: LibraryEntry) {
+    closeRowActions();
     setEditingDraftId(entry.draftId);
     setEditHeadline(entry.headline);
     setEditBody(entry.bodyMarkdown);
@@ -257,6 +350,9 @@ export function LibraryScreen() {
       const refreshed = await window.linkedinPoster.library.listEntries();
       setEntries(refreshed);
       setDeletingDraftId(null);
+      // La ligne disparait : son panneau d actions ne doit pas rester ouvert au
+      // profit d une ligne qui reprendrait le meme identifiant plus tard.
+      closeRowActions();
       toast.show({ kind: "success", message: "Brouillon supprimé." });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
@@ -471,10 +567,20 @@ export function LibraryScreen() {
                 const extraTags = entry.tags.filter(
                   (tag) => tag.trim().toLowerCase() !== entry.pillarLabel.trim().toLowerCase()
                 );
+                const shownTags = extraTags.slice(0, MAX_VISIBLE_TAGS);
+                const hiddenTags = extraTags.slice(MAX_VISIBLE_TAGS);
+                const isEditing = editingDraftId === entry.draftId;
+                const actionsOpen = expandedActionsId === entry.draftId && !isEditing;
+                const actionsPanelId = `library-actions-${entry.draftId}`;
+                const actionsLabel = `Autres actions pour « ${entry.headline} »`;
 
                 return (
-                  <div className="library-entry" key={entry.draftId}>
-                    {editingDraftId === entry.draftId ? (
+                  <div
+                    className="library-entry"
+                    key={entry.draftId}
+                    onKeyDown={handleEntryKeyDown}
+                  >
+                    {isEditing ? (
                       <div className="library-row library-row--editing">
                         <input
                           className="library-input"
@@ -520,7 +626,9 @@ export function LibraryScreen() {
                               <span className="library-row__pillar" key="pillar">
                                 {entry.pillarLabel}
                               </span>,
-                              <span key="status">{formatLibraryStatus(entry.status)}</span>,
+                              <span className="library-row__status" key="status">
+                                {formatLibraryStatus(entry.status)}
+                              </span>,
                               ...(plannedDate
                                 ? [
                                     <span className="library-row__num" key="date">
@@ -536,58 +644,34 @@ export function LibraryScreen() {
                               >
                                 {formatCharCount(entry.bodyMarkdown)}
                               </span>,
-                              ...extraTags.map((tag) => <span key={`tag-${tag}`}>{tag}</span>)
+                              ...shownTags.map((tag, tagIndex) => (
+                                <span className="library-row__tag" key={`tag-${tagIndex}-${tag}`}>
+                                  {tag}
+                                </span>
+                              )),
+                              ...(hiddenTags.length > 0
+                                ? [
+                                    <span
+                                      className="library-row__more"
+                                      key="more"
+                                      title={hiddenTags.join(", ")}
+                                    >
+                                      +{hiddenTags.length}
+                                    </span>
+                                  ]
+                                : [])
                             ]}
                           />
                         </div>
 
-                        <div className="library-row__actions">
-                          {confirmingVariantId === entry.draftId ? (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              loading={busyDraftId === entry.draftId}
-                              disabled={busyDraftId !== null}
-                              onClick={() => {
-                                setConfirmingVariantId(null);
-                                void handleCreateDivergentVariant(entry.draftId);
-                              }}
-                            >
-                              Confirmer ?
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busyDraftId !== null}
-                              onClick={() => setConfirmingVariantId(entry.draftId)}
-                            >
-                              Variante
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={busyDraftId !== null}
-                            onClick={() => {
-                              if (schedulingDraftId === entry.draftId) {
-                                setSchedulingDraftId(null);
-                                setSchedulingDate("");
-                              } else {
-                                setSchedulingDraftId(entry.draftId);
-                                setSchedulingDate("");
-                              }
-                            }}
-                          >
-                            Planifier
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
-                          >
-                            Retravailler
-                          </Button>
+                        {/*
+                         * Une seule action en clair, le reste derriere un
+                         * revelateur. Cinq actions ecrites sur chaque ligne
+                         * faisaient de « Supprimer » le motif le plus repete de
+                         * l ecran, alors que c est l action la moins
+                         * souhaitable.
+                         */}
+                        <div className="library-row__actions library-row__actions--compact">
                           <Button
                             variant="secondary"
                             size="sm"
@@ -597,15 +681,88 @@ export function LibraryScreen() {
                             Modifier
                           </Button>
                           <Button
-                            variant="danger"
+                            variant="ghost"
                             size="sm"
-                            disabled={busyDraftId !== null}
-                            onClick={() => setDeletingDraftId(entry.draftId)}
+                            aria-expanded={actionsOpen}
+                            aria-controls={actionsOpen ? actionsPanelId : undefined}
+                            aria-label={actionsLabel}
+                            iconTrailing={<ChevronDownIcon />}
+                            onClick={() => {
+                              if (actionsOpen) {
+                                closeRowActions();
+                              } else {
+                                setExpandedActionsId(entry.draftId);
+                              }
+                            }}
                           >
-                            Supprimer
+                            Autres actions
                           </Button>
                         </div>
                       </article>
+                    )}
+
+                    {actionsOpen && (
+                      <div
+                        className="library-actions"
+                        id={actionsPanelId}
+                        role="group"
+                        aria-label={actionsLabel}
+                      >
+                        {confirmingVariantId === entry.draftId ? (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={busyDraftId === entry.draftId}
+                            disabled={busyDraftId !== null}
+                            onClick={() => {
+                              setConfirmingVariantId(null);
+                              void handleCreateDivergentVariant(entry.draftId);
+                            }}
+                          >
+                            Confirmer ?
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={busyDraftId !== null}
+                            onClick={() => setConfirmingVariantId(entry.draftId)}
+                          >
+                            Variante
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyDraftId !== null}
+                          onClick={(event) => {
+                            // Le panneau se referme au profit de la bande de
+                            // planification : deux bandes empilees sous la meme
+                            // ligne n auraient plus de lecture possible.
+                            const alreadyScheduling = schedulingDraftId === entry.draftId;
+                            setSchedulingDraftId(alreadyScheduling ? null : entry.draftId);
+                            setSchedulingDate("");
+                            collapseRowActions(event.currentTarget);
+                          }}
+                        >
+                          Planifier
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
+                        >
+                          Retravailler
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={busyDraftId !== null}
+                          onClick={() => setDeletingDraftId(entry.draftId)}
+                        >
+                          Supprimer
+                        </Button>
+                      </div>
                     )}
 
                     {schedulingDraftId === entry.draftId && (
@@ -701,7 +858,9 @@ export function LibraryScreen() {
                             <span className="library-row__num" key="date">
                               {calItem.plannedDate}
                             </span>,
-                            <span key="status">{formatCalendarStatus(calItem.status)}</span>,
+                            <span className="library-row__status" key="status">
+                              {formatCalendarStatus(calItem.status)}
+                            </span>,
                             <span className="library-row__pillar" key="pillar">
                               {calItem.pillarLabel}
                             </span>

@@ -154,6 +154,11 @@ describe("LibraryScreen", () => {
     expect(screen.getByText("Draft en cours")).toBeTruthy();
     expect(screen.queryByText("Draft planifie")).toBeNull();
 
+    // Le contrat teste reste « Variante -> Confirmer ? » ; seul le chemin
+    // d'acces change : les actions secondaires vivent desormais derriere un
+    // revelateur par ligne, la ligne n'exposant plus que « Modifier ».
+    await user.click(screen.getByRole("button", { name: /Autres actions/ }));
+
     const variantButton = screen.getByRole("button", { name: "Variante" });
     await user.click(variantButton);
     expect(await screen.findByRole("button", { name: "Confirmer ?" })).toBeTruthy();
