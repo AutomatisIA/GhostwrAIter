@@ -41,7 +41,7 @@ describe("library search", () => {
     db.close();
   });
 
-  it("filters library entries by keyword and deterministic metadata", () => {
+  it("filters library entries by keyword and deterministic metadata", async () => {
     const first = ideasRepository.createIdea({
       title: "Comment prioriser 3 cas d'usage IA",
       angle: "Aller vers le utile avant le spectaculaire",
@@ -53,8 +53,8 @@ describe("library search", () => {
       pillarLabel: "Adoption IA"
     });
 
-    workshopService.generateDraftFromIdea(first.id);
-    workshopService.generateDraftFromIdea(second.id);
+    await workshopService.generateDraftFromIdea(first.id);
+    await workshopService.generateDraftFromIdea(second.id);
 
     const entries = libraryService.searchEntries({
       query: "prompts",

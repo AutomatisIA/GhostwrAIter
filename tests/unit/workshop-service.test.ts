@@ -43,43 +43,43 @@ describe("workshop service", () => {
     db.close();
   });
 
-  it("suggests structures for an idea", () => {
+  it("suggests structures for an idea", async () => {
     const idea = ideasRepository.createIdea({
       title: "IA en PME",
       angle: "Le process avant l'outil",
       pillarLabel: "Methodes"
     });
 
-    const structures = workshopService.getSuggestedStructures(idea.id, "expertise", "awareness");
+    const structures = await workshopService.getSuggestedStructures(idea.id, "expertise", "awareness");
 
     expect(structures.length).toBeGreaterThan(0);
     expect(structures[0]!.key).toBe("belief-terrain-reality");
   });
 
-  it("generates hooks for an idea and structure", () => {
+  it("generates hooks for an idea and structure", async () => {
     const idea = ideasRepository.createIdea({
       title: "IA en PME",
       angle: "Le process avant l'outil",
       pillarLabel: "Methodes"
     });
 
-    const hooks = workshopService.generateHooks(idea.id, "expertise", "belief-terrain-reality");
+    const hooks = await workshopService.generateHooks(idea.id, "expertise", "belief-terrain-reality");
 
     expect(hooks.length).toBeGreaterThan(0);
     expect(hooks[0]!.text).toContain("Le vrai probleme");
   });
 
-  it("generates a final draft from all selections", () => {
+  it("generates a final draft from all selections", async () => {
     const idea = ideasRepository.createIdea({
       title: "IA en PME",
       angle: "Le process avant l'outil",
       pillarLabel: "Methodes"
     });
 
-    const structures = workshopService.getSuggestedStructures(idea.id, "expertise", "awareness");
-    const hooks = workshopService.generateHooks(idea.id, "expertise", structures[0]!.key);
+    const structures = await workshopService.getSuggestedStructures(idea.id, "expertise", "awareness");
+    const hooks = await workshopService.generateHooks(idea.id, "expertise", structures[0]!.key);
 
-    const session = workshopService.generateFinalDraft(
+    const session = await workshopService.generateFinalDraft(
       idea.id,
       "expertise",
       "awareness",
@@ -103,7 +103,7 @@ describe("workshop service", () => {
     expect(session.run.skillName).toBe("linkedin-post-writer");
   });
 
-  it("crée un brouillon depuis un texte fourni, persiste et corrigeable par l'éditeur", () => {
+  it("crée un brouillon depuis un texte fourni, persiste et corrigeable par l'éditeur", async () => {
     const session = workshopService.createDraftFromContent({
       pillarLabel: "Methodes",
       headline: "Brouillon importe a ameliorer",
@@ -118,19 +118,19 @@ describe("workshop service", () => {
     expect(session.run.skillName).toBe("manual-import");
 
     // Le brouillon est reellement persiste : l'editeur peut le corriger par son id.
-    const corrected = workshopService.correctDraft(session.draft.id);
+    const corrected = await workshopService.correctDraft(session.draft.id);
     expect(corrected.draft.id).toBeTruthy();
     expect(corrected.run.skillName).toBe("linkedin-post-editor");
   });
 
-  it("generates a draft, hooks and an execution run from an idea (legacy mode)", () => {
+  it("generates a draft, hooks and an execution run from an idea (legacy mode)", async () => {
     const idea = ideasRepository.createIdea({
       title: "Le vrai frein a l'IA en PME",
       angle: "Le probleme n'est presque jamais le prompt",
       pillarLabel: "Adoption IA"
     });
 
-    const session = workshopService.generateDraftFromIdea(idea.id);
+    const session = await workshopService.generateDraftFromIdea(idea.id);
 
     expect(session.idea.id).toBe(idea.id);
     expect(session.draft.headline).toContain("Le vrai frein");
@@ -138,15 +138,15 @@ describe("workshop service", () => {
     expect(session.run.skillName).toBe("linkedin-post-writer");
   });
 
-  it("improves the latest draft with a correction run", () => {
+  it("improves the latest draft with a correction run", async () => {
     const idea = ideasRepository.createIdea({
       title: "Comment cadrer un projet IA PME",
       angle: "Commencer par un process, pas par l'outil",
       pillarLabel: "Methodes"
     });
 
-    const generated = workshopService.generateDraftFromIdea(idea.id);
-    const corrected = workshopService.correctDraft(generated.draft.id);
+    const generated = await workshopService.generateDraftFromIdea(idea.id);
+    const corrected = await workshopService.correctDraft(generated.draft.id);
 
     expect(corrected.draft.qualityScore).toBeGreaterThan(generated.draft.qualityScore);
     expect(corrected.draft.qualityScore).not.toBe(0.89);
@@ -154,22 +154,22 @@ describe("workshop service", () => {
     expect(corrected.draft.bodyMarkdown).not.toContain("Version revue");
   });
 
-  it("creates a short variant from an existing draft", () => {
+  it("creates a short variant from an existing draft", async () => {
     const idea = ideasRepository.createIdea({
       title: "IA PME",
       angle: "Cas concret",
       pillarLabel: "Expertise"
     });
 
-    const session = workshopService.generateDraftFromIdea(idea.id);
-    const variantSession = workshopService.createVariant(session.draft.id, "short");
+    const session = await workshopService.generateDraftFromIdea(idea.id);
+    const variantSession = await workshopService.createVariant(session.draft.id, "short");
 
     expect(variantSession.draft.id).not.toBe(session.draft.id);
     expect(variantSession.draft.bodyMarkdown).toContain("Variante orientee angle complementaire");
     expect(variantSession.run.skillName).toBe("linkedin-repurpose");
   });
 
-  it("passes rich strategy context to Codex invocations", () => {
+  it("passes rich strategy context to Codex invocations", async () => {
     const invocations: Array<{ skillName: string; context: Record<string, unknown> }> = [];
     const skillRunner = new SkillRunnerService({
       codexCliRunner: {
@@ -193,9 +193,9 @@ describe("workshop service", () => {
       pillarLabel: "ROI"
     });
 
-    const structures = service.getSuggestedStructures(idea.id, "expertise", "awareness");
-    const hooks = service.generateHooks(idea.id, "expertise", structures[0]!.key);
-    service.generateFinalDraft(
+    const structures = await service.getSuggestedStructures(idea.id, "expertise", "awareness");
+    const hooks = await service.generateHooks(idea.id, "expertise", structures[0]!.key);
+    await service.generateFinalDraft(
       idea.id,
       "expertise",
       "awareness",
@@ -261,7 +261,7 @@ describe("ensureColumn (workshop schema helper)", () => {
     db.close();
   });
 
-  it("accepts a whitelisted column key and adds the column idempotently", () => {
+  it("accepts a whitelisted column key and adds the column idempotently", async () => {
     expect(() => ensureColumn(db, "drafts.status")).not.toThrow();
 
     const columns = db
@@ -270,24 +270,24 @@ describe("ensureColumn (workshop schema helper)", () => {
     expect(columns.some((c) => c.name === "status")).toBe(true);
   });
 
-  it("is idempotent: calling it twice with the same whitelisted key does not throw", () => {
+  it("is idempotent: calling it twice with the same whitelisted key does not throw", async () => {
     ensureColumn(db, "drafts.status");
     expect(() => ensureColumn(db, "drafts.status")).not.toThrow();
   });
 
-  it("rejects an unknown column key with a clear error", () => {
+  it("rejects an unknown column key with a clear error", async () => {
     expect(() => ensureColumn(db, "drafts.not_in_allowlist" as never)).toThrow(
       /not in the workshop column allowlist/i
     );
   });
 
-  it("rejects a key whose table name is not a known workshop table", () => {
+  it("rejects a key whose table name is not a known workshop table", async () => {
     expect(() => ensureColumn(db, "random_table.some_column" as never)).toThrow(
       /not in the workshop column allowlist/i
     );
   });
 
-  it("exposes an allowlist that covers both drafts and execution_runs columns", () => {
+  it("exposes an allowlist that covers both drafts and execution_runs columns", async () => {
     const keys = Object.keys(WORKSHOP_COLUMN_ALLOWLIST);
     expect(keys).toContain("drafts.status");
     expect(keys).toContain("drafts.source_draft_id");
@@ -375,7 +375,7 @@ describe("runPhase progress emission (finding revue Codex)", () => {
     );
   }
 
-  it("emet `completed` quand le statut est succeeded", () => {
+  it("emet `completed` quand le statut est succeeded", async () => {
     const service = makeServiceWithStatus("succeeded");
     const { sender, events } = makeFakeSender();
     const idea = ideasRepository.createIdea({
@@ -384,7 +384,7 @@ describe("runPhase progress emission (finding revue Codex)", () => {
       pillarLabel: "Methodes"
     });
 
-    service.getSuggestedStructures(
+    await service.getSuggestedStructures(
       idea.id,
       "expertise",
       "awareness",
@@ -396,7 +396,7 @@ describe("runPhase progress emission (finding revue Codex)", () => {
     expect(terminal?.phase).toBe("structure");
   });
 
-  it("emet `failed` (pas `completed`) quand le statut est partial", () => {
+  it("emet `failed` (pas `completed`) quand le statut est partial", async () => {
     const service = makeServiceWithStatus("partial");
     const { sender, events } = makeFakeSender();
     const idea = ideasRepository.createIdea({
@@ -407,9 +407,7 @@ describe("runPhase progress emission (finding revue Codex)", () => {
 
     // L'appelant throw sur tout statut != succeeded : on capture pour ne pas
     // masquer l'assertion sur l'evenement emis AVANT le throw.
-    expect(() =>
-      service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)
-    ).toThrow();
+    await expect(service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)).rejects.toThrow();
 
     // Aucun faux signal de succes : la borne terminale doit etre `failed`.
     const completed = events.filter((e) => e.status === "completed");
@@ -419,7 +417,7 @@ describe("runPhase progress emission (finding revue Codex)", () => {
     expect(terminal?.phase).toBe("structure");
   });
 
-  it("emet `failed` avec l'errorCode quand le statut est failed", () => {
+  it("emet `failed` avec l'errorCode quand le statut est failed", async () => {
     const service = makeServiceWithStatus("failed");
     const { sender, events } = makeFakeSender();
     const idea = ideasRepository.createIdea({
@@ -428,9 +426,7 @@ describe("runPhase progress emission (finding revue Codex)", () => {
       pillarLabel: "Methodes"
     });
 
-    expect(() =>
-      service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)
-    ).toThrow();
+    await expect(service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)).rejects.toThrow();
 
     const terminal = events.find((e) => e.status === "failed");
     expect(terminal?.status).toBe("failed");

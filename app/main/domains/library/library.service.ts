@@ -4,6 +4,8 @@ import {
   type SkillRunnerInvocation
 } from "../execution/skill-runner.service";
 import { recordExecutionRun } from "../execution/execution-runs.repository";
+import { skillRunError } from "../execution/skill-run-error";
+import { buildStrategyContext } from "../strategy/strategy-context";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   LibraryEntry,
@@ -54,7 +56,7 @@ export class LibraryService {
     return this.readEntries(input);
   }
 
-  createVariantFromDraft(draftId: string): LibraryEntry {
+  async createVariantFromDraft(draftId: string): Promise<LibraryEntry> {
     const source = this.db
       .prepare(`
         SELECT
@@ -99,10 +101,10 @@ export class LibraryService {
       },
       attachments: []
     };
-    const result = this.skillRunnerService.execute(invocation);
+    const result = await this.skillRunnerService.executeAsync(invocation);
 
     if (result.status !== "succeeded" || !result.data?.draft) {
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     const headline = result.data.draft.headline;
@@ -208,7 +210,7 @@ export class LibraryService {
     this.db.prepare("DELETE FROM drafts WHERE id = ?").run(draftId);
   }
 
-  createDivergentVariant(sourceDraftId: string): LibraryEntry {
+  async createDivergentVariant(sourceDraftId: string): Promise<LibraryEntry> {
     const source = this.db
       .prepare(`
         SELECT
@@ -254,10 +256,10 @@ export class LibraryService {
       },
       attachments: []
     };
-    const result = this.skillRunnerService.execute(invocation);
+    const result = await this.skillRunnerService.executeAsync(invocation);
 
     if (result.status !== "succeeded" || !result.data?.draft) {
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     const headline = result.data.draft.headline;
@@ -306,42 +308,11 @@ export class LibraryService {
       throw new Error("No active strategy bundle is available.");
     }
 
-    if (!strategy.profile.id) {
-      throw new Error("Strategy profile is missing an id.");
-    }
-
-    const foundation = this.getFoundationSummary?.() ?? null;
-
-    return {
-      profileId: strategy.profile.id,
-      foundationSummary: foundation,
-      strategyProfileName: strategy.profile.name,
-      strategyPositioning: strategy.profile.positioning,
-      strategyBio: strategy.profile.bio,
-      strategyExpertiseSummary: strategy.profile.expertiseSummary,
-      strategyOffersSummary: this.summarizeOffers(strategy),
-      strategyIcpSummary: this.summarizeIcps(strategy),
+    return buildStrategyContext(
+      strategy,
       pillarLabel,
-      pillarDescription:
-        strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
-      voiceRules: strategy.voiceRules.map((rule) => ({
-        category: rule.category,
-        ruleType: rule.ruleType,
-        ruleText: rule.ruleText
-      }))
-    };
-  }
-
-  private summarizeOffers(strategy: StrategyBundle) {
-    return strategy.offers
-      .map((offer) => `${offer.name}: ${offer.promise}. Problemes: ${offer.problems}`)
-      .join(" | ");
-  }
-
-  private summarizeIcps(strategy: StrategyBundle) {
-    return strategy.icps
-      .map((icp) => `${icp.segment}: douleurs=${icp.pains}. objections=${icp.objections ?? ""}`)
-      .join(" | ");
+      this.getFoundationSummary?.() ?? null
+    );
   }
 
   private readEntries(input: LibrarySearchInput): LibraryEntry[] {

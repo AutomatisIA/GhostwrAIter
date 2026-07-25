@@ -35,8 +35,8 @@ describe("news to post service", () => {
     db.close();
   });
 
-  it("creates an idea and draft from a pasted news source", () => {
-    const result = newsToPostService.createDraftFromSource({
+  it("creates an idea and draft from a pasted news source", async () => {
+    const result = await newsToPostService.createDraftFromSource({
       sourceTitle: "Une PME industrialise ses copilotes IA",
       sourceSummary:
         "Le sujet central est l'adoption terrain et la priorisation des cas d'usage."
@@ -47,20 +47,25 @@ describe("news to post service", () => {
     expect(result.run.skillName).toBe("linkedin-news-to-post");
   });
 
-  it("réussit quand le skill ne renvoie pas de hooks (contrat reel news-to-post)", () => {
+  it("réussit quand le skill ne renvoie pas de hooks (contrat reel news-to-post)", async () => {
     // Regression (bug revele par l eval, fixtures B) : le skill news-to-post
     // renvoie {data:{draft, qualitySignals}} SANS hooks. Le service ne doit pas
     // planter sur l iteration d un `hooks` absent.
     const hooklessRunner = {
-      execute: () => ({
+      // Le service appelle `executeAsync` : le double doit exposer le meme
+      // contrat que le vrai runner, sinon il testerait un chemin qui n existe
+      // plus (cf. feedback_test_doubles_mirror_contracts).
+      executeAsync: async () => ({
         status: "succeeded",
         summary: "ok",
+        engine: "codex",
         data: {
           draft: { headline: "Titre veille", bodyMarkdown: "Corps de veille." },
           qualitySignals: { clarity: 0.82, specificity: 0.8, antiHypeAlignment: 0.85 }
           // pas de cle `hooks` : exactement la forme reelle du skill
         }
-      })
+      }),
+      getSelectedEngineName: () => "codex"
     } as unknown as ReturnType<typeof createStrictSkillRunnerService>;
 
     const service = new NewsToPostService(
@@ -70,7 +75,7 @@ describe("news to post service", () => {
       () => createStrategyBundleFixture()
     );
 
-    const result = service.createDraftFromSource({
+    const result = await service.createDraftFromSource({
       sourceTitle: "Source sans hooks",
       sourceSummary: "Resume suffisant pour une generation."
     });

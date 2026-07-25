@@ -54,15 +54,15 @@ describe("execution service", () => {
     rmSync(executionLogsDirectory, { recursive: true, force: true });
   });
 
-  it("lists execution runs from the workshop in reverse chronological order", () => {
+  it("lists execution runs from the workshop in reverse chronological order", async () => {
     const idea = ideasRepository.createIdea({
       title: "Pourquoi il faut cadrer l'IA",
       angle: "Le process avant le prompt",
       pillarLabel: "Methodes"
     });
 
-    const generated = workshopService.generateDraftFromIdea(idea.id);
-    workshopService.correctDraft(generated.draft.id);
+    const generated = await workshopService.generateDraftFromIdea(idea.id);
+    await workshopService.correctDraft(generated.draft.id);
 
     const runs = executionService.listRuns();
 
@@ -82,15 +82,15 @@ describe("execution service", () => {
     expect(diagnostics.availableSkills).toContain("linkedin-post-writer");
   });
 
-  it("writes readable execution logs on disk for each skill run", () => {
+  it("writes readable execution logs on disk for each skill run", async () => {
     const idea = ideasRepository.createIdea({
       title: "Pourquoi il faut cadrer l'IA",
       angle: "Le process avant le prompt",
       pillarLabel: "Methodes"
     });
 
-    const generated = workshopService.generateDraftFromIdea(idea.id);
-    workshopService.correctDraft(generated.draft.id);
+    const generated = await workshopService.generateDraftFromIdea(idea.id);
+    await workshopService.correctDraft(generated.draft.id);
 
     const files = readdirSync(executionLogsDirectory);
 

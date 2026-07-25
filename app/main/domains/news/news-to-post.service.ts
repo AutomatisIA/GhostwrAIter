@@ -13,6 +13,8 @@ import type { WorkshopSession } from "../../../shared/types/workshop";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import { createId } from "../../shared/create-id";
 import { recordExecutionRun } from "../execution/execution-runs.repository";
+import { skillRunError } from "../execution/skill-run-error";
+import { buildStrategyContext } from "../strategy/strategy-context";
 
 export class NewsToPostService {
   constructor(
@@ -23,13 +25,13 @@ export class NewsToPostService {
     private readonly getFoundationSummary?: () => string | null
   ) {}
 
-  createDraftFromSource(
+  async createDraftFromSource(
     input: {
       sourceTitle: string;
       sourceSummary: string;
     },
     sender?: WebContents
-  ): WorkshopSession {
+  ): Promise<WorkshopSession> {
     const idea = this.ideasRepository.createIdea({
       title: input.sourceTitle,
       angle: input.sourceSummary,
@@ -49,18 +51,20 @@ export class NewsToPostService {
       attachments: []
     };
 
-    emitPhaseStarted(sender, { runId, phase: "news", engine: "codex" });
-    const result = this.skillRunnerService.execute(invocation);
+    const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
+    emitPhaseStarted(sender, { runId, phase: "news", engine: announced });
+    const result = await this.skillRunnerService.executeAsync(invocation);
+    const usedEngine = result.engine ?? announced;
 
     if (result.status !== "succeeded" || !result.data?.draft) {
       emitPhaseSettled(sender, {
         runId,
         phase: "news",
-        engine: "codex",
+        engine: usedEngine,
         status: "failed",
         errorCode: result.error?.code
       });
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     // Le skill linkedin-news-to-post ne renvoie PAS de hooks (contrat
@@ -115,7 +119,7 @@ export class NewsToPostService {
     emitPhaseSettled(sender, {
       runId,
       phase: "news",
-      engine: "codex",
+      engine: usedEngine,
       status: "completed"
     });
 
@@ -147,13 +151,25 @@ export class NewsToPostService {
         }
       ],
       contextUsed: {
-        pillarLabel: "Veille",
-        voiceGuardrail: runnerContext.voiceGuardrail,
+        pillarLabel: runnerContext.pillarLabel,
+        voiceGuardrail: runnerContext.voiceRules
+          .map((rule) => `[${rule.ruleType}] ${rule.ruleText}`)
+          .join(" | "),
         activeSkills: [invocation.skillName]
       }
     };
   }
 
+  /**
+   * Contexte du parcours veille.
+   *
+   * Il divergeait des deux autres services : une seule regle de voix sur dix
+   * (la premiere de type anti_style), un pilier code en dur, et ni offres ni
+   * cibles ni bio. Cette porte d entree produisait donc structurellement des
+   * posts moins alignes que les autres, sans que rien ne le signale
+   * (cf. docs/audit-2026-07-editorial.md section 8). Elle utilise desormais le
+   * meme contexte que l atelier et la bibliotheque.
+   */
   private buildRunnerContext() {
     const strategy = this.getActiveStrategy?.();
 
@@ -161,25 +177,18 @@ export class NewsToPostService {
       throw new Error("No active strategy bundle is available.");
     }
 
-    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
+    // Le pilier "Veille" reste la valeur par defaut de ce parcours, mais on
+    // prefere le pilier reellement declare par l utilisateur s il existe, pour
+    // que sa description parte elle aussi dans le contexte.
+    const pillarLabel =
+      strategy.pillars.find((pillar) => /veille|actualit/i.test(pillar.label))?.label ?? "Veille";
 
-    if (!strategy.profile.id) {
-      throw new Error("Strategy profile is missing an id.");
-    }
-
-    if (!antiStyleRule) {
-      throw new Error("Strategy is missing an anti-style rule.");
-    }
-
-    const foundation = this.getFoundationSummary?.() ?? null;
-
-    return {
-      profileId: strategy.profile.id,
-      foundationSummary: foundation,
-      strategyProfileName: strategy.profile.name,
-      strategyPositioning: strategy.profile.positioning,
-      pillarLabel: "Veille",
-      voiceGuardrail: antiStyleRule
-    };
+    return buildStrategyContext(
+      strategy,
+      pillarLabel,
+      this.getFoundationSummary?.() ?? null,
+      { requireVoiceRules: true }
+    );
   }
+
 }

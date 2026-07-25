@@ -39,13 +39,13 @@ describe("calendar service", () => {
     db.close();
   });
 
-  it("schedules a generated draft in the editorial calendar", () => {
+  it("schedules a generated draft in the editorial calendar", async () => {
     const idea = ideasRepository.createIdea({
       title: "Le vrai cout de l'IA mal cadree",
       angle: "On perd du temps, pas juste des tokens",
       pillarLabel: "ROI"
     });
-    const session = workshopService.generateDraftFromIdea(idea.id);
+    const session = await workshopService.generateDraftFromIdea(idea.id);
 
     calendarService.scheduleDraft({
       draftId: session.draft.id,
