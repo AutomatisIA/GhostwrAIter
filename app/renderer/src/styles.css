@@ -733,13 +733,27 @@ a {
   min-width: 0;
 }
 
-.workshop-guide {
-  grid-row: 1 / -1;
-}
+/* Le guide reste visible pendant qu on parcourt l atelier, et defile de son
+   propre cote quand il depasse la hauteur de la fenetre.
 
-.workshop-frame > .ds-ai-progress,
-.workshop-frame > .workshop-stage {
-  grid-column: 2;
+   Trois conditions, chacune indispensable :
+   - `align-self: start` : sans elle, l element s etire sur toute la hauteur de
+     la ligne de grille et le collage n a aucune marge pour operer.
+   - `max-height` bornee a la fenetre : sans elle, rien ne peut defiler puisque
+     l element fait exactement sa hauteur de contenu.
+   - `overscroll-behavior: contain` : empeche le defilement de se propager a la
+     page quand on atteint le bas du guide.
+
+   Les deux regles remplacees ici etaient des reliquats de tentatives
+   precedentes, dont un `grid-row: 1 / -1` sans effet : en grille implicite,
+   `-1` designe la derniere ligne de la grille EXPLICITE, qui n existe pas. */
+.workshop-guide {
+  position: sticky;
+  top: var(--space-4);
+  align-self: start;
+  max-height: calc(100vh - var(--space-4) * 2 - var(--space-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .workshop-guide {
