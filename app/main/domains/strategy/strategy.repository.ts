@@ -5,10 +5,6 @@ import {
 } from "../../../shared/schemas/strategy";
 import { createId } from "../../shared/create-id";
 
-type RowWithCount = {
-  count: number;
-};
-
 type StrategyBundleRecord = {
   profile: {
     id: string;
@@ -293,14 +289,6 @@ export class StrategyRepository {
       icps,
       pillars,
       voiceRules
-    };
-  }
-
-  getCounts() {
-    return {
-      profiles: (this.db.prepare("SELECT COUNT(*) AS count FROM profiles").get() as RowWithCount)
-        .count,
-      offers: (this.db.prepare("SELECT COUNT(*) AS count FROM offers").get() as RowWithCount).count
     };
   }
 }

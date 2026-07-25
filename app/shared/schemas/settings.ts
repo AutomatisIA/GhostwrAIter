@@ -2,8 +2,6 @@ import { z } from "zod";
 
 export { emptyInputSchema } from "./common";
 
-export const themePreferenceSchema = z.enum(["system", "light", "dark"]);
-
 export const cliEngineNameSchema = z.enum(["codex", "gemini", "claude"]);
 
 export const getPreferenceInputSchema = z.object({
