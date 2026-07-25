@@ -13,6 +13,46 @@ import type {
   LibraryTriage
 } from "../../../shared/types/library";
 
+/**
+ * Nom de la fonction SQLite de pliage, cote base.
+ *
+ * `lower()` de SQLite ne traite que l ASCII : il replie « E » en « e » et
+ * laisse « E accentue » intact. Sur une application francaise, un post
+ * contenant « Ecole » accentue n etait donc JAMAIS trouve, que l utilisateur
+ * tape la forme accentuee ou non, `LIKE` ne repliant pas les accents non plus.
+ *
+ * On enregistre donc une fonction qui applique la MEME regle que le cote
+ * JavaScript, plutot que de comparer deux normalisations differentes de part et
+ * d autre de la requete. C etait la racine du defaut : `lower()` SQLite en
+ * ASCII face a `toLowerCase()` JavaScript en Unicode.
+ */
+const PLIAGE = "plier_pour_recherche";
+
+/** Minuscules et suppression des signes diacritiques, sans toucher au texte affiche. */
+function plierPourRecherche(valeur: string): string {
+  return valeur
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+/**
+ * Enregistre la fonction de pliage sur la connexion, une seule fois.
+ *
+ * `db.function` leve si le nom existe deja, et plusieurs services peuvent
+ * partager la meme connexion : la garde rend l enregistrement idempotent, comme
+ * les `CREATE TABLE IF NOT EXISTS` voisins.
+ */
+function enregistrerPliage(db: Database.Database) {
+  try {
+    db.function(PLIAGE, { deterministic: true }, (valeur: unknown) =>
+      typeof valeur === "string" ? plierPourRecherche(valeur) : valeur
+    );
+  } catch {
+    // Deja enregistree sur cette connexion.
+  }
+}
+
 type RawLibraryRow = {
   draftId: string;
   ideaId: string;
@@ -83,7 +123,9 @@ export class LibraryService {
     private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService(),
     private readonly getActiveStrategy?: () => StrategyBundle | null,
     private readonly getFoundationSummary?: () => string | null
-  ) {}
+  ) {
+    enregistrerPliage(db);
+  }
 
   listEntries(): LibraryEntry[] {
     return this.readEntries({});
@@ -200,7 +242,21 @@ export class LibraryService {
       }
     }
 
-    const created = this.readEntries({ query: headline }).find((entry) => entry.draftId === variantId);
+    // Relecture par identifiant, jamais par titre.
+    //
+    // La version precedente cherchait la variante par `query: headline`, ce qui
+    // la rendait dependante du moteur de recherche pour retrouver une ligne
+    // dont elle connait deja la cle. Tant que `lower()` de SQLite etait
+    // utilise, une accroche a majuscule accentuee n etait pas retrouvee et la
+    // methode levait « Variant could not be reloaded » sur un travail pourtant
+    // ecrit en entier.
+    //
+    // Le pliage des accents corrige ce cas precis, et la mutation le confirme :
+    // remettre la recherche par titre ne fait plus tomber aucune porte. Ce
+    // changement-ci n est donc pas la correction du defaut, c est le retrait de
+    // la dependance qui l avait rendu possible. Le chemin divergent, trente
+    // lignes plus bas, faisait deja ainsi.
+    const created = this.readEntries({}).find((entry) => entry.draftId === variantId);
 
     if (!created) {
       throw new Error("Variant could not be reloaded");
@@ -366,9 +422,9 @@ export class LibraryService {
     const values: string[] = [];
 
     if (input.query) {
-      clauses.push("(lower(d.headline) LIKE ? OR lower(d.body_markdown) LIKE ?)");
-      const lowered = `%${input.query.toLowerCase()}%`;
-      values.push(lowered, lowered);
+      clauses.push(`(${PLIAGE}(d.headline) LIKE ? OR ${PLIAGE}(d.body_markdown) LIKE ?)`);
+      const cherche = `%${plierPourRecherche(input.query)}%`;
+      values.push(cherche, cherche);
     }
 
     if (input.pillarLabel) {

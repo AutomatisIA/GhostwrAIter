@@ -73,4 +73,73 @@ describe("library search", () => {
     expect(entries[0]?.status).toBe("draft");
     expect(entries[0]?.tags).toContain("prompts");
   });
+
+  /*
+   * Les accents, sur une application francaise.
+   *
+   * `lower()` de SQLite ne traite que l ASCII. Un post contenant « Ecole »
+   * accentue n etait jamais trouve, ni sous sa forme accentuee ni sans, parce
+   * que `LIKE` ne replie pas les accents non plus et que la requete comparait
+   * un `lower()` ASCII a un `toLowerCase()` JavaScript Unicode.
+   */
+  async function creerBrouillon(titre: string, angle: string) {
+    const idea = ideasRepository.createIdea({
+      title: titre,
+      angle,
+      pillarLabel: "Adoption IA"
+    });
+    return workshopService.generateDraftFromIdea(idea.id);
+  }
+
+  it("trouve un post accentue, que la recherche soit accentuee ou non", async () => {
+    await creerBrouillon(
+      "École et entreprise, le meme angle mort",
+      "Ce que la formation revele du deploiement"
+    );
+
+    expect(libraryService.searchEntries({ query: "école" })).toHaveLength(1);
+    expect(libraryService.searchEntries({ query: "ecole" })).toHaveLength(1);
+    expect(libraryService.searchEntries({ query: "ÉCOLE" })).toHaveLength(1);
+    expect(libraryService.searchEntries({ query: "École" })).toHaveLength(1);
+  });
+
+  it("trouve un post non accentue quand la recherche porte un accent", async () => {
+    await creerBrouillon(
+      "Ecole et entreprise, sans accent cette fois",
+      "Le meme sujet, ecrit sans diacritique"
+    );
+
+    expect(libraryService.searchEntries({ query: "école" })).toHaveLength(1);
+  });
+
+  it("ne rend pas un post qui ne contient pas le terme cherche", async () => {
+    // Contre-epreuve : sans elle, une fonction de pliage qui renverrait la
+    // chaine vide ferait tout correspondre et les trois portes ci-dessus
+    // resteraient vertes.
+    await creerBrouillon(
+      "École et entreprise, le meme angle mort",
+      "Ce que la formation revele du deploiement"
+    );
+
+    expect(libraryService.searchEntries({ query: "cathedrale" })).toHaveLength(0);
+  });
+
+  it("cree une variante d un brouillon a l accroche accentuee", async () => {
+    // Ce qui echouait vraiment ici : la variante etait relue par une recherche
+    // sur son accroche, et `lower()` de SQLite ne repliant pas les accents, la
+    // recherche ne la retrouvait pas. La methode levait « Variant could not be
+    // reloaded » alors que le brouillon, sa version, son execution et ses
+    // etiquettes venaient d etre ecrits : une erreur affichee sur un travail
+    // reussi. C est le pliage des accents qui le corrige ; la relecture par
+    // identifiant retire simplement la dependance qui l avait rendu possible.
+    const session = await creerBrouillon(
+      "École et entreprise, le meme angle mort",
+      "Ce que la formation revele du deploiement"
+    );
+
+    const variante = await libraryService.createVariantFromDraft(session.draft.id);
+
+    expect(variante.sourceDraftId).toBe(session.draft.id);
+    expect(variante.status).toBe("variant");
+  });
 });

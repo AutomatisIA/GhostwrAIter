@@ -292,14 +292,19 @@ describe("cible visee, contexte transmis au moteur", () => {
   });
 
   /*
-   * Les CINQ etapes du pipeline, pas seulement la premiere.
+   * TOUTES les methodes du service qui appellent un moteur, pas la premiere.
    *
-   * La version precedente ne captait que `getSuggestedStructures`. Une mutation
+   * La version d origine ne captait que `getSuggestedStructures`. Une mutation
    * la laissait verte : reconstruire le contexte en dur dans `correctDraft`
    * sans `targetIcpSegment` faisait repartir la passe de correction sur toutes
    * les cibles, alors que la documentation de `buildStrategyContext` affirme
-   * couvrir la correction. Un texte ecrit pour une personne aurait ete reecrit
-   * pour une autre, sans qu aucune porte ne tombe.
+   * couvrir la correction.
+   *
+   * La version suivante en couvrait quatre sous un commentaire qui en annoncait
+   * cinq, et l absente etait `generateFinalDraft` : celle qui produit le post
+   * que l utilisateur publie. Le defaut d origine n avait pas ete corrige, il
+   * avait ete deplace d une methode. Le compte ci-dessous est donc verifie
+   * contre le service, pas annonce en prose.
    */
   const ETAPES: Array<{
     nom: string;
@@ -314,6 +319,26 @@ describe("cible visee, contexte transmis au moteur", () => {
       nom: "generation d accroches",
       joue: (service, ideaId) =>
         service.generateHooks(ideaId, "expertise", "belief-terrain-reality")
+    },
+    {
+      nom: "redaction du brouillon final",
+      joue: async (service, ideaId) => {
+        const hooks = await service.generateHooks(ideaId, "expertise", "belief-terrain-reality");
+        return service.generateFinalDraft(
+          ideaId,
+          "expertise",
+          "awareness",
+          "belief-terrain-reality",
+          "Croyance vers terrain vers realite",
+          hooks[0]!.id,
+          hooks[0]!.text,
+          hooks
+        );
+      }
+    },
+    {
+      nom: "generation complete depuis l idee",
+      joue: (service, ideaId) => service.generateDraftFromIdea(ideaId)
     },
     {
       nom: "variante",
@@ -345,15 +370,25 @@ describe("cible visee, contexte transmis au moteur", () => {
       // La porte refuse de conclure sur zero invocation : sans cette assertion,
       // une etape qui n appellerait plus le moteur du tout resterait verte.
       expect(invocations.length).toBeGreaterThan(0);
-      const resume = invocations[0]?.context.strategyIcpSummary ?? "";
-      expect(resume).toContain(AUTRE_SEGMENT);
-      expect(resume).not.toContain(CIBLE_SEGMENT);
+
+      // TOUTES les invocations, pas la premiere. Deux de ces etapes en
+      // declenchent plusieurs a la suite : n en verifier qu une laisserait
+      // passer une seconde qui perdrait la cible en chemin.
+      for (const invocation of invocations) {
+        const resume = invocation.context.strategyIcpSummary ?? "";
+        expect(resume).toContain(AUTRE_SEGMENT);
+        expect(resume).not.toContain(CIBLE_SEGMENT);
+      }
     });
   }
 
   it("expose la cible retenue dans le contexte relu de la session", async () => {
-    // `contextUsed` est ce que l interface affiche : il doit dire la meme chose
-    // que ce qui a ete envoye, sinon l ecran ment sur la generation.
+    // `contextUsed` est le contexte relu d une session existante. Aucun
+    // composant ne l affiche aujourd hui : la valeur de cette porte est de
+    // garantir que la relecture dit la MEME chose que l envoi, faute de quoi
+    // toute surface qui l afficherait un jour mentirait sur la generation.
+    // Elle vaut aussi comme filet sur `buildContextUsed`, qui reimplemente
+    // `buildStrategyContext` au lieu de l appeler.
     const { service } = createRunnerCapteur();
     const idea = ideasRepository.createIdea({
       title: "IA en PME",
