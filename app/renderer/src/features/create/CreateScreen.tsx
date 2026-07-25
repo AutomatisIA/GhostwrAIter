@@ -132,6 +132,12 @@ export function CreateScreen() {
               selectedHook={selectedHook}
             />
 
+            {/* Colonne de droite : le bandeau de progression et l atelier sont
+                reunis dans un seul enfant de la grille. Rendus separement, ils
+                occupaient deux cellules distinctes et le nombre d enfants
+                changeait selon qu une action tournait ou non, ce qui deplacait
+                l atelier d une colonne et le repoussait sous le pli. */}
+            <div className="workshop-main">
             {showAiProgress ? (
               <AiProgress
                 phase={aiProgress.phase}
@@ -206,6 +212,7 @@ export function CreateScreen() {
                   )}
                 </motion.div>
               </AnimatePresence>
+            </div>
             </div>
           </div>
         </>

@@ -716,11 +716,27 @@ a {
   margin-top: 28px;
 }
 
-/* Le bandeau de progression n est rendu que pendant une action. Sans placement
-   explicite, il occupait la deuxieme cellule et repoussait le contenu de
-   l atelier a la ligne suivante, donc dans la colonne de 340 px : le texte se
-   tassait a gauche et la moitie droite restait vide. Les deux elements sont
-   epingles a la colonne 2, l un au-dessus de l autre. */
+/* La colonne de droite est un seul enfant de la grille, `.workshop-main`, qui
+   empile le bandeau de progression et l atelier. Auparavant les deux etaient
+   des enfants directs de `.workshop-frame` : le nombre d enfants changeait
+   selon qu une action tournait ou non, ce qui deplacait l atelier dans la
+   colonne de 340 px puis, apres un premier correctif, le repoussait sous le
+   guide et donc sous le pli. Un seul enfant supprime le probleme au lieu de
+   rattraper sa geometrie.
+
+   Constate en usage reel, pas en test : les captures montraient « Choisis le
+   cadrage » coupe en bas de fenetre pendant une generation. */
+.workshop-main {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.workshop-guide {
+  grid-row: 1 / -1;
+}
+
 .workshop-frame > .ds-ai-progress,
 .workshop-frame > .workshop-stage {
   grid-column: 2;
