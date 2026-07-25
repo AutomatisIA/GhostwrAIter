@@ -2535,3 +2535,68 @@ textarea:focus-visible,
     transition: none;
   }
 }
+
+/* Comparaison avant/apres de la correction premium. Le contraste entre les deux
+   etats doit se lire sans effort : c est tout l interet de la vue. */
+.correction-diff {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.correction-diff-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.correction-diff-summary {
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.correction-diff-empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.correction-diff-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.correction-diff-item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.correction-diff-position {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.correction-diff-before,
+.correction-diff-after {
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border-left: 3px solid transparent;
+}
+
+.correction-diff-before {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-example);
+  border-left-color: var(--color-text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-text-secondary);
+}
+
+.correction-diff-after {
+  background: var(--color-accent-bg);
+  border-left-color: var(--color-accent);
+}

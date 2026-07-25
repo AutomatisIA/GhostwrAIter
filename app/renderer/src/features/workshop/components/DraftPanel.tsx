@@ -16,6 +16,7 @@ import {
   parseTellFamiliesPreference
 } from "../../ai-tells/tellsPreference";
 import { AiTellsReport } from "./AiTellsReport";
+import { CorrectionDiff } from "./CorrectionDiff";
 
 type DraftPanelProps = {
   session: WorkshopSession;
@@ -83,6 +84,18 @@ export function DraftPanel({
       })
       .catch(() => {});
   }, []);
+
+  /**
+   * Texte tel qu il etait juste avant la derniere correction. Sans lui,
+   * l utilisateur ne peut pas savoir ce que la correction a change, ni meme
+   * qu elle a eu lieu.
+   */
+  const lastCorrection = (() => {
+    const versions = session.versions ?? [];
+    const index = versions.map((v) => v.reason).lastIndexOf("correction");
+    if (index <= 0) return null;
+    return { before: versions[index - 1]!.bodyMarkdown };
+  })();
 
   const tellReport = useMemo(
     () => detectTells(session.draft.bodyMarkdown, enabledTellFamilies),
@@ -242,6 +255,16 @@ export function DraftPanel({
               <strong>{formatCharCount(session.draft.bodyMarkdown)}</strong>
             </div>
             <AiTellsReport hits={tellReport.hits} />
+
+            {/* Derniere correction premium, s il y en a eu une. `versions` est
+                ordonne du plus ancien au plus recent : la version qui precede
+                la correction porte le texte d avant. */}
+            {lastCorrection ? (
+              <CorrectionDiff
+                before={lastCorrection.before}
+                after={session.draft.bodyMarkdown}
+              />
+            ) : null}
             <div className="form-actions">
               <Button variant="secondary" onClick={handleCopyPost}>
                 {copyLabel}
