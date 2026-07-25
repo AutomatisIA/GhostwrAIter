@@ -1,4 +1,8 @@
-import { ALL_TELL_FAMILIES, type TellFamilyId } from "../../../../shared/ai-tells";
+import {
+  AI_TELL_PREFERENCE_KEY,
+  ALL_TELL_FAMILIES,
+  type TellFamilyId
+} from "../../../../shared/ai-tells";
 
 /**
  * Cle de preference partagee par les deux points d'entree renderer du module
@@ -7,7 +11,13 @@ import { ALL_TELL_FAMILIES, type TellFamilyId } from "../../../../shared/ai-tell
  * principal lit la meme cle pour construire les contraintes de prompt
  * (`buildTellConstraints`), donc ce nom ne doit pas changer sans coordination.
  */
-export const AI_TELL_FAMILIES_PREFERENCE_KEY = "ai_tell_families";
+/**
+ * Reexport de la cle declaree dans la couche partagee. Elle etait redeclaree ici
+ * avec la meme valeur : deux declarations de la meme cle finissent toujours par
+ * diverger, et le processus principal ne lirait alors plus ce que le renderer
+ * ecrit. Une seule source, celle que main utilise deja.
+ */
+export const AI_TELL_FAMILIES_PREFERENCE_KEY = AI_TELL_PREFERENCE_KEY;
 
 /**
  * Decode la valeur brute stockee par `settings.getPreference`. Cette
