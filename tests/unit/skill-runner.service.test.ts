@@ -509,8 +509,8 @@ describe("skill runner service", () => {
 
     const engineRegistry = {
       getActiveEngine: async () => ({
-        engine: "gemini",
-        status: { name: "gemini", displayName: "Gemini CLI", installState: "installed" }
+        engine: "antigravity",
+        status: { name: "antigravity", displayName: "Antigravity", installState: "installed" }
       }),
       getEngineByName: () => ({ executeSkill: async () => "{}" })
     } as unknown as EngineRegistry;
@@ -538,7 +538,7 @@ describe("skill runner service", () => {
     expect(result.status).toBe("failed");
     expect(result.error?.code).toBe("ENGINE_NOT_AUTHENTICATED");
     // Le message doit nommer le moteur pour etre actionnable cote utilisateur.
-    expect(result.error?.message).toContain("Gemini");
+    expect(result.error?.message).toContain("Antigravity");
     expect(codexCalled).toBe(false);
   });
 });

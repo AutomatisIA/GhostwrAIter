@@ -87,7 +87,7 @@ export const GLOSSARY = {
     label: "Moteur IA",
     definition:
       "L'assistant d'intelligence artificielle installé sur votre ordinateur qui rédige les textes. L'application utilise votre propre abonnement, vos contenus restent chez vous.",
-    example: "Codex, Claude ou Gemini."
+    example: "Codex, Claude ou Antigravity."
   },
   oauth: {
     label: "Connexion sécurisée",
@@ -98,12 +98,14 @@ export const GLOSSARY = {
     label: "Cadrage",
     definition:
       "L'étape où l'on précise de quoi va parler le post avant de l'écrire : le sujet, l'angle et le message principal. Un bon cadrage évite de partir dans tous les sens."
-  },
-  "score-qualite": {
-    label: "Score de qualité",
-    definition:
-      "Une note automatique qui évalue si un post respecte vos règles d'écriture (ton, longueur, clarté). Elle vous signale les textes à retravailler avant publication."
   }
+  // Le terme « Score de qualite » a ete retire le 25 juillet 2026, en meme temps
+  // que le score lui-meme. Sa definition annoncait « une note automatique qui
+  // evalue si un post respecte vos regles d ecriture » : c etait faux. Le
+  // chiffre etait l auto-evaluation du modele sur son propre texte, et il est
+  // reste a 84 % puis 82 % pendant que les marqueurs d ecriture IA reellement
+  // mesures baissaient des deux tiers. Un glossaire qui explique un rouage
+  // disparu est pire qu une entree manquante.
 } as const satisfies Record<string, GlossaryEntry>;
 
 /** Clé de terme valide, dérivée directement des clés du glossaire. */

@@ -5,13 +5,15 @@
  * par la primitive `AiProgress`. Conception guidee par le contrat
  * (`contracts/execution-progress-channel.md`) et research D3 :
  *
- * - `spawnSync` bloque le main : `started`/`completed` arrivent groupes APRES
- *   le retour de l'appel. Le ressenti de continuite ne peut donc PAS dependre
- *   de l'arrivee de `started`. La continuite est portee par :
- *     1. le flag local `active` (bascule synchrone avant l'await cote appelant),
- *     2. un timer renderer independant (`elapsedMs`).
- *   Le canal fournit le libelle de phase, le moteur, et la confirmation
- *   terminale succes/echec.
+ * - HISTORIQUE, corrige le 25 juillet 2026. Les moteurs lancaient les CLI par
+ *   `spawnSync`, qui gelait le processus principal : `started` et `completed`
+ *   arrivaient groupes APRES le retour de l appel, et le canal ne disait rien
+ *   pendant l attente. `spawn-cli.ts` est passe en `spawn` asynchrone, les
+ *   evenements arrivent donc bien AU FIL de la generation.
+ *   La continuite reste portee par le flag local `active` et par un timer de
+ *   rendu independant (`elapsedMs`) : c est desormais une ceinture, plus une
+ *   necessite. Les conserver garde l affichage juste si un moteur futur
+ *   n emettait aucun evenement intermediaire.
  * - Le payload ne transporte NI `currentIndex` NI `totalSteps` : la position
  *   dans le pipeline est derivee ici d'un ordre canonique de phases.
  */
@@ -65,15 +67,15 @@ export interface AiProgressState {
 export interface UseAiProgressOptions {
   /**
    * Flag local d'activite (ex. `isLoadingStructures`). Bascule synchrone qui
-   * porte le ressenti de continuite, independamment des evenements groupes.
+   * porte le ressenti de continuite, independamment du rythme des evenements.
    */
   active: boolean;
   /**
    * Phase active derivee localement (ex. depuis `isLoadingStructures`). Prioritaire
-   * sur la phase du canal pour `intentLabel`/`currentIndex` : `spawnSync` bloque le
-   * main, donc l'evenement `started` arrive GROUPE au retour de l'appel (research
-   * D3) et ne peut pas porter le libelle PENDANT l'attente. La phase locale, qui
-   * bascule de maniere synchrone, porte donc l'intention en continu ; le canal
+   * sur la phase du canal pour `intentLabel`/`currentIndex` : l'evenement
+   * `started` arrive au mieux un aller-retour IPC apres le clic, et ne peut donc
+   * pas porter le libelle des le premier rendu. La phase locale, qui bascule de
+   * maniere synchrone, porte l'intention en continu ; le canal
    * conserve la transition terminale succes/echec et l'`errorCode`.
    */
   activePhase?: ExecutionPhase | null;
@@ -152,12 +154,13 @@ export function useAiProgress(options: UseAiProgressOptions): AiProgressState {
   }, []);
 
   // Continuite portee par le flag local : `active` true => running immediat,
-  // sans attendre l'evenement `started` (groupe par spawnSync).
+  // sans attendre l'evenement `started`, qui peut tarder d'un aller-retour IPC.
   useEffect(() => {
     if (options.active) {
       // Synchronisation avec le canal IPC (machine a etats) : `active` true
       // bascule immediatement la machine en `running`, sans attendre
-      // l'evenement `started` groupe par spawnSync. Pas de forme derivable.
+      // l'evenement `started`, qui arrive un aller-retour plus tard. Pas de
+      // forme derivable.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setState("running");
       setErrorCode(undefined);
@@ -188,7 +191,7 @@ export function useAiProgress(options: UseAiProgressOptions): AiProgressState {
   }, [running, tickMs]);
 
   // La phase locale prime sur la phase du canal (cf. activePhase) : elle est
-  // disponible PENDANT l'attente, contrairement a l'evenement groupe.
+  // disponible des le premier rendu, sans dependre d'un evenement du canal.
   const effectivePhase = options.activePhase ?? phase;
   // Position dans le pipeline. Une phase hors pipeline (`indexOf` renvoie -1)
   // n'est pas une position valide : on retombe explicitement sur 0 plutôt que

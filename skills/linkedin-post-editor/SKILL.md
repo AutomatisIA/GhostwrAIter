@@ -40,9 +40,23 @@ THEN rewrite. The rewrite must:
 - Never split a working sentence into multiple shorter lines just for "rhythm" — only split when it genuinely improves readability
 - Add concrete operational detail ONLY if the original is too abstract AND you can do it without increasing word count
 - Make the conclusion actionable when the objective is "conversion"
-- Aim for a qualityScore strictly above the currentQualityScore
 
-CRITICAL: If you cannot improve the qualityScore, return the original draft unchanged with the same qualitySignals. A correction that makes the post longer, weaker, or less focused is worse than no correction. When in doubt, return unchanged.
+Always return the rewritten draft. Do not compare scores and do not return the
+original unchanged as a way of playing safe.
+
+This instruction replaces an earlier one, on 25 July 2026. The skill used to say:
+aim for a qualityScore above the current one, and if you cannot beat it, return
+the original unchanged. Two things were wrong with it. The score is the model's
+own assessment of its own text, so the rule asked the model to clear a bar it
+set itself. And the safe move under that rule was to change nothing, which is
+exactly what happened: the owner reported never once seeing the premium
+correction improve a draft, and observed two versions with identical text.
+
+Only one case justifies returning the text unchanged: the draft has no weakness
+you can name. If that is genuinely so, say which of the seven diagnostic
+questions you checked and why each passes. A rewrite that is longer, weaker or
+less focused than the original remains a failure, but the answer to that risk is
+to tighten, not to abstain.
 
 Do not append editorial commentary, correction notes, or meta-writing language of any kind. Never name the structure, the typology, the objective or the correction process inside the draft.
 

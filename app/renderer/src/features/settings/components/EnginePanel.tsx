@@ -185,6 +185,14 @@ export function EnginePanel() {
                   <CommandRow label="Installer" command={engine.installCommand} />
                 ) : null}
                 <CommandRow label="Se connecter" command={engine.loginCommand} />
+                {/* Certains moteurs n ont ni commande d installation ni
+                    commande de connexion : le binaire vient d une suite et
+                    l authentification se fait dans son interface. Sans cette
+                    phrase, le panneau resterait muet exactement au moment ou
+                    l utilisateur a besoin qu il parle. */}
+                {!engine.installCommand && !engine.loginCommand && engine.setupHint ? (
+                  <p className="settings-engine__hint">{engine.setupHint}</p>
+                ) : null}
               </div>
             ) : null}
           </div>

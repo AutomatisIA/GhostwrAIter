@@ -47,7 +47,9 @@ export class ClaudeEngine implements CliEngine {
       version: null,
       subscriptionLabel: "Abonnement Claude Pro ou Team",
       installCommand: "npm install -g @anthropic-ai/claude-code",
-      loginCommand: "claude login"
+      // `claude auth login`, verifie contre `claude auth --help`. `claude
+      // login` seul n est pas une commande.
+      loginCommand: "claude auth login"
     };
   }
 

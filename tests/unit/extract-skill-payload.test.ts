@@ -23,7 +23,7 @@ describe("extractSkillPayload", () => {
     expect(extractSkillPayload(envelope)).toBe(SKILL_JSON);
   });
 
-  it("deballe l enveloppe de Gemini CLI (--json)", () => {
+  it("deballe une enveloppe portant la reponse dans `response`", () => {
     const envelope = JSON.stringify({ response: SKILL_JSON });
 
     expect(extractSkillPayload(envelope)).toBe(SKILL_JSON);

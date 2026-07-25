@@ -99,7 +99,32 @@ const PAIRES = [
   // Bordures de composants interactifs : seul element identifiant le composant,
   // donc soumises au seuil 3:1 de WCAG 1.4.11.
   { avant: "lineField", arriere: "sf", quoi: "Bordure de champ sur surface", role: "ui" },
-  { avant: "lineField", arriere: "bg", quoi: "Bordure de champ sur fond", role: "ui" }
+  { avant: "lineField", arriere: "bg", quoi: "Bordure de champ sur fond", role: "ui" },
+
+  // Elements ambre porteurs d information ou de contour interactif. Ajoutes
+  // apres coup : le chantier Atelier a mesure ces paires a part et en a trouve
+  // deux en echec avec les valeurs de la maquette, hors du champ de ce script.
+  // Une porte qui annonce « 50 sur 50 » alors que des paires reelles echouent
+  // en dehors de son enumeration ment par omission ; elle doit couvrir ce que
+  // l application emploie, pas ce que la maquette dessinait.
+  //
+  // Sur le contour de bouton, la nuance importe. Ce script exclut plus haut
+  // `ambBd sur ambTint` en tant que bordure de bloc de CONTENU, dont le sens
+  // est porte par le texte. Le meme couple employe comme contour de BOUTON est
+  // un tout autre cas : le contour y delimite un composant interactif, et rien
+  // d autre ne le delimite. D ou le passage a `amb`.
+  {
+    avant: "amb",
+    arriere: "sf",
+    quoi: "Barre de reglette sur sa piste",
+    role: "ui"
+  },
+  {
+    avant: "amb",
+    arriere: "ambTint",
+    quoi: "Contour de bouton sur bandeau ambre",
+    role: "ui"
+  }
 
   // Volontairement absentes : les bordures des blocs teintes (priBd sur
   // priTint, ambBd sur ambTint). Ce sont des conteneurs de contenu, pas des

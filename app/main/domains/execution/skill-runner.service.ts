@@ -188,8 +188,14 @@ export class SkillRunnerService {
           code: "ENGINE_NOT_AUTHENTICATED",
           message:
             `${engineLabel} est votre moteur IA selectionne, mais il n est pas connecte. ` +
-            `Lancez \`${selection.status.loginCommand || `${selection.engine} login`}\` ` +
-            "puis reessayez, ou choisissez un autre moteur dans les Parametres."
+            // Le repli construisait `<moteur> login`, qui n est vrai que pour
+            // Codex : Claude attend `claude auth login` et Antigravity n a aucune
+            // sous-commande de connexion. Chaque moteur porte desormais sa
+            // commande exacte, et sans elle on n en invente pas une.
+            (selection.status.loginCommand
+              ? `Lancez \`${selection.status.loginCommand}\` puis reessayez, `
+              : "Connectez-le depuis son interface, puis reessayez, ") +
+            "ou choisissez un autre moteur dans les Parametres."
         }
       };
     }

@@ -22,7 +22,7 @@ export type ExecutionPhase =
 export type ExecutionProgressStatus = "started" | "completed" | "failed";
 
 /** Moteur IA utilise (affichable cote renderer). */
-export type ExecutionEngine = "codex" | "claude" | "gemini";
+export type ExecutionEngine = "codex" | "claude" | "antigravity";
 
 /**
  * Charge utile diffusee sur le canal `execution:progress`.

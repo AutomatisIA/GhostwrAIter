@@ -34,7 +34,7 @@ export const WORKSHOP_PHASE_LABELS: Record<WorkshopPhaseKey, string> = {
 export const ENGINE_LABELS: Record<ExecutionEngine, string> = {
   codex: "Codex",
   claude: "Claude",
-  gemini: "Gemini"
+  antigravity: "Antigravity"
 };
 
 export function isWorkshopPhase(phase: ExecutionPhase | null): phase is WorkshopPhaseKey {

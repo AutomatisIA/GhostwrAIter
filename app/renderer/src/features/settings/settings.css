@@ -439,3 +439,13 @@
     padding-top: 0;
   }
 }
+
+/* Repere d installation pour un moteur qui n a ni commande d installation ni
+   commande de connexion. Traite comme une aide, pas comme une alerte : ce n est
+   pas une anomalie, c est la forme normale de ce moteur. */
+.settings-engine__hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-muted);
+}

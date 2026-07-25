@@ -13,7 +13,7 @@ import { createAppDatabase } from "./db/database";
 import { CodexCliRunner } from "./domains/execution/codex-cli-runner";
 import { CodexEngine } from "./domains/execution/codex-engine";
 import { ClaudeEngine } from "./domains/execution/claude-engine";
-import { GeminiEngine } from "./domains/execution/gemini-engine";
+import { AntigravityEngine } from "./domains/execution/antigravity-engine";
 import { EngineRegistry } from "./domains/execution/engine-registry";
 import { SkillRunnerService } from "./domains/execution/skill-runner.service";
 import {
@@ -98,7 +98,7 @@ app.whenReady().then(() => {
   const engineRegistry = new EngineRegistry(appSettingsService, [
     new CodexEngine(),
     new ClaudeEngine(),
-    new GeminiEngine()
+    new AntigravityEngine()
   ]);
   /**
    * Familles de marqueurs d ecriture IA que l utilisateur interdit, reglees dans

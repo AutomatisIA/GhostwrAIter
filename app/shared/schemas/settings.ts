@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export { emptyInputSchema } from "./common";
 
-export const cliEngineNameSchema = z.enum(["codex", "gemini", "claude"]);
+export const cliEngineNameSchema = z.enum(["codex", "antigravity", "claude"]);
 
 export const getPreferenceInputSchema = z.object({
   key: z.string().min(1, "key is required")
