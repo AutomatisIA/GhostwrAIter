@@ -263,6 +263,37 @@ describe("ideas IPC", () => {
       expect(idees.every((idee) => idee.targetIcpSegment === autreSegment)).toBe(true);
     });
 
+    it("annonce le moteur choisi et non « codex » en dur", async () => {
+      // `runPhase` de l atelier a cesse d annoncer un moteur en dur au commit
+      // e794e11 ; ce parcours et celui du socle editorial etaient restes en
+      // arriere. Un utilisateur ayant choisi Antigravity voyait « Codex »
+      // annonce pendant la generation de ses sujets.
+      const strategyRepository = new StrategyRepository(db);
+      strategyRepository.saveStrategyBundle(createStrategyBundleFixture());
+
+      const runner = createStrictSkillRunnerService();
+      runner.getSelectedEngineName = () => "antigravity";
+      const startedSpy = vi.spyOn(progressEmitter, "emitPhaseStarted");
+      const settledSpy = vi.spyOn(progressEmitter, "emitPhaseSettled");
+
+      await new IdeasService(db, runner).generateFromStrategy();
+
+      // Deux bornes, deux sources, et c est voulu : `started` annonce la
+      // PREFERENCE, seule information disponible avant l appel ; la borne
+      // terminale rapporte le moteur REELLEMENT utilise, tel que le runner l a
+      // estampille. C est le contrat de `runPhase`, aligne ici.
+      expect(startedSpy).toHaveBeenCalledWith(
+        undefined,
+        expect.objectContaining({ engine: "antigravity" })
+      );
+
+      const borneTerminale = settledSpy.mock.calls[0]?.[1] as { engine: string };
+      expect(borneTerminale.engine).toBe("codex");
+      expect(startedSpy.mock.calls[0]?.[1]).not.toEqual(
+        expect.objectContaining({ engine: "codex" })
+      );
+    });
+
     it("envoie toutes les cibles et n en pose aucune quand rien n est demande", async () => {
       const strategyRepository = new StrategyRepository(db);
       strategyRepository.saveStrategyBundle(createStrategyBundleFixture());

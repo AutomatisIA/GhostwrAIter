@@ -82,7 +82,11 @@ export class IdeasService {
       throw new Error("Strategy must define at least one pillar before generating ideas.");
     }
     const runId = `run_${Date.now()}`;
-    emitPhaseStarted(sender, { runId, phase: "idees", engine: "codex" });
+    // Meme correction que sur le socle editorial : le moteur annonce vient de
+    // la preference, pas d un litteral. Un utilisateur ayant choisi Antigravity
+    // voyait « Codex » pendant la generation de ses sujets.
+    const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
+    emitPhaseStarted(sender, { runId, phase: "idees", engine: announced });
     let result;
     try {
       result = await this.skillRunnerService.executeAsync({
@@ -103,18 +107,20 @@ export class IdeasService {
       emitPhaseSettled(sender, {
         runId,
         phase: "idees",
-        engine: "codex",
+        engine: announced,
         status: "failed",
         errorCode: err instanceof Error ? err.name : undefined
       });
       throw err;
     }
 
+    const usedEngine = result.engine ?? announced;
+
     if (result.status !== "succeeded" || !result.artifacts?.[0]?.content) {
       emitPhaseSettled(sender, {
         runId,
         phase: "idees",
-        engine: "codex",
+        engine: usedEngine,
         status: "failed",
         errorCode: result.error?.code
       });
@@ -124,7 +130,7 @@ export class IdeasService {
     emitPhaseSettled(sender, {
       runId,
       phase: "idees",
-      engine: "codex",
+      engine: usedEngine,
       status: "completed"
     });
 

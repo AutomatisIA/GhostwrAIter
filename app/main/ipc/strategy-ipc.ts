@@ -41,7 +41,14 @@ export class StrategyService {
   async generateFoundation(sender?: WebContents) {
     const bundle = this.repository.getActiveStrategyBundle();
     const runId = `run_${Date.now()}`;
-    emitPhaseStarted(sender, { runId, phase: "foundation", engine: "codex" });
+    // Le moteur annonce n est plus code en dur. `runPhase` de l atelier a cesse
+    // de le faire au commit e794e11 ; ce parcours-ci et celui des sujets
+    // etaient restes en arriere, et annoncaient « Codex » a un utilisateur qui
+    // a choisi un autre moteur. Le nom vient donc de la preference lue en base
+    // avant l appel, puis du moteur reellement utilise tel que le runner l a
+    // estampille.
+    const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
+    emitPhaseStarted(sender, { runId, phase: "foundation", engine: announced });
     let result;
     try {
       result = await this.skillRunnerService.executeAsync({
@@ -56,18 +63,20 @@ export class StrategyService {
       emitPhaseSettled(sender, {
         runId,
         phase: "foundation",
-        engine: "codex",
+        engine: announced,
         status: "failed",
         errorCode: err instanceof Error ? err.name : undefined
       });
       throw err;
     }
 
+    const usedEngine = result.engine ?? announced;
+
     if (result.status !== "succeeded" || !result.artifacts?.[0]?.content) {
       emitPhaseSettled(sender, {
         runId,
         phase: "foundation",
-        engine: "codex",
+        engine: usedEngine,
         status: "failed",
         errorCode: result.error?.code
       });
@@ -77,7 +86,7 @@ export class StrategyService {
     emitPhaseSettled(sender, {
       runId,
       phase: "foundation",
-      engine: "codex",
+      engine: usedEngine,
       status: "completed"
     });
 
