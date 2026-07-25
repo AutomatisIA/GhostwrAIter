@@ -14,6 +14,7 @@ import { OffersSection } from "./components/OffersSection";
 import { IcpsSection } from "./components/IcpsSection";
 import { PillarsSection } from "./components/PillarsSection";
 import { VoiceRulesSection } from "./components/VoiceRulesSection";
+import { AiTellFamiliesSection } from "./components/AiTellFamiliesSection";
 
 type StrategyTab = "profil" | "offres" | "icps" | "piliers" | "voix" | "socle";
 
@@ -178,6 +179,12 @@ export function StrategyScreen() {
                   onRemove={removeVoiceRule}
                   onUpdate={updateVoiceRuleField}
                 />
+              </motion.div>
+            )}
+
+            {activeTab === "voix" && (
+              <motion.div variants={item}>
+                <AiTellFamiliesSection />
               </motion.div>
             )}
           </motion.div>

@@ -688,9 +688,23 @@ export class WorkshopService {
 
     this.persistExecutionRun(editorInvocation, editorResult, draft.ideaId, draftId, correctedAt);
 
-    if (correctedQualityScore <= draft.qualityScore) {
-      this.recordDraftVersion(draftId, draft.bodyMarkdown, draft.qualityScore, "correction", correctedAt);
-      return this.getSessionByDraftId(draftId);
+    // La correction etait auparavant conditionnee a une hausse du score. Ce
+    // score est en grande partie auto-declare par le modele, et l editeur rend
+    // des signaux voisins de ceux du redacteur : la condition n etait donc
+    // quasiment jamais remplie, et la fonctionnalite n a jamais applique la
+    // moindre correction en usage reel. Refuser un travail sur la foi d un
+    // chiffre invente est exactement le defaut releve par l audit editorial.
+    //
+    // La decision revient desormais a la skill, a qui son contrat demande
+    // explicitement de rendre le texte inchange si elle ne peut pas l ameliorer.
+    // Le seul cas ou l on ne touche a rien est celui ou elle a effectivement
+    // rendu le meme texte.
+    const unchanged =
+      correctedBody.trim() === draft.bodyMarkdown.trim() &&
+      correctedHeadline.trim() === (draft.headline ?? "").trim();
+
+    if (unchanged) {
+      return { ...this.getSessionByDraftId(draftId), correctionApplied: false };
     }
 
     this.db

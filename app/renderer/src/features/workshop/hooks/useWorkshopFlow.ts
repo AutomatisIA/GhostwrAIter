@@ -282,7 +282,11 @@ export function useWorkshopFlow(ideaId: string | null) {
     try {
       const result = await window.linkedinPoster.workshop.correctDraft(session.draft.id);
       setSession(result);
-      setStatus("Draft corrigé.");
+      setStatus(
+        session.correctionApplied === false
+          ? "La correction n'a pas amélioré le brouillon. Texte d'origine conservé."
+          : "Draft corrigé."
+      );
     } catch (err) {
       setError(extractError(err));
       setStatus("Échec de la correction.");

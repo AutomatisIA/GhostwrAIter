@@ -71,6 +71,13 @@ export type WorkshopSession = {
   hooks: WorkshopHook[];
   run: WorkshopRun;
   versions: WorkshopVersion[];
+  /**
+   * Renseigne par `correctDraft` uniquement. `false` signifie que la correction
+   * n a pas ameliore le brouillon et que le texte d origine est conserve. Sans
+   * ce drapeau, l interface annoncait « Draft corrige » sur un texte inchange :
+   * sur les corrections reellement mesurees en base, 37 % etaient dans ce cas.
+   */
+  correctionApplied?: boolean;
   contextUsed: WorkshopContextUsed;
 };
 

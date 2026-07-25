@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   HookOption,
   PostObjective,
@@ -6,9 +6,16 @@ import type {
   StructureOption,
   WorkshopSession
 } from "@shared/types/workshop";
+import { detectTells, type TellFamilyId } from "../../../../../shared/ai-tells";
 import { Button, Card } from "../../../design-system/primitives";
 import { InfoHint } from "../../../help";
+import { formatCharCount } from "../../../../../shared/post-metrics";
 import { TYPOLOGIES, formatObjectiveLabel, getQualityFeedback } from "../constants";
+import {
+  AI_TELL_FAMILIES_PREFERENCE_KEY,
+  parseTellFamiliesPreference
+} from "../../ai-tells/tellsPreference";
+import { AiTellsReport } from "./AiTellsReport";
 
 type DraftPanelProps = {
   session: WorkshopSession;
@@ -59,8 +66,28 @@ export function DraftPanel({
   const [editHeadline, setEditHeadline] = useState(session.draft.headline);
   const [editBody, setEditBody] = useState(session.draft.bodyMarkdown);
   const [copyLabel, setCopyLabel] = useState("Copier le post");
+  const [enabledTellFamilies, setEnabledTellFamilies] = useState<TellFamilyId[] | undefined>(
+    undefined
+  );
 
   const correctionRecommended = session.draft.qualityScore < 0.85 && !isEditing;
+
+  // Lue au montage, comme la preference de theme : un changement fait dans
+  // l'onglet Voix pendant que cet ecran est deja ouvert ne se propage pas ici
+  // tant que le composant n'est pas remonte.
+  useEffect(() => {
+    window.linkedinPoster.settings
+      .getPreference(AI_TELL_FAMILIES_PREFERENCE_KEY)
+      .then(({ value }: { value: string | null }) => {
+        setEnabledTellFamilies(parseTellFamiliesPreference(value));
+      })
+      .catch(() => {});
+  }, []);
+
+  const tellReport = useMemo(
+    () => detectTells(session.draft.bodyMarkdown, enabledTellFamilies),
+    [session.draft.bodyMarkdown, enabledTellFamilies]
+  );
 
   function handleStartEditing() {
     setEditHeadline(session.draft.headline);
@@ -211,9 +238,10 @@ export function DraftPanel({
               ))}
             </div>
             <div className="quality-row">
-              <span>Qualité estimée</span>
-              <strong>{Math.round(session.draft.qualityScore * 100)}%</strong>
+              <span>Longueur</span>
+              <strong>{formatCharCount(session.draft.bodyMarkdown)}</strong>
             </div>
+            <AiTellsReport hits={tellReport.hits} />
             <div className="form-actions">
               <Button variant="secondary" onClick={handleCopyPost}>
                 {copyLabel}

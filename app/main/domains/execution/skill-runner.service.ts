@@ -76,14 +76,18 @@ type SkillRunnerOptions = {
   codexCliRunner?: Pick<CodexCliRunner, "isAvailable" | "execute">;
   engineRegistry?: EngineRegistry;
   promptLoader?: SkillPromptLoader;
+  /** Contraintes anti-marqueurs reglees par l utilisateur. Lues a chaque appel. */
+  getUserConstraints?: () => string;
 };
 
 export class SkillRunnerService {
   private readonly codexCliRunner?: Pick<CodexCliRunner, "isAvailable" | "execute">;
   private readonly engineRegistry?: EngineRegistry;
   private readonly promptLoader: SkillPromptLoader;
+  private readonly getUserConstraints?: () => string;
 
   constructor(options?: SkillRunnerOptions) {
+    this.getUserConstraints = options?.getUserConstraints;
     this.codexCliRunner = options?.codexCliRunner;
     this.engineRegistry = options?.engineRegistry;
     this.promptLoader = options?.promptLoader ?? createDefaultSkillPromptLoader();
@@ -263,7 +267,12 @@ export class SkillRunnerService {
       throw err;
     }
 
-    const prompt = assembleSkillPrompt(invocation, skillPrompt, frameworkPreamble);
+    const prompt = assembleSkillPrompt(
+      invocation,
+      skillPrompt,
+      frameworkPreamble,
+      this.getUserConstraints?.() ?? ""
+    );
     // Les CLI n emettent pas tous le contrat nu : Claude et Gemini l encadrent
     // dans leur propre enveloppe JSON. Voir extract-skill-payload.
     const raw = extractSkillPayload(await engine.executeSkill(prompt));
