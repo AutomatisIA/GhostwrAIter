@@ -54,7 +54,7 @@ claude login
 
 **Gemini CLI** (Google AI Premium)
 ```bash
-npm install -g @anthropic-ai/gemini-cli
+npm install -g @google/gemini-cli
 gemini login
 ```
 
@@ -89,7 +89,7 @@ Le workflow de production suit 4 etapes guidees :
 - **SQLite** — stockage local (zero serveur)
 - **8 skills IA** — chaque etape du workflow est un prompt specialise avec un contrat d'entree/sortie structure
 
-Les donnees sont stockees dans `~/GhostwrAIter/` (macOS/Linux) ou `%USERPROFILE%\GhostwrAIter\` (Windows).
+Les donnees sont stockees dans le dossier de donnees utilisateur de l'application : `~/Library/Application Support/GhostwrAIter/workspace` sur macOS, `~/.config/GhostwrAIter/workspace` sur Linux, `%APPDATA%\GhostwrAIter\workspace` sur Windows. Pour deplacer ce dossier (par exemple sur un disque externe ou hors synchronisation cloud), definissez la variable d'environnement `LINKEDIN_POSTER_WORKSPACE_ROOT` vers un chemin absolu de votre choix.
 
 ---
 
@@ -122,9 +122,11 @@ Les donnees sont stockees dans `~/GhostwrAIter/` (macOS/Linux) ou `%USERPROFILE%
 
 ## Contribuer
 
-Les contributions sont bienvenues. Lisez [`CONTRIBUTING.md`](CONTRIBUTING.md) avant d'ouvrir une PR. Le projet suit un workflow TDD strict et utilise spec-kit pour la specification des features.
+Les contributions sont bienvenues. Lisez [`CONTRIBUTING.md`](CONTRIBUTING.md) avant d'ouvrir une PR. Le projet suit un workflow TDD strict et utilise spec-kit pour la specification des features. Le [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) s'applique a tous les echanges autour du projet.
 
 Pour signaler une faille de securite, suivez le processus decrit dans [`SECURITY.md`](SECURITY.md).
+
+Le journal des versions est tenu sur la page [Releases GitHub](https://github.com/AutomatisIA/GhostwrAIter/releases).
 
 ---
 
