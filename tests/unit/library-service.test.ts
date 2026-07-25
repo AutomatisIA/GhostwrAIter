@@ -8,6 +8,7 @@ import {
   createWorkshopTables,
   WorkshopService
 } from "../../app/main/domains/workshop/workshop.service";
+import { CalendarService } from "../../app/main/domains/calendar/calendar.service";
 import { LibraryService } from "../../app/main/domains/library/library.service";
 import {
   createStrategyBundleFixture,
@@ -24,6 +25,9 @@ describe("library service", () => {
     db = new Database(":memory:");
     createIdeasTables(db);
     createWorkshopTables(db);
+    // La bibliotheque lit `calendar_items` pour deriver le triage. Ce
+    // constructeur cree la table, comme au demarrage de l application.
+    new CalendarService(db);
     ideasRepository = new IdeasRepository(db);
     const strategyBundle = createStrategyBundleFixture();
     const skillRunnerService = createStrictSkillRunnerService();

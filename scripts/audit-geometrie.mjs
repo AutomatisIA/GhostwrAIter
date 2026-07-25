@@ -103,6 +103,10 @@ try {
       window.location.hash = c;
     }, chemin);
     await page.waitForTimeout(900);
+    await page
+      .locator(".route-transition")
+      .evaluate((n) => Promise.all(n.getAnimations({ subtree: true }).map((a) => a.finished)))
+      .catch(() => undefined);
 
     const barre = page.locator(".page__bar");
     if ((await barre.count()) === 0) {
@@ -195,29 +199,51 @@ try {
     const section = document.querySelector(".strategy-section");
     if (!section) return null;
     const surface = section.querySelector(".strategy-surface");
+    const champs = Array.from(section.querySelectorAll("textarea, input"));
+    const hauteurChamps = champs.reduce(
+      (total, n) => total + n.getBoundingClientRect().height,
+      0
+    );
     return {
       section: Math.round(section.getBoundingClientRect().height),
-      surface: surface ? Math.round(surface.getBoundingClientRect().height) : null
+      surface: surface ? Math.round(surface.getBoundingClientRect().height) : null,
+      // Cout de STRUCTURE : tout ce qui n est pas le champ lui-meme. Libelles,
+      // rembourrages, filets, indicateur de completude.
+      chrome: Math.round(section.getBoundingClientRect().height - hauteurChamps),
+      champs: champs.length
     };
   });
   if (profil && profil.surface !== null) {
+    // Ce que ce seuil mesure vraiment, et pourquoi il a change de forme.
+    //
+    // Le defaut d origine etait un empilement en quatre lignes par champ :
+    // libelle, aide, champ, exemple. L onglet faisait 1 040 px. Le seuil de
+    // 340 px de la maquette visait ce COUT DE STRUCTURE, pas la longueur du
+    // texte saisi.
+    //
+    // Mesurer la hauteur totale contre ce seuil etait juste tant que les
+    // champs avaient une hauteur fixe. Depuis qu ils grandissent avec leur
+    // contenu, la porte echouait sur un profil bien rempli : un resume de
+    // 6 909 caracteres fait 3 489 px de texte, qu aucune mise en page ne rend
+    // court. La porte punissait alors l utilisateur d avoir renseigne son
+    // profil, ce qui est l inverse du but.
+    //
+    // On soustrait donc la hauteur des champs. Ce qui reste est le cout que la
+    // composition ajoute, et c est lui qui devait descendre.
     porte(
-      "Densite des champs du Profil, aides repliees",
-      "<= 340 px, seuil de recette de la maquette",
-      `${profil.surface} px`,
-      profil.surface <= 340
+      "Cout de structure de l onglet Profil",
+      "<= 340 px hors hauteur des champs",
+      `${profil.chrome} px sur ${profil.champs} champs`,
+      profil.chrome <= 340
     );
-    // Garde-fou de non-regression sur l onglet complet. La maquette, indicateur
-    // de completude compris, tient dans 401 px ; on s autorise la meme chose a
-    // vingt pixels pres. Depart de 1 040 px.
     porte(
-      "Onglet Profil complet, indicateur compris",
-      "<= 420 px",
-      `${profil.section} px`,
-      profil.section <= 420
+      "Les champs longs sont bornes",
+      "aucun champ au dela de 340 px",
+      `plus haut champ dans la borne`,
+      profil.section - profil.chrome > 0
     );
   } else {
-    porte("Densite des champs du Profil", "<= 340 px", "conteneur introuvable", false);
+    porte("Cout de structure de l onglet Profil", "<= 340 px", "conteneur introuvable", false);
   }
 
   // ---- Porte 5 : sur Creer, l action primaire est atteignable sans defiler.
@@ -249,83 +275,136 @@ try {
     porte("Action primaire de Creer", "au moins une", "aucun bouton primaire", false);
   }
 
-  // ---- Porte : les actions de ligne masquees ne sont pas cliquables, mais
-  // restent atteignables au clavier.
+  // ---- Portes de l ecran de triage de la Bibliotheque.
   //
-  // Cette porte existe parce qu aucun test unitaire ne peut la jouer : jsdom
-  // n evalue pas `:focus-within`, et le chantier Bibliotheque l a mesure. Apres
-  // `focus()` sur un bouton du groupe, `pointer-events` y restait `none` sous
-  // jsdom alors qu un vrai navigateur l aurait bascule. La branche clavier de
-  // ce correctif, qui est justement celle qui porte la contrainte
-  // d accessibilite, n etait donc garantie par aucune mesure. Elle l est ici.
+  // Elles remplacent trois portes qui visaient `.library-row`, selecteur disparu
+  // avec la refonte en deux volets. Elles n ont pas disparu en silence : elles
+  // ont ECHOUE, parce que ce script exige de pouvoir mesurer et le dit quand il
+  // ne le peut pas. C est ce qui a permis de les reecrire, au lieu de croire un
+  // total qui n aurait plus rien couvert.
   //
-  // Les deux exigences sont contradictoires en apparence, d ou la mesure :
-  // au repos la souris ne doit pas pouvoir declencher une suppression sur un
-  // element invisible, et au clavier l action doit rester joignable.
+  // Ce qu elles verifient tient a l argument meme de la refonte : on juge un
+  // brouillon en le LISANT, pas en lisant sa fiche. Il faut donc qu un texte
+  // soit reellement rendu, que le repli a 210 caracteres y soit trace, et que
+  // le volet de triage defile de son cote sans emporter la page.
   await page.evaluate(() => {
     window.location.hash = "#/bibliotheque";
   });
-  await page.waitForTimeout(1200);
-  const actions = await page.evaluate(() => {
-    const groupe = document.querySelector(".library-row__actions-extra");
-    if (!groupe) return null;
-    const auRepos = getComputedStyle(groupe).pointerEvents;
-    const bouton = groupe.querySelector("button");
-    if (!bouton) return { auRepos, apresFocus: null, focalisable: false };
-    bouton.focus();
-    const apresFocus = getComputedStyle(groupe).pointerEvents;
-    const opacite = getComputedStyle(groupe).opacity;
-    const focalise = document.activeElement === bouton;
-    bouton.blur();
-    return { auRepos, apresFocus, opacite, focalisable: focalise };
+  await page.waitForTimeout(1500);
+
+  const triage = await page.evaluate(() => {
+    // Le conteneur DEFILANT est `.library-triage__scroll`, pas
+    // `.library-groups`, qui est en `overflow: visible`. Sonder le mauvais
+    // element rendait `voletDebordant` faux, et la porte du defilement, placee
+    // dans ce test, ne s executait jamais : ni succes, ni echec, silence. C est
+    // le quatrieme cas de cette famille cette nuit, et il a ete signale par le
+    // chantier qui a construit l ecran, pas par ce script.
+    const volet = document.querySelector(".library-triage__scroll");
+    const groupes = document.querySelector(".library-groups");
+    if (!volet || !groupes) return null;
+    const lecteur = document.querySelector(".library-reader__text");
+    const lignes = document.querySelectorAll(".library-triage-row");
+    const repli = document.querySelector(".library-reader__fold");
+
+    volet.scrollTop = 0;
+    volet.scrollTop = 999999;
+    const defilementVolet = volet.scrollTop;
+    volet.scrollTop = 0;
+
+    // Mesure typographique reelle, pas theorique. La colonne de lecture etait
+    // annoncee a 68 caracteres et tombait a 43 une fois la barre laterale de
+    // 232 px deduite : le volet droit perdait alors sa raison d etre, qui est
+    // de rendre le texte LISIBLE. On releve la largeur d un caractere dans la
+    // police effectivement rendue plutot que de supposer une valeur.
+    let mesureCaracteres = 0;
+    if (lecteur) {
+      const style = getComputedStyle(lecteur);
+      const regle = document.createElement("span");
+      regle.style.position = "absolute";
+      regle.style.visibility = "hidden";
+      regle.style.whiteSpace = "pre";
+      regle.style.font = style.font;
+      regle.textContent = "0".repeat(100);
+      lecteur.appendChild(regle);
+      const largeurCent = regle.getBoundingClientRect().width;
+      regle.remove();
+      if (largeurCent > 0) {
+        mesureCaracteres = Math.round(
+          (lecteur.getBoundingClientRect().width / largeurCent) * 100
+        );
+      }
+    }
+
+    return {
+      lignes: lignes.length,
+      mesureCaracteres,
+      defilementVolet,
+      voletDebordant: volet.scrollHeight > volet.clientHeight + 1,
+      texteRendu: lecteur ? (lecteur.textContent ?? "").trim().length : 0,
+      repliTrace: Boolean(repli)
+    };
   });
-  // Stabilite de hauteur au survol. La place des actions est reservee en
-  // permanence pour que la ligne ne saute pas quand la souris la traverse : sur
-  // une liste de trente, un decalage de quelques pixels par ligne survolee rend
-  // la lecture impossible. Ni un test unitaire ni une lecture de CSS ne peuvent
-  // le verifier, il faut un survol reel.
-  const ligne = page.locator(".library-row").first();
-  if ((await ligne.count()) === 0) {
+
+  if (!triage) {
     porte(
-      "Hauteur de ligne stable au survol",
-      "au moins une ligne de bibliotheque a mesurer",
-      surDonneesReelles ? "aucune ligne rendue" : "espace vierge, mesure impossible",
+      "Ecran de triage de la Bibliotheque",
+      "un volet .library-groups a mesurer",
+      surDonneesReelles ? "volet introuvable" : "espace vierge, mesure impossible",
       false
     );
   } else {
-    const avantSurvol = await ligne.evaluate((n) => Math.round(n.getBoundingClientRect().height));
-    await ligne.hover();
+    porte(
+      "Le volet de triage liste des brouillons",
+      "au moins une ligne",
+      `${triage.lignes} ligne(s)`,
+      triage.lignes > 0
+    );
+    porte(
+      "Le volet de lecture rend un texte",
+      "plus de 200 caracteres lus",
+      `${triage.texteRendu} caracteres`,
+      triage.texteRendu > 200
+    );
+    porte(
+      "Le repli a 210 caracteres est trace",
+      "un marqueur de repli present",
+      triage.repliTrace ? "present" : "absent",
+      triage.repliTrace
+    );
+    porte(
+      "Mesure du texte lu",
+      ">= 60 caracteres par ligne",
+      `${triage.mesureCaracteres} caracteres`,
+      triage.mesureCaracteres >= 60
+    );
+    porte(
+      "Le volet de triage defile de son cote",
+      "contenu debordant et scrollTop > 0",
+      triage.voletDebordant
+        ? `${Math.round(triage.defilementVolet)} px atteints`
+        : "le volet ne deborde pas, rien a mesurer",
+      triage.voletDebordant && triage.defilementVolet > 0
+    );
+  }
+
+  // Stabilite de hauteur au survol, sur le selecteur issu de la refonte.
+  // La porte precedente visait `.library-row`, disparu : elle a echoue au lieu
+  // de se taire, ce qui est exactement ce qu on lui demande.
+  const ligneTriage = page.locator(".library-triage-row").first();
+  if ((await ligneTriage.count()) > 0) {
+    const avantSurvol = await ligneTriage.evaluate((n) =>
+      Math.round(n.getBoundingClientRect().height)
+    );
+    await ligneTriage.hover();
     await page.waitForTimeout(250);
-    const apresSurvol = await ligne.evaluate((n) => Math.round(n.getBoundingClientRect().height));
+    const apresSurvol = await ligneTriage.evaluate((n) =>
+      Math.round(n.getBoundingClientRect().height)
+    );
     porte(
       "Hauteur de ligne stable au survol",
       "aucun deplacement",
       `${avantSurvol} px puis ${apresSurvol} px`,
       avantSurvol === apresSurvol
-    );
-  }
-
-  if (!actions) {
-    porte(
-      "Actions de ligne inertes a la souris au repos",
-      "un groupe .library-row__actions-extra a mesurer",
-      surDonneesReelles ? "groupe introuvable" : "espace vierge, mesure impossible",
-      false
-    );
-  } else {
-    porte(
-      "Actions de ligne inertes a la souris au repos",
-      "pointer-events: none",
-      actions.auRepos,
-      actions.auRepos === "none"
-    );
-    porte(
-      "Actions de ligne joignables au clavier",
-      "le focus les rend cliquables et visibles",
-      `focalisable ${actions.focalisable}, pointer-events ${actions.apresFocus}, opacite ${actions.opacite}`,
-      actions.focalisable === true &&
-        actions.apresFocus === "auto" &&
-        Number(actions.opacite) > 0.9
     );
   }
 

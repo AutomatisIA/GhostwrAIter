@@ -334,11 +334,22 @@
   padding: 0 12px;
 }
 
+/* Le champ grandit avec son contenu, il ne le masque pas.
+   Une hauteur fixe de 72 px, soit trois lignes, tronquait des valeurs de six
+   lignes pendant que six cents pixels restaient vides sous le formulaire.
+   `field-sizing: content` fait suivre la hauteur au texte reellement saisi :
+   court quand le champ est vide, donc l ecran reste dense a l arrivee, et
+   deploye quand il y a quelque chose a relire. Les bornes evitent qu un seul
+   champ tres long chasse les autres hors de l ecran, et le redimensionnement
+   manuel reste possible. */
 .strategy-row > textarea {
-  height: 72px;
+  field-sizing: content;
+  min-height: 72px;
+  max-height: 320px;
   padding: 9px 12px;
   line-height: var(--line-height-normal);
   resize: vertical;
+  overflow-y: auto;
 }
 
 /* Zone de deux lignes, pour les champs dont la valeur depasse regulierement
@@ -348,8 +359,10 @@
    la deuxieme ligne des que l interlignage bouge. Le rembourrage vaut 18px et
    le trait 2 : les 22px comptes laissent deux pixels de jeu, de quoi absorber
    l arrondi sous-pixel plutot que de rogner le jambage de la seconde ligne. */
+/* Le champ Positionnement s ouvre sur deux lignes, sa valeur ne tenant pas sur
+   une seule. Il grandit ensuite comme les autres. */
 .strategy-row > textarea[rows="2"] {
-  height: calc(2 * var(--font-size-base) * var(--line-height-normal) + 22px);
+  min-height: calc(2 * var(--font-size-base) * var(--line-height-normal) + 22px);
 }
 
 .strategy-row > input:focus,

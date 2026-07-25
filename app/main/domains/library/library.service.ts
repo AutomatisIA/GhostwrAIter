@@ -9,7 +9,8 @@ import { buildStrategyContext } from "../strategy/strategy-context";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   LibraryEntry,
-  LibrarySearchInput
+  LibrarySearchInput,
+  LibraryTriage
 } from "../../../shared/types/library";
 
 type RawLibraryRow = {
@@ -24,7 +25,36 @@ type RawLibraryRow = {
   pillarLabel: string;
   sourceDraftId: string | null;
   tags: string | null;
+  ideaTitle: string;
+  versionCount: number;
+  lastVersionAt: string;
+  /**
+   * Colonne technique : SQLite ne connait pas les booleens, la requete renvoie
+   * 0 ou 1. Elle sert a deriver `triage` et ne quitte jamais ce fichier.
+   */
+  isPlanned: number;
 };
+
+/**
+ * Traduit trois faits deja en base en un etat de triage. L ordre des regles est
+ * significatif : un brouillon planifie reste `planifie` meme s il n a qu une
+ * version, parce que la date posee prime sur la relecture qui reste a faire.
+ *
+ * Le seuil est `<= 1` et non `=== 1` : aucun brouillon sans version n existe
+ * aujourd hui, mais s il en apparaissait un il serait encore moins relu qu un
+ * brouillon a une seule version, pas plus.
+ */
+export function deriveTriage(isPlanned: boolean, versionCount: number): LibraryTriage {
+  if (isPlanned) {
+    return "planifie";
+  }
+
+  if (versionCount <= 1) {
+    return "a-relire";
+  }
+
+  return "pret";
+}
 
 type VariantSourceRow = {
   draftId: string;
@@ -349,6 +379,13 @@ export class LibraryService {
 
     const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
 
+    /*
+     * Les deux tables agregees sont pre-reduites a UNE ligne par brouillon avant
+     * d etre jointes. C est ce qui permet de tenir mille brouillons en une seule
+     * requete : une agregation par table, pas une requete par brouillon. C est
+     * aussi ce qui protege le GROUP_CONCAT des tags, qui compterait double si
+     * `draft_versions` ou `calendar_items` multipliaient les lignes.
+     */
     const rows = this.db
       .prepare(`
         SELECT
@@ -361,21 +398,41 @@ export class LibraryService {
           d.created_at AS createdAt,
           d.status AS status,
           i.pillar_label AS pillarLabel,
+          i.title AS ideaTitle,
           d.source_draft_id AS sourceDraftId,
+          COALESCE(v.versionCount, 0) AS versionCount,
+          COALESCE(v.lastVersionAt, d.created_at) AS lastVersionAt,
+          CASE WHEN c.draftId IS NOT NULL THEN 1 ELSE 0 END AS isPlanned,
           GROUP_CONCAT(t.label, '|') AS tags
         FROM drafts d
         INNER JOIN ideas i ON i.id = d.idea_id
         LEFT JOIN tag_links tl ON tl.draft_id = d.id
         LEFT JOIN tags t ON t.id = tl.tag_id
+        LEFT JOIN (
+          SELECT
+            draft_id,
+            COUNT(*) AS versionCount,
+            MAX(created_at) AS lastVersionAt
+          FROM draft_versions
+          GROUP BY draft_id
+        ) v ON v.draft_id = d.id
+        LEFT JOIN (
+          SELECT DISTINCT draft_id AS draftId FROM calendar_items
+        ) c ON c.draftId = d.id
         ${whereClause}
         GROUP BY d.id
         ORDER BY d.created_at DESC
       `)
       .all(...values) as RawLibraryRow[];
 
-    return rows.map((row) => ({
-      ...row,
-      tags: row.tags ? row.tags.split("|").filter(Boolean) : []
-    }));
+    return rows.map((row) => {
+      const { isPlanned, tags, ...rest } = row;
+
+      return {
+        ...rest,
+        tags: tags ? tags.split("|").filter(Boolean) : [],
+        triage: deriveTriage(isPlanned === 1, row.versionCount)
+      };
+    });
   }
 }

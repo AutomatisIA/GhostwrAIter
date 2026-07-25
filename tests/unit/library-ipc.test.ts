@@ -8,6 +8,7 @@ import type { IpcResult } from "../../app/main/ipc/register-validated-handler";
 import type { LibraryEntry } from "../../app/shared/types/library";
 import { createIdeasTables } from "../../app/main/domains/ideas/ideas.repository";
 import { createWorkshopTables } from "../../app/main/domains/workshop/workshop.service";
+import { CalendarService } from "../../app/main/domains/calendar/calendar.service";
 
 type CapturedHandler = (
   event: unknown,
@@ -32,6 +33,9 @@ describe("library IPC", () => {
     db = new Database(":memory:");
     createIdeasTables(db);
     createWorkshopTables(db);
+    // La bibliotheque lit `calendar_items` pour deriver le triage. Ce
+    // constructeur cree la table, comme au demarrage de l application.
+    new CalendarService(db);
     service = new LibraryRuntimeService(db);
   });
 

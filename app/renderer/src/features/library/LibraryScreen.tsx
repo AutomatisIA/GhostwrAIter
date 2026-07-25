@@ -1,15 +1,12 @@
 import {
-  Fragment,
   useEffect,
   useMemo,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode
+  type KeyboardEvent as ReactKeyboardEvent
 } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { formatCharCount, measurePost } from "../../../../shared/post-metrics";
 import { motion } from "motion/react";
-import type { LibraryEntry } from "@shared/types/library";
+import type { LibraryEntry, LibraryTriage } from "@shared/types/library";
 import type { CalendarItem } from "@shared/types/calendar";
 import {
   Button,
@@ -21,19 +18,17 @@ import {
   useToast
 } from "../../design-system/primitives";
 import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
+import { MetaLine, PillarDot } from "./meta-line";
+import { PostReader } from "./PostReader";
+import { TriageList } from "./TriageList";
+import {
+  TRIAGE_BUCKETS,
+  countByTriage,
+  flattenGroups,
+  groupBySubject
+} from "./triage";
 
 import "./library.css";
-function formatLibraryStatus(status: LibraryEntry["status"]) {
-  if (status === "scheduled") {
-    return "Planifié";
-  }
-
-  if (status === "variant") {
-    return "Variante";
-  }
-
-  return "Brouillon";
-}
 
 function formatCalendarStatus(status: CalendarItem["status"]) {
   if (status === "planned") {
@@ -52,18 +47,9 @@ function formatCalendarStatus(status: CalendarItem["status"]) {
 }
 
 /**
- * Nombre d etiquettes libres affichees en clair sur une ligne de liste. Au dela,
- * un fragment « +N » porte le reste, detail complet dans son `title`. Une ligne
- * de liste sert a reconnaitre un brouillon, pas a epuiser ses metadonnees.
- */
-const MAX_VISIBLE_TAGS = 3;
-
-/**
- * Trois points du revelateur d actions. Le jeu d icones partage
+ * Trois points du revelateur d actions secondaires. Le jeu d icones partage
  * (`design-system/primitives/icons`) appartient au chantier commun : ce trace
- * reste confine a l ecran Bibliotheque plutot que d y etre ajoute. Un carre de
- * 30px la ou un libelle ecrit prenait cent trente : c est la colonne de titres
- * qui recupere la place, et c est elle qui sert a reconnaitre un brouillon.
+ * reste confine a l ecran Bibliotheque plutot que d y etre ajoute.
  */
 function MoreHorizontalIcon() {
   return (
@@ -79,42 +65,6 @@ function MoreHorizontalIcon() {
       <circle cx="12" cy="12" r="1.6" />
       <circle cx="19" cy="12" r="1.6" />
     </svg>
-  );
-}
-
-/**
- * Pastille du pilier. Elle ne vaut que collee au nom qu elle annonce : posee en
- * tete de rangee comme fragment autonome, `MetaLine` inserait un point median
- * derriere elle et la ligne s ouvrait sur « · Brouillon », une puce sans
- * referent suivie d un separateur sans rien a separer.
- */
-function PillarDot() {
-  return <span className="library-row__dot" aria-hidden="true" />;
-}
-
-/**
- * Ligne de metadonnees du modele de liste : des fragments separes par des points
- * medians. Le separateur est purement typographique, d ou `aria-hidden` : lu a
- * voix haute il n ajoute rien au fragment qu il suit.
- *
- * La troncature appartient a chaque fragment (voir `library.css`), pas au
- * conteneur : un rognage de conteneur coupe le dernier fragment en plein milieu
- * d un mot, sans marque, ce qui donne un texte faux plutot qu un texte abrege.
- */
-function MetaLine({ parts }: { parts: ReactNode[] }) {
-  return (
-    <span className="library-row__meta">
-      {parts.map((part, index) => (
-        <Fragment key={index}>
-          {index > 0 ? (
-            <span className="library-row__sep" aria-hidden="true">
-              ·
-            </span>
-          ) : null}
-          {part}
-        </Fragment>
-      ))}
-    </span>
   );
 }
 
@@ -155,32 +105,42 @@ export function LibraryScreen() {
   // suit l'URL en continu sans setState dans un effet.
   const activeTab: TabView = searchParams.get("view") === "planning" ? "planning" : "drafts";
 
-  // --- Drafts state ---
+  // --- Brouillons ---
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<LibraryEntry["status"] | "all">("all");
   const [loading, setLoading] = useState(true);
   const [busyDraftId, setBusyDraftId] = useState<string | null>(null);
-  const [confirmingVariantId, setConfirmingVariantId] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+
+  // --- Triage ---
+  // Entree choisie A LA MAIN. Tant qu'elle vaut `null`, l'entree active est
+  // deduite des comptes : arriver sur « À relire 0 » alors que cinq brouillons
+  // sont prets ferait ouvrir l'ecran sur un vide.
+  const [pickedBucket, setPickedBucket] = useState<LibraryTriage | null>(null);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [expandedKeys, setExpandedKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [confirmingVariant, setConfirmingVariant] = useState(false);
+
+  // --- Edition et planification, portees par le brouillon selectionne ---
+  // Les deux etats retiennent un identifiant et non un booleen : la selection
+  // peut changer sous eux (suppression, changement d'entree de triage), et un
+  // tampon d'edition applique au brouillon suivant ecraserait un texte au
+  // hasard.
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editHeadline, setEditHeadline] = useState("");
   const [editBody, setEditBody] = useState("");
-
-  // Ligne dont le panneau d actions secondaires est deploye. Une seule a la
-  // fois : ouvrir un panneau referme le precedent.
-  const [expandedActionsId, setExpandedActionsId] = useState<string | null>(null);
-
-  // --- Inline scheduling state ---
   const [schedulingDraftId, setSchedulingDraftId] = useState<string | null>(null);
   const [schedulingDate, setSchedulingDate] = useState("");
 
-  // --- Planning state ---
+  // --- Planning ---
   const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
-  const [calendarStatusFilter, setCalendarStatusFilter] = useState<CalendarItem["status"] | "all">("all");
+  const [calendarStatusFilter, setCalendarStatusFilter] = useState<CalendarItem["status"] | "all">(
+    "all"
+  );
   const [planningLoading, setPlanningLoading] = useState(false);
 
-  // --- Scheduled dates lookup (draftId -> plannedDate) ---
+  // --- Dates planifiees (draftId -> plannedDate) ---
   const [scheduledDates, setScheduledDates] = useState<Map<string, string>>(new Map());
 
   function switchTab(tab: TabView) {
@@ -189,7 +149,6 @@ export function LibraryScreen() {
     setSearchParams(tab === "drafts" ? {} : { view: "planning" });
   }
 
-  // Load library entries on mount
   useEffect(() => {
     window.linkedinPoster.library
       .listEntries()
@@ -203,7 +162,6 @@ export function LibraryScreen() {
         setLoading(false);
       });
 
-    // Also load calendar items to populate scheduled dates badges
     window.linkedinPoster.calendar
       .listItems()
       .then((items) => {
@@ -219,7 +177,6 @@ export function LibraryScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load planning items when switching to planning tab
   useEffect(() => {
     if (activeTab !== "planning") return;
 
@@ -228,7 +185,6 @@ export function LibraryScreen() {
     window.linkedinPoster.calendar
       .listItems()
       .then((items) => {
-        // Sort chronologically
         const sorted = [...items].sort(
           (a, b) => new Date(a.plannedDate).getTime() - new Date(b.plannedDate).getTime()
         );
@@ -242,6 +198,79 @@ export function LibraryScreen() {
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // ---------------------------------------------------------------------------
+  // Triage : comptes reels, entree active, regroupement par sujet, selection.
+  // ---------------------------------------------------------------------------
+
+  const counts = useMemo(() => countByTriage(entries), [entries]);
+
+  const activeBucket: LibraryTriage =
+    pickedBucket ?? TRIAGE_BUCKETS.find((bucket) => counts[bucket.id] > 0)?.id ?? "a-relire";
+
+  const bucketEntries = useMemo(
+    () => entries.filter((entry) => entry.triage === activeBucket),
+    [entries, activeBucket]
+  );
+
+  const groups = useMemo(() => groupBySubject(bucketEntries), [bucketEntries]);
+  const orderedEntries = useMemo(() => flattenGroups(groups), [groups]);
+
+  // La selection est DERIVEE, jamais synchronisee par un effet : supprimer le
+  // brouillon lu, changer d'entree de triage ou lancer une recherche ferait
+  // sinon pointer la selection sur une ligne qui n'existe plus. Le repli est le
+  // premier de la liste, c'est-a-dire le plus abouti du sujet le plus prolifique.
+  const selectedEntry =
+    orderedEntries.find((entry) => entry.draftId === selectedDraftId) ?? orderedEntries[0] ?? null;
+
+  const isEditing = editingDraftId !== null && editingDraftId === selectedEntry?.draftId;
+  const isScheduling = schedulingDraftId !== null && schedulingDraftId === selectedEntry?.draftId;
+
+  function selectDraft(draftId: string) {
+    setSelectedDraftId(draftId);
+    setActionsOpen(false);
+    setConfirmingVariant(false);
+  }
+
+  function toggleGroup(key: string) {
+    setExpandedKeys((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function closeActions() {
+    setActionsOpen(false);
+    setConfirmingVariant(false);
+  }
+
+  /**
+   * Echap referme le panneau d actions secondaires et rend le focus a son
+   * declencheur. Sans ce rappel, refermer depuis le panneau demonte l element
+   * focalise et renvoie le focus sur `body` : la navigation au clavier repart du
+   * haut de la page.
+   */
+  function handleReaderKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    const disclosure = event.currentTarget.querySelector<HTMLButtonElement>(
+      "button[aria-expanded]"
+    );
+    if (disclosure?.getAttribute("aria-expanded") !== "true") {
+      return;
+    }
+
+    event.stopPropagation();
+    closeActions();
+    disclosure.focus();
+  }
 
   async function handleSearch(nextQuery: string) {
     setQuery(nextQuery);
@@ -272,135 +301,11 @@ export function LibraryScreen() {
     }
   }
 
-  /**
-   * Replie le panneau d actions d une ligne. La demande de confirmation de
-   * variante est retiree au passage : elle vit dans le panneau, et un
-   * « Confirmer ? » retrouve tel quel a la reouverture n aurait plus de question
-   * a laquelle repondre.
-   */
-  function closeRowActions() {
-    setExpandedActionsId(null);
-    setConfirmingVariantId(null);
-  }
-
-  /**
-   * Replie le panneau depuis un de ses propres boutons, en rendant le focus au
-   * revelateur. Sans ce rappel, refermer depuis le panneau demonte l element
-   * focalise et renvoie le focus sur `body` : la navigation au clavier repart du
-   * haut de la page. Le revelateur est le seul bouton porteur d `aria-expanded`
-   * dans la ligne, ce qui suffit a le retrouver sans table de refs.
-   */
-  function collapseRowActions(origin: HTMLElement | null) {
-    const disclosure = origin
-      ?.closest(".library-entry")
-      ?.querySelector<HTMLButtonElement>("button[aria-expanded]");
-    closeRowActions();
-    disclosure?.focus();
-  }
-
-  /**
-   * Echap referme le panneau d actions de la ligne ou se trouve le focus. Le
-   * panneau est reellement demonte, jamais rendu transparent : aucune action
-   * destructive ne reste cliquable derriere un element invisible.
-   */
-  function handleEntryKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (event.key !== "Escape") {
-      return;
-    }
-
-    const disclosure = event.currentTarget.querySelector<HTMLButtonElement>(
-      "button[aria-expanded]"
-    );
-    if (disclosure?.getAttribute("aria-expanded") !== "true") {
-      return;
-    }
-
-    event.stopPropagation();
-    closeRowActions();
-    disclosure.focus();
-  }
-
-  /**
-   * Les quatre actions secondaires d une ligne. Elles sont rendues a deux
-   * endroits qui ne coexistent jamais : dans la ligne, revelees au survol ou au
-   * focus, et dans le panneau ouvert au clic sur le revelateur. Un seul source
-   * pour les deux, sans quoi les libelles et les gardes de re-entree divergent.
-   *
-   * `fromPanel` ne change qu une chose : replier le panneau et rendre le focus a
-   * son declencheur n a de sens que si l on vient du panneau.
-   */
-  function secondaryActions(entry: LibraryEntry, fromPanel: boolean) {
-    return (
-      <>
-        {confirmingVariantId === entry.draftId ? (
-          <Button
-            variant="primary"
-            size="sm"
-            loading={busyDraftId === entry.draftId}
-            disabled={busyDraftId !== null}
-            onClick={() => {
-              setConfirmingVariantId(null);
-              void handleCreateDivergentVariant(entry.draftId);
-            }}
-          >
-            Confirmer ?
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busyDraftId !== null}
-            onClick={() => setConfirmingVariantId(entry.draftId)}
-          >
-            Variante
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={busyDraftId !== null}
-          onClick={(event) => {
-            // Le panneau se referme au profit de la bande de planification :
-            // deux bandes empilees sous la meme ligne n auraient plus de lecture
-            // possible.
-            const alreadyScheduling = schedulingDraftId === entry.draftId;
-            setSchedulingDraftId(alreadyScheduling ? null : entry.draftId);
-            setSchedulingDate("");
-            if (fromPanel) {
-              collapseRowActions(event.currentTarget);
-            }
-          }}
-        >
-          Planifier
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
-        >
-          Retravailler
-        </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          disabled={busyDraftId !== null}
-          onClick={() => setDeletingDraftId(entry.draftId)}
-        >
-          Supprimer
-        </Button>
-      </>
-    );
-  }
-
   function handleStartEditing(entry: LibraryEntry) {
-    closeRowActions();
+    closeActions();
     setEditingDraftId(entry.draftId);
     setEditHeadline(entry.headline);
     setEditBody(entry.bodyMarkdown);
-  }
-
-  function handleCancelEditing() {
-    setEditingDraftId(null);
   }
 
   async function handleSaveEditing(draftId: string) {
@@ -432,9 +337,7 @@ export function LibraryScreen() {
       const refreshed = await window.linkedinPoster.library.listEntries();
       setEntries(refreshed);
       setDeletingDraftId(null);
-      // La ligne disparait : son panneau d actions ne doit pas rester ouvert au
-      // profit d une ligne qui reprendrait le meme identifiant plus tard.
-      closeRowActions();
+      closeActions();
       toast.show({ kind: "success", message: "Brouillon supprimé." });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
@@ -453,7 +356,6 @@ export function LibraryScreen() {
         plannedDate: schedulingDate,
         status: "planned"
       });
-      // Refresh entries and scheduled dates
       const [refreshedEntries, refreshedItems] = await Promise.all([
         window.linkedinPoster.library.listEntries(),
         window.linkedinPoster.calendar.listItems()
@@ -515,15 +417,6 @@ export function LibraryScreen() {
     }
   }
 
-  const visibleEntries = useMemo(
-    () =>
-      entries.filter((entry) => {
-        const matchesStatus = statusFilter === "all" || entry.status === statusFilter;
-        return matchesStatus;
-      }),
-    [entries, statusFilter]
-  );
-
   const visibleCalendarItems = useMemo(
     () =>
       calendarItems.filter(
@@ -540,29 +433,27 @@ export function LibraryScreen() {
   const publishedCount = visibleCalendarItems.filter((i) => i.status === "published").length;
 
   /**
-   * Mesures de la section, en une seule phrase alignee a droite de son titre.
-   * Elles portent sur les brouillons AFFICHES, pas sur la totalite : c est la
-   * lecture coherente avec « 12 sur 30 », qui decrit deja le sous-ensemble.
-   * La moyenne disparait quand il n y a rien a moyenner.
+   * Effectif de la colonne, aligne a droite des entrees de triage. Une recherche
+   * active REMPLACE le jeu d entrees : ecrire « 30 au total » alors que la
+   * recherche n en a ramene trois serait faux, le libelle dit donc laquelle des
+   * deux portees il decrit.
    */
-  const draftsCount = useMemo(() => {
-    const scope =
-      visibleEntries.length === entries.length
-        ? `${visibleEntries.length}`
-        : `${visibleEntries.length} sur ${entries.length}`;
+  const totalLabel = query.trim()
+    ? `${entries.length} résultat${entries.length > 1 ? "s" : ""}`
+    : `${entries.length} au total`;
 
-    if (visibleEntries.length === 0) {
-      return scope;
-    }
+  const activeBucketDescriptor =
+    TRIAGE_BUCKETS.find((bucket) => bucket.id === activeBucket) ?? TRIAGE_BUCKETS[0]!;
 
-    const totalChars = visibleEntries.reduce(
-      (sum, entry) => sum + measurePost(entry.bodyMarkdown).chars,
-      0
-    );
-    const average = Math.round(totalChars / visibleEntries.length);
+  /** Premiere entree non vide autre que celle qui est affichee, pour l etat vide. */
+  const fallbackBucket = TRIAGE_BUCKETS.find(
+    (bucket) => bucket.id !== activeBucket && counts[bucket.id] > 0
+  );
 
-    return `${scope}, longueur moyenne ${average.toLocaleString("fr-FR")} caractères`;
-  }, [visibleEntries, entries.length]);
+  const actionsPanelId = "library-reader-actions";
+  const actionsLabel = selectedEntry
+    ? `Autres actions pour « ${selectedEntry.headline} »`
+    : "Autres actions";
 
   // Filtres et bascule de vue : de portee ecran, donc dans la barre de page.
   const pageActions = (
@@ -580,28 +471,13 @@ export function LibraryScreen() {
       </div>
 
       {activeTab === "drafts" ? (
-        <>
-          <input
-            className="library-bar__search"
-            aria-label="Recherche"
-            value={query}
-            onChange={(event) => void handleSearch(event.target.value)}
-            placeholder="Titre, pilier, tag…"
-          />
-          <select
-            className="library-bar__select"
-            aria-label="Statut"
-            value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as LibraryEntry["status"] | "all")
-            }
-          >
-            <option value="all">Tous les statuts</option>
-            <option value="draft">Brouillon</option>
-            <option value="variant">Variante</option>
-            <option value="scheduled">Planifié</option>
-          </select>
-        </>
+        <input
+          className="library-bar__search"
+          aria-label="Recherche"
+          value={query}
+          onChange={(event) => void handleSearch(event.target.value)}
+          placeholder="Titre, pilier, tag…"
+        />
       ) : (
         <select
           className="library-bar__select"
@@ -623,232 +499,183 @@ export function LibraryScreen() {
 
   return (
     <PageFrame eyebrow="Bibliothèque" actions={pageActions}>
-      {activeTab === "drafts" && (
-        <>
-          <div className="library-head">
-            <span className="eyebrow library-head__title">Brouillons</span>
-            <span className="library-head__count">{loading ? "…" : draftsCount}</span>
+      {activeTab === "drafts" &&
+        (loading ? (
+          <LoadingList label="Chargement de la bibliothèque" />
+        ) : entries.length === 0 ? (
+          <div className="library-empty">
+            {query.trim() ? (
+              <EmptyState
+                title="Aucun résultat"
+                description="Aucun brouillon ne correspond à votre recherche. Essayez un autre mot, ou effacez la recherche pour retrouver toute la bibliothèque."
+                action={{ label: "Effacer la recherche", onClick: () => void handleSearch("") }}
+              />
+            ) : (
+              <EmptyState
+                title="Aucun brouillon pour le moment"
+                description="Vos brouillons capitalisés apparaîtront ici. Commencez par créer une idée pour lancer la rédaction d'un premier post."
+                action={{ label: "Créer une idée", onClick: () => navigate("/creer") }}
+              />
+            )}
           </div>
-
-          {loading ? (
-            <LoadingList label="Chargement de la bibliothèque" />
-          ) : visibleEntries.length === 0 ? (
-            <div className="library-empty">
-              {entries.length === 0 ? (
-                <EmptyState
-                  title="Aucun brouillon pour le moment"
-                  description="Vos brouillons capitalisés apparaîtront ici. Commencez par créer une idée pour lancer la rédaction d'un premier post."
-                  action={{ label: "Créer une idée", onClick: () => navigate("/creer") }}
-                />
-              ) : (
-                <EmptyState
-                  title="Aucun résultat"
-                  description="Aucun brouillon ne correspond à votre recherche ou au filtre de statut. Essayez d'élargir les critères."
-                  action={{
-                    label: "Réinitialiser les filtres",
-                    onClick: () => {
-                      setStatusFilter("all");
-                      void handleSearch("");
-                    }
-                  }}
-                />
-              )}
-            </div>
-          ) : (
-            <motion.div
-              className="library-list"
-              variants={listReveal}
-              initial="hidden"
-              animate="visible"
-            >
-              {visibleEntries.map((entry) => {
-                const metrics = measurePost(entry.bodyMarkdown);
-                const plannedDate = scheduledDates.get(entry.draftId);
-                const extraTags = entry.tags.filter(
-                  (tag) => tag.trim().toLowerCase() !== entry.pillarLabel.trim().toLowerCase()
-                );
-                const shownTags = extraTags.slice(0, MAX_VISIBLE_TAGS);
-                const hiddenTags = extraTags.slice(MAX_VISIBLE_TAGS);
-                const isEditing = editingDraftId === entry.draftId;
-                const actionsOpen = expandedActionsId === entry.draftId && !isEditing;
-                const actionsPanelId = `library-actions-${entry.draftId}`;
-                const actionsLabel = `Autres actions pour « ${entry.headline} »`;
-
-                return (
-                  <div
-                    className="library-entry"
-                    key={entry.draftId}
-                    onKeyDown={handleEntryKeyDown}
+        ) : (
+          <div className="library-triage">
+            {/* Volet de gauche : ce qu'il reste a faire, puis les sujets. */}
+            <div className="library-triage__side">
+              <div className="library-buckets" role="group" aria-label="Ce qu'il reste à faire">
+                {TRIAGE_BUCKETS.map((bucket) => (
+                  <button
+                    key={bucket.id}
+                    type="button"
+                    className="library-bucket"
+                    aria-pressed={bucket.id === activeBucket}
+                    onClick={() => {
+                      setPickedBucket(bucket.id);
+                      closeActions();
+                    }}
                   >
-                    {isEditing ? (
-                      <div className="library-row library-row--editing">
-                        <input
-                          className="library-input"
-                          value={editHeadline}
-                          onChange={(e) => setEditHeadline(e.target.value)}
-                          aria-label="Titre du post"
-                        />
-                        <textarea
-                          className="library-textarea"
-                          value={editBody}
-                          onChange={(e) => setEditBody(e.target.value)}
-                          rows={12}
-                          aria-label="Corps du post"
-                        />
-                        <div className="library-row__actions">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={busyDraftId !== null}
-                            onClick={handleCancelEditing}
-                          >
-                            Annuler
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            loading={busyDraftId === entry.draftId}
-                            disabled={
-                              busyDraftId !== null || !editHeadline.trim() || !editBody.trim()
+                    {bucket.label} <span className="library-bucket__count">{counts[bucket.id]}</span>
+                  </button>
+                ))}
+                <span className="library-buckets__total">{totalLabel}</span>
+              </div>
+
+              <div className="library-triage__scroll">
+                {orderedEntries.length === 0 ? (
+                  <div className="library-triage__empty">
+                    <EmptyState
+                      title={activeBucketDescriptor.emptyTitle}
+                      description={activeBucketDescriptor.emptyDescription}
+                      action={
+                        fallbackBucket
+                          ? {
+                              label: `Voir ${counts[fallbackBucket.id]} « ${fallbackBucket.label.toLowerCase()} »`,
+                              onClick: () => setPickedBucket(fallbackBucket.id)
                             }
-                            onClick={() => void handleSaveEditing(entry.draftId)}
-                          >
-                            Enregistrer
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <article className="library-row">
-                        <div className="library-row__main">
-                          <span className="library-row__title">{entry.headline}</span>
-                          <MetaLine
-                            parts={[
-                              <span className="library-row__pillar" key="pillar">
-                                <PillarDot />
-                                <span className="library-row__pillar-name">
-                                  {entry.pillarLabel}
-                                </span>
-                              </span>,
-                              // « Brouillon » repete sur chaque ligne d un onglet
-                              // qui s appelle deja Brouillons n apprend rien. Seul
-                              // l etat qui sort de l ordinaire est dit.
-                              ...(entry.status === "draft"
-                                ? []
-                                : [
-                                    <span className="library-row__status" key="status">
-                                      {formatLibraryStatus(entry.status)}
-                                    </span>
-                                  ]),
-                              ...(plannedDate
-                                ? [
-                                    <span className="library-row__num" key="date">
-                                      {plannedDate}
-                                    </span>
-                                  ]
-                                : []),
-                              <span
-                                key="chars"
-                                className={`library-row__num${
-                                  metrics.overLimit ? " library-row__num--over" : ""
-                                }`}
-                              >
-                                {formatCharCount(entry.bodyMarkdown)}
-                              </span>,
-                              ...(shownTags.length > 0
-                                ? [
-                                    <span className="library-row__tags" key="tags">
-                                      <span className="library-row__tag-list">
-                                        {shownTags.join(", ")}
-                                      </span>
-                                      {hiddenTags.length > 0 ? (
-                                        <span
-                                          className="library-row__more"
-                                          title={hiddenTags.join(", ")}
-                                        >
-                                          +{hiddenTags.length}
-                                        </span>
-                                      ) : null}
-                                    </span>
-                                  ]
-                                : [])
-                            ]}
-                          />
-                        </div>
+                          : undefined
+                      }
+                    />
+                  </div>
+                ) : (
+                  <motion.div variants={listReveal} initial="hidden" animate="visible">
+                    <TriageList
+                      groups={groups}
+                      selectedDraftId={selectedEntry?.draftId ?? null}
+                      onSelect={selectDraft}
+                      expandedKeys={expandedKeys}
+                      onToggleGroup={toggleGroup}
+                    />
+                  </motion.div>
+                )}
+              </div>
+            </div>
 
-                        {/*
-                         * Deux etats, comme la maquette. Au repos, « Modifier »
-                         * et le revelateur : cinq actions ecrites sur chaque
-                         * ligne faisaient de « Supprimer » le motif le plus
-                         * repete de l ecran, alors que c est l action la moins
-                         * souhaitable. Au survol ou au focus clavier, les quatre
-                         * autres se decouvrent par-dessus, sans rien remplacer.
-                         *
-                         * Le groupe revele n est pas rendu quand le panneau du
-                         * revelateur est ouvert : il porterait les memes quatre
-                         * actions, en double sur la meme ligne.
-                         */}
-                        <div className="library-row__actions library-row__actions--compact">
-                          {!actionsOpen && (
-                            <div className="library-row__actions-extra">
-                              {secondaryActions(entry, false)}
-                            </div>
-                          )}
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={busyDraftId !== null}
-                            onClick={() => handleStartEditing(entry)}
-                          >
-                            Modifier
-                          </Button>
-                          <Button
-                            className="library-row__disclosure"
-                            variant="secondary"
-                            size="sm"
-                            aria-expanded={actionsOpen}
-                            aria-controls={actionsOpen ? actionsPanelId : undefined}
-                            aria-label={actionsLabel}
-                            title="Autres actions"
-                            onClick={() => {
-                              if (actionsOpen) {
-                                closeRowActions();
-                              } else {
-                                setExpandedActionsId(entry.draftId);
-                              }
-                            }}
-                          >
-                            <MoreHorizontalIcon />
-                          </Button>
-                        </div>
-                      </article>
-                    )}
+            {/* Volet de droite : le post, lisible, et ses actions. */}
+            <div className="library-reader" onKeyDown={handleReaderKeyDown}>
+              {selectedEntry === null ? (
+                <p className="library-reader__blank">
+                  Choisissez une entrée qui contient des brouillons pour en lire un ici.
+                </p>
+              ) : isEditing ? (
+                <>
+                  <div className="library-reader__edit">
+                    <input
+                      className="library-input"
+                      value={editHeadline}
+                      onChange={(event) => setEditHeadline(event.target.value)}
+                      aria-label="Titre du post"
+                    />
+                    <textarea
+                      className="library-textarea library-reader__textarea"
+                      value={editBody}
+                      onChange={(event) => setEditBody(event.target.value)}
+                      aria-label="Corps du post"
+                    />
+                  </div>
+                  <footer className="library-reader__bar">
+                    <div className="library-reader__buttons">
+                      <Button
+                        variant="primary"
+                        loading={busyDraftId === selectedEntry.draftId}
+                        disabled={busyDraftId !== null || !editHeadline.trim() || !editBody.trim()}
+                        onClick={() => void handleSaveEditing(selectedEntry.draftId)}
+                      >
+                        Enregistrer
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={busyDraftId !== null}
+                        onClick={() => setEditingDraftId(null)}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </footer>
+                </>
+              ) : (
+                <>
+                  <PostReader
+                    entry={selectedEntry}
+                    plannedDate={scheduledDates.get(selectedEntry.draftId)}
+                  />
 
-                    {actionsOpen && (
+                  <footer className="library-reader__bar">
+                    {actionsOpen ? (
                       <div
                         className="library-actions"
                         id={actionsPanelId}
                         role="group"
                         aria-label={actionsLabel}
                       >
-                        {secondaryActions(entry, true)}
+                        {confirmingVariant ? (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={busyDraftId === selectedEntry.draftId}
+                            disabled={busyDraftId !== null}
+                            onClick={() => {
+                              setConfirmingVariant(false);
+                              void handleCreateDivergentVariant(selectedEntry.draftId);
+                            }}
+                          >
+                            Confirmer ?
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={busyDraftId !== null}
+                            onClick={() => setConfirmingVariant(true)}
+                          >
+                            Variante
+                          </Button>
+                        )}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={busyDraftId !== null}
+                          onClick={() => setDeletingDraftId(selectedEntry.draftId)}
+                        >
+                          Supprimer
+                        </Button>
                       </div>
-                    )}
+                    ) : null}
 
-                    {schedulingDraftId === entry.draftId && (
+                    {isScheduling ? (
                       <div className="library-schedule">
                         <input
                           type="date"
                           aria-label="Date de publication"
                           value={schedulingDate}
-                          onChange={(e) => setSchedulingDate(e.target.value)}
+                          onChange={(event) => setSchedulingDate(event.target.value)}
                           className="library-input library-schedule__input"
                         />
                         <Button
                           variant="primary"
                           size="sm"
-                          loading={busyDraftId === entry.draftId}
+                          loading={busyDraftId === selectedEntry.draftId}
                           disabled={!schedulingDate || busyDraftId !== null}
-                          onClick={() => void handleConfirmSchedule(entry.draftId)}
+                          onClick={() => void handleConfirmSchedule(selectedEntry.draftId)}
                         >
                           Planifier à cette date
                         </Button>
@@ -864,14 +691,68 @@ export function LibraryScreen() {
                           Annuler
                         </Button>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </motion.div>
-          )}
-        </>
-      )}
+                    ) : null}
+
+                    <div className="library-reader__buttons">
+                      <Button
+                        variant="primary"
+                        onClick={() =>
+                          void copyDraftToClipboard(
+                            `${selectedEntry.headline}\n\n${selectedEntry.bodyMarkdown}`,
+                            "Post copié dans le presse-papier : collez-le sur LinkedIn."
+                          )
+                        }
+                      >
+                        Copier le post
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={busyDraftId !== null}
+                        onClick={() => {
+                          setSchedulingDraftId(isScheduling ? null : selectedEntry.draftId);
+                          setSchedulingDate("");
+                          closeActions();
+                        }}
+                      >
+                        Planifier
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={busyDraftId !== null}
+                        onClick={() => handleStartEditing(selectedEntry)}
+                      >
+                        Modifier
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => navigate(`/creer?ideaId=${selectedEntry.ideaId}`)}
+                      >
+                        Retravailler
+                      </Button>
+                      <Button
+                        className="library-reader__disclosure"
+                        variant="secondary"
+                        aria-expanded={actionsOpen}
+                        aria-controls={actionsOpen ? actionsPanelId : undefined}
+                        aria-label={actionsLabel}
+                        title="Autres actions"
+                        onClick={() => {
+                          if (actionsOpen) {
+                            closeActions();
+                          } else {
+                            setActionsOpen(true);
+                          }
+                        }}
+                      >
+                        <MoreHorizontalIcon />
+                      </Button>
+                    </div>
+                  </footer>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
 
       {activeTab === "planning" && (
         <>

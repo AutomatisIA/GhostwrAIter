@@ -95,7 +95,12 @@ export function WorkshopContextBar({
         ))}
       </div>
 
-      {onReopenCadrage ? (
+      {/* Le retour au cadrage ne s affiche qu a partir de l etape 2. A l etape 1
+          on EST sur le cadrage : le bouton restait affiche et ne menait nulle
+          part, ce qui en faisait une commande morte au meme rang que les
+          vivantes. Un bouton qui ne fait rien est pire qu un bouton absent :
+          il apprend a l utilisateur a se mefier des autres. */}
+      {onReopenCadrage && step > 1 ? (
         <Button variant="ghost" size="sm" onClick={onReopenCadrage}>
           Revenir au cadrage
         </Button>
