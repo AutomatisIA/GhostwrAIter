@@ -245,6 +245,7 @@ describe("library triage", () => {
         "lastVersionAt",
         "pillarLabel",
         "qualityScore",
+        "targetIcpSegment",
         "sourceDraftId",
         "status",
         "tags",

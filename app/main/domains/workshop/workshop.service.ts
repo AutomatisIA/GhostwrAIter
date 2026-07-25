@@ -13,6 +13,7 @@ import {
   emitPhaseStarted
 } from "../execution/execution-progress-emitter";
 import type { ExecutionPhase } from "../../../shared/types/execution-progress";
+import type { IdeaRecord } from "../../../shared/types/ideas";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   HookOption,
@@ -285,7 +286,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-structure-selector",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         ideaId: idea.id,
         title: idea.title,
@@ -335,7 +336,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-hook-engine",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         ideaId: idea.id,
         title: idea.title,
@@ -395,7 +396,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-post-writer",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         ideaId: idea.id,
         title: idea.title,
@@ -500,7 +501,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-repurpose",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         headline: draft.headline,
         bodyMarkdown: draft.bodyMarkdown,
@@ -656,7 +657,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-post-editor",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         draftId,
         headline: draft.headline ?? idea.title,
@@ -823,12 +824,13 @@ export class WorkshopService {
       hooks,
       run,
       versions,
-      contextUsed: this.buildContextUsed(idea.pillarLabel)
+      contextUsed: this.buildContextUsed(idea)
     };
   }
 
-  private buildContextUsed(pillarLabel: string): WorkshopSession["contextUsed"] {
+  private buildContextUsed(idea: IdeaRecord): WorkshopSession["contextUsed"] {
     const strategy = this.requireActiveStrategy();
+    const pillarLabel = idea.pillarLabel;
 
     return {
       pillarLabel,
@@ -837,7 +839,7 @@ export class WorkshopService {
       strategyBio: strategy.profile.bio,
       strategyExpertiseSummary: strategy.profile.expertiseSummary,
       strategyOffersSummary: summarizeOffers(strategy),
-      strategyIcpSummary: summarizeIcps(strategy),
+      strategyIcpSummary: summarizeIcps(strategy, idea.targetIcpSegment),
       pillarDescription:
         strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
       voiceGuardrail: strategy.voiceRules.map((r) => `[${r.ruleType}] ${r.ruleText}`).join(" | "),
@@ -897,12 +899,18 @@ export class WorkshopService {
     return result;
   }
 
-  private buildRunnerContext(pillarLabel: string) {
+  /**
+   * Le contexte est construit a partir de l idee entiere, et non de son seul
+   * pilier : la cible visee voyage avec elle. Les cinq etapes du pipeline
+   * (structure, accroche, redaction, variante, correction) passent par ici,
+   * donc elles ecrivent toutes pour la meme personne.
+   */
+  private buildRunnerContext(idea: IdeaRecord) {
     return buildStrategyContext(
       this.requireActiveStrategy(),
-      pillarLabel,
+      idea.pillarLabel,
       this.getFoundationSummary?.() ?? null,
-      { requireVoiceRules: true }
+      { requireVoiceRules: true, targetIcpSegment: idea.targetIcpSegment }
     );
   }
 

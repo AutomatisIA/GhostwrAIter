@@ -179,7 +179,7 @@ un candidat à la suppression.
 ## 7. Traces de l'ancien nom
 
 `docs/architecture.md` est publié dans le dépôt public et contient des liens en **chemin
-absolu** vers `/Users/philippe/Dev/LinkedIn-Poster/...`, c'est-à-dire le disque local du
+absolu** vers `/Users/<utilisateur>/Dev/LinkedIn-Poster/...`, c'est-à-dire le disque local du
 mainteneur. Cassés pour tout cloneur, et ils exposent une arborescence privée. Correction
 triviale, risque nul, à faire en premier.
 

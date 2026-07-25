@@ -26,6 +26,7 @@ type RawLibraryRow = {
   sourceDraftId: string | null;
   tags: string | null;
   ideaTitle: string;
+  targetIcpSegment: string | null;
   versionCount: number;
   lastVersionAt: string;
   /**
@@ -63,6 +64,12 @@ type VariantSourceRow = {
   bodyMarkdown: string;
   qualityScore: number;
   pillarLabel: string;
+  /**
+   * Cible visee de l idee d origine. Une variante reecrit un post existant :
+   * elle doit viser la meme personne que l original, sinon elle n en est plus
+   * une variante mais un autre post.
+   */
+  targetIcpSegment: string | null;
   typology: string | null;
   objective: string | null;
   structureKey: string | null;
@@ -96,6 +103,7 @@ export class LibraryService {
           d.body_markdown AS bodyMarkdown,
           d.quality_score AS qualityScore,
           i.pillar_label AS pillarLabel,
+          i.target_icp_segment AS targetIcpSegment,
           d.typology AS typology,
           d.objective AS objective,
           d.structure_key AS structureKey,
@@ -118,7 +126,7 @@ export class LibraryService {
       runId,
       skillName: "linkedin-repurpose",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(source.pillarLabel),
+      context: this.buildRunnerContext(source),
       payload: {
         headline: source.headline,
         bodyMarkdown: source.bodyMarkdown,
@@ -250,6 +258,7 @@ export class LibraryService {
           d.body_markdown AS bodyMarkdown,
           d.quality_score AS qualityScore,
           i.pillar_label AS pillarLabel,
+          i.target_icp_segment AS targetIcpSegment,
           d.typology AS typology,
           d.objective AS objective,
           d.structure_key AS structureKey,
@@ -272,7 +281,7 @@ export class LibraryService {
       runId,
       skillName: "linkedin-repurpose",
       skillVersion: "2.0.0",
-      context: this.buildRunnerContext(source.pillarLabel),
+      context: this.buildRunnerContext(source),
       payload: {
         mode: "divergent",
         sourceHeadline: source.headline,
@@ -331,7 +340,13 @@ export class LibraryService {
     return created;
   }
 
-  private buildRunnerContext(pillarLabel: string) {
+  /**
+   * Le contexte est construit a partir de la ligne source entiere : la cible
+   * visee suit le post sur toute sa chaine. Reecrire avec toutes les cibles un
+   * texte redige pour une seule reviendrait a le destiner a un autre public que
+   * celui pour lequel il a ete ecrit.
+   */
+  private buildRunnerContext(source: Pick<VariantSourceRow, "pillarLabel" | "targetIcpSegment">) {
     const strategy = this.getActiveStrategy?.();
 
     if (!strategy) {
@@ -340,8 +355,9 @@ export class LibraryService {
 
     return buildStrategyContext(
       strategy,
-      pillarLabel,
-      this.getFoundationSummary?.() ?? null
+      source.pillarLabel,
+      this.getFoundationSummary?.() ?? null,
+      { targetIcpSegment: source.targetIcpSegment }
     );
   }
 
@@ -399,6 +415,7 @@ export class LibraryService {
           d.status AS status,
           i.pillar_label AS pillarLabel,
           i.title AS ideaTitle,
+          i.target_icp_segment AS targetIcpSegment,
           d.source_draft_id AS sourceDraftId,
           COALESCE(v.versionCount, 0) AS versionCount,
           COALESCE(v.lastVersionAt, d.created_at) AS lastVersionAt,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { LINKEDIN_MAX_CHARS, measurePost } from "../../../../shared/post-metrics";
 import type { IdeaRecord } from "@shared/types/ideas";
 import type { LibraryEntry } from "@shared/types/library";

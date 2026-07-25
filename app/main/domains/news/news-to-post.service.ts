@@ -9,6 +9,10 @@ import {
   emitPhaseSettled,
   emitPhaseStarted
 } from "../execution/execution-progress-emitter";
+// Le type vient du schema zod qui valide deja cette entree a la frontiere IPC.
+// La forme etait recopiee a la main dans la signature : deux declarations pour
+// un seul contrat, dont une seule est verifiee a l execution.
+import type { NewsSourceInput } from "../../../shared/schemas/ideas";
 import type { WorkshopSession } from "../../../shared/types/workshop";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import { createId } from "../../shared/create-id";
@@ -26,28 +30,30 @@ export class NewsToPostService {
   ) {}
 
   async createDraftFromSource(
-    input: {
-      sourceTitle: string;
-      sourceSummary: string;
-    },
+    input: NewsSourceInput,
     sender?: WebContents
   ): Promise<WorkshopSession> {
+    const { targetIcpSegment, ...source } = input;
     const idea = this.ideasRepository.createIdea({
-      title: input.sourceTitle,
-      angle: input.sourceSummary,
-      pillarLabel: "Veille"
+      title: source.sourceTitle,
+      angle: source.sourceSummary,
+      pillarLabel: "Veille",
+      targetIcpSegment
     });
     const draftId = createId("draft");
     const runId = createId("run");
     const createdAt = new Date().toISOString();
-    const runnerContext = this.buildRunnerContext();
+    const runnerContext = this.buildRunnerContext(idea.targetIcpSegment);
 
     const invocation: SkillRunnerInvocation = {
       runId,
       skillName: "linkedin-news-to-post",
       skillVersion: "1.0.0",
       context: runnerContext,
-      payload: input,
+      // La cible ne descend PAS dans la charge utile : elle appartient au
+      // contexte de strategie, ou le resume des cibles la porte deja. L y
+      // remettre la ferait arriver deux fois au modele, sous deux formes.
+      payload: source,
       attachments: []
     };
 
@@ -169,8 +175,11 @@ export class NewsToPostService {
    * posts moins alignes que les autres, sans que rien ne le signale
    * (cf. docs/audit-2026-07-editorial.md section 8). Elle utilise desormais le
    * meme contexte que l atelier et la bibliotheque.
+   *
+   * `targetIcpSegment` suit la meme regle que partout ailleurs : une cible
+   * choisie restreint le resume a celle-la, aucune cible le laisse entier.
    */
-  private buildRunnerContext() {
+  private buildRunnerContext(targetIcpSegment?: string | null) {
     const strategy = this.getActiveStrategy?.();
 
     if (!strategy) {
@@ -187,7 +196,7 @@ export class NewsToPostService {
       strategy,
       pillarLabel,
       this.getFoundationSummary?.() ?? null,
-      { requireVoiceRules: true }
+      { requireVoiceRules: true, targetIcpSegment }
     );
   }
 

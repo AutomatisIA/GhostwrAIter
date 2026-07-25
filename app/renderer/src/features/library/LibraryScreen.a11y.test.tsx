@@ -3,7 +3,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import type { LibraryEntry } from "@shared/types/library";
 import { ToastProvider } from "../../feedback/ToastProvider";
 import { LibraryScreen } from "./LibraryScreen";
@@ -118,6 +118,7 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     tags: ["agents", "entreprises", "française", "apprentissage", "generative"],
     sourceDraftId: null,
     ideaTitle: "Devis et valeur perçue",
+    targetIcpSegment: null,
     versionCount: 3,
     lastVersionAt: new Date(Date.now() - DAY).toISOString(),
     triage: "a-relire",

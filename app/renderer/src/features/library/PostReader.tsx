@@ -100,6 +100,13 @@ export function PostReader({ entry, plannedDate, now }: PostReaderProps) {
           <MetaRow label="Versions">{history}</MetaRow>
         ) : null}
 
+        {/* Pour qui ce post a ete ecrit. Omise plutot que rendue vide sur les
+            brouillons anterieurs au champ : une ligne « Cible : rien » ferait
+            croire a une donnee perdue la ou il n y en a jamais eu. */}
+        {entry.targetIcpSegment ? (
+          <MetaRow label="Cible">{entry.targetIcpSegment}</MetaRow>
+        ) : null}
+
         {plannedDate ? (
           <MetaRow label="Publication prévue">
             <span className="library-reader__num">{plannedDate}</span>

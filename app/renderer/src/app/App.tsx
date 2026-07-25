@@ -6,7 +6,7 @@ import {
   Route,
   Routes,
   useLocation
-} from "react-router-dom";
+} from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { LibraryScreen } from "../features/library/LibraryScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";

@@ -45,7 +45,7 @@ export function FoundationSection({
       <SectionHead
         title="Socle éditorial"
         hint={<InfoHint term="socle-editorial" />}
-        lead="Résumé structuré de votre stratégie, utilisé comme contexte par tous les modules de génération. Générez-le depuis votre profil, vos offres, vos ICPs et vos piliers, ou écrivez-le à la main."
+        lead="Résumé structuré de votre stratégie, utilisé comme contexte par tous les modules de génération. Générez-le depuis votre profil, vos offres, vos cibles et vos piliers, ou écrivez-le à la main."
         action={
           summary && !isEditing ? (
             <Button variant="secondary" onClick={startEditing}>
@@ -87,7 +87,7 @@ export function FoundationSection({
         <div className="strategy-surface strategy-foundation-preview">{summary}</div>
       ) : (
         <p className="strategy-foundation-hint">
-          Aucun socle éditorial généré. Remplissez d'abord les onglets Profil, Offres, ICPs et
+          Aucun socle éditorial généré. Remplissez d'abord les onglets Profil, Offres, Cibles et
           Piliers, puis lancez la génération depuis le panneau à droite de l'écran.
         </p>
       )}

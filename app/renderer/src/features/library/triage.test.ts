@@ -42,6 +42,7 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     tags: [],
     sourceDraftId: null,
     ideaTitle: "Devis et valeur perçue",
+    targetIcpSegment: null,
     versionCount: 3,
     lastVersionAt: "2026-07-24T09:00:00",
     triage: "pret",

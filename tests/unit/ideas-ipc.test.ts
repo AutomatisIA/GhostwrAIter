@@ -15,6 +15,22 @@ type CapturedHandler = (
   ...args: unknown[]
 ) => unknown | Promise<unknown>;
 
+/**
+ * Moteur strict enveloppe pour conserver la charge utile envoyee. Sans cette
+ * capture, un test ne verrait que les idees creees et resterait vert alors que
+ * le prompt du generateur porterait encore toutes les cibles.
+ */
+function createRunnerCapteur() {
+  const runner = createStrictSkillRunnerService();
+  const payloads: Array<Record<string, unknown>> = [];
+  const original = runner.executeAsync.bind(runner);
+  runner.executeAsync = (invocation) => {
+    payloads.push(invocation.payload);
+    return original(invocation);
+  };
+  return { runner, payloads };
+}
+
 function createHarness() {
   const handlers = new Map<string, CapturedHandler>();
   const registrar = {
@@ -183,7 +199,9 @@ describe("ideas IPC", () => {
   });
 
   describe("ideas:generate-from-strategy", () => {
-    it("rejects a non-undefined payload with IPC_INPUT_INVALID", async () => {
+    it("rejects une cle parasite avec IPC_INPUT_INVALID", async () => {
+      // Le canal n accepte plus seulement `undefined` : il accepte aussi une
+      // cible visee. Le schema reste `.strict()`, donc toute autre cle tombe.
       const { handlers, registrar } = createHarness();
       registerIdeasIpcHandlers(registrar, service);
 
@@ -195,6 +213,64 @@ describe("ideas IPC", () => {
       if (!result.ok) {
         expect(result.error.code).toBe("IPC_INPUT_INVALID");
       }
+    });
+
+    it("rejette une cible vide avec IPC_INPUT_INVALID", async () => {
+      const { handlers, registrar } = createHarness();
+      registerIdeasIpcHandlers(registrar, service);
+
+      const result = (await handlers.get("ideas:generate-from-strategy")?.(undefined, {
+        targetIcpSegment: "   "
+      })) as IpcResult<IdeaRecord[]>;
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("IPC_INPUT_INVALID");
+      }
+    });
+
+    it("n envoie que la cible demandee au generateur et la pose sur chaque idee", async () => {
+      // Deux effets, et les deux comptent : le generateur propose des sujets
+      // pour quelqu un, et l idee produite garde la cible pour la redaction. La
+      // seconde moitie est celle qui manquait : sans elle le choix serait perdu
+      // des la fin de la generation, cette porte d entree n offrant aucun moment
+      // ulterieur pour designer une cible.
+      const strategyRepository = new StrategyRepository(db);
+      const fixture = createStrategyBundleFixture();
+      const autreSegment = "Responsables des operations";
+      strategyRepository.saveStrategyBundle({
+        ...fixture,
+        icps: [
+          ...fixture.icps,
+          { segment: autreSegment, pains: "Des outils imposes sans mode operatoire." }
+        ]
+      });
+
+      // Le moteur est enveloppe pour conserver la charge utile reellement
+      // envoyee : c est la seule facon de voir ce que le generateur recoit. Un
+      // test qui n observerait que les idees creees resterait vert alors que
+      // les quatre cibles partiraient encore dans le prompt.
+      const { runner, payloads } = createRunnerCapteur();
+      const localService = new IdeasService(db, runner);
+
+      const idees = await localService.generateFromStrategy({
+        targetIcpSegment: autreSegment
+      });
+
+      const icps = payloads[0]?.icps as Array<{ segment?: string }> | undefined;
+      expect(icps?.map((icp) => icp.segment)).toEqual([autreSegment]);
+      expect(idees.length).toBeGreaterThan(0);
+      expect(idees.every((idee) => idee.targetIcpSegment === autreSegment)).toBe(true);
+    });
+
+    it("envoie toutes les cibles et n en pose aucune quand rien n est demande", async () => {
+      const strategyRepository = new StrategyRepository(db);
+      strategyRepository.saveStrategyBundle(createStrategyBundleFixture());
+
+      const idees = await service.generateFromStrategy();
+
+      expect(idees.length).toBeGreaterThan(0);
+      expect(idees.every((idee) => idee.targetIcpSegment === null)).toBe(true);
     });
 
     it("fails fast on an empty-pillars strategy without emitting a started phase", async () => {

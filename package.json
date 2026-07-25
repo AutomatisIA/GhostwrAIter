@@ -28,7 +28,8 @@
     "verify-hardening": "node scripts/verify-hardening.mjs",
     "eval:editorial": "node scripts/eval-editorial-quality.mjs",
     "audit:contraste": "node scripts/audit-contrast.mjs",
-    "audit:geometrie": "node scripts/audit-geometrie.mjs"
+    "audit:geometrie": "node scripts/audit-geometrie.mjs",
+    "captures": "node scripts/captures-visuelles.mjs"
   },
   "build": {
     "appId": "fr.automatisia.ghostwraiter",

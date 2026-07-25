@@ -42,11 +42,27 @@ const STOPWORDS = new Set([
   "ameliorer", "ameliore", "commence", "commencent", "commencer",
   "arrive", "arrivent", "montre", "montrent", "produit", "produisent",
   // mots de structure editoriale, sans valeur descriptive
-  "exemple", "exemples", "点", "point", "points", "cas", "chose", "choses",
+  "exemple", "exemples", "point", "points", "cas", "chose", "choses",
   "maniere", "facon", "sorte", "partie", "moment", "moments", "fois",
   "temps", "jour", "jours", "annee", "annees", "niveau", "place",
   "desormais", "quotidien", "quotidiens", "quotidiennes"
 ]);
+
+/**
+ * Forme de comparaison d un token : sans accents ni signes diacritiques.
+ *
+ * La liste des mots vides est ecrite sans accents, comme le reste du depot,
+ * alors que les tokens les conservent. La comparaison directe laissait donc
+ * passer toute forme accentuee de mot vide : sur la base reelle, `desormais`
+ * etait rejete et `desormais` accentue etait retenu comme mot-cle. Le test qui
+ * couvrait cette regle utilisait la forme non accentuee, donc il restait vert.
+ *
+ * L accent est retire pour DECIDER, jamais pour restituer : le tag affiche
+ * garde son orthographe.
+ */
+function normalizeForLookup(token: string): string {
+  return token.normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
 
 /**
  * Un mot-cle utile est assez long pour porter du sens, n est pas un mot vide,
@@ -56,7 +72,7 @@ const STOPWORDS = new Set([
  */
 function isMeaningful(token: string): boolean {
   if (token.length < 6) return false;
-  if (STOPWORDS.has(token)) return false;
+  if (STOPWORDS.has(normalizeForLookup(token))) return false;
   if (/^\d+$/.test(token)) return false;
   return true;
 }

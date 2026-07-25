@@ -3,7 +3,7 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import type { LibraryEntry } from "@shared/types/library";
 import { ToastProvider } from "../../feedback/ToastProvider";
 import { LibraryScreen } from "./LibraryScreen";
@@ -47,6 +47,7 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     tags: [],
     sourceDraftId: null,
     ideaTitle: "Devis et valeur perçue",
+    targetIcpSegment: null,
     versionCount: 3,
     lastVersionAt: daysAgo(1),
     triage: "a-relire",
@@ -226,6 +227,31 @@ describe("Bibliotheque, « jamais relu »", () => {
       container.querySelector(".library-triage-row .library-row__attention")?.textContent
     ).toBe("jamais relu");
     expect(metaValue(container, "Versions")).toBe("Aucune version, jamais relu");
+  });
+});
+
+describe("Bibliotheque, cible visee", () => {
+  it("dit pour qui le post a ete ecrit", async () => {
+    const { container } = renderLibrary([
+      entry({ draftId: "a", headline: "Un post cible", targetIcpSegment: "Dirigeants de PME" })
+    ]);
+
+    await loaded(container);
+
+    expect(metaValue(container, "Cible")).toBe("Dirigeants de PME");
+  });
+
+  it("omet la rangee plutot que de la rendre vide sur un brouillon sans cible", async () => {
+    // Une rangee « Cible : rien » ferait croire a une donnee perdue la ou il
+    // n y en a jamais eu : tous les brouillons anterieurs au champ sont dans
+    // ce cas.
+    const { container } = renderLibrary([
+      entry({ draftId: "a", headline: "Un post sans cible", targetIcpSegment: null })
+    ]);
+
+    await loaded(container);
+
+    expect(metaValue(container, "Cible")).toBeUndefined();
   });
 });
 

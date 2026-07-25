@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { useAiProgress } from "../../feedback/useAiProgress";
 import { PageFrame } from "../../design-system/primitives";

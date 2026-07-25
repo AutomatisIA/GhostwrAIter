@@ -42,6 +42,92 @@ function describeError(error: unknown, fallback: string): string {
 }
 
 /**
+ * Rangee « Cible visee ».
+ *
+ * La doctrine editoriale exige une cible unique par post. Sans ce champ, le
+ * moteur recevait TOUTES les cibles de la strategie et ecrivait pour personne :
+ * c est le choix qui change le plus la qualite du texte produit.
+ *
+ * La rangee est partagee par les TROIS portes d entree qui creent des idees :
+ * saisie manuelle, transformation de veille, et generation depuis la strategie.
+ * La doctrine ne distingue pas selon la provenance du sujet, et la troisieme
+ * est la plus critique : c est la seule ou l utilisateur n a aucun moment
+ * ulterieur pour designer une cible, donc une idee generee sans cible le
+ * resterait pour toujours.
+ *
+ * Le segment est retenu, jamais l identifiant de la cible : les identifiants
+ * sont regeneres a chaque enregistrement de la strategie (cf. `IdeaRecord`).
+ *
+ * Une liste deroulante, et non les etiquettes du dessin. Le dessin supposait des
+ * segments courts, « Dirigeant de PME, 20 a 100 salaries ». Les segments reels
+ * sont des phrases de 60 a 95 caracteres qui se ressemblent par leur debut :
+ * en etiquettes elles passaient a deux lignes, se posaient une par ligne et
+ * faisaient de ce champ le plus gros bloc de l ecran, et les tronquer rendait
+ * trois cibles sur quatre indiscernables. Le pilier garde ses etiquettes, sa
+ * taxonomie etant courte et fermee. Ce n est pas la meme donnee.
+ */
+function TargetRow({
+  labelId,
+  segments,
+  value,
+  onChange,
+  enEchec
+}: {
+  labelId: string;
+  segments: string[];
+  value?: string;
+  onChange: (segment: string) => void;
+  enEchec: boolean;
+}) {
+  return (
+    <div className="create-row">
+      <div className="create-label">
+        <label htmlFor={labelId}>Cible visée</label>
+        <FieldHelp label="Cible visée">
+          La doctrine éditoriale exige une cible unique par post. Sans ce choix, le
+          modèle reçoit toutes vos cibles et écrit pour personne.
+        </FieldHelp>
+      </div>
+      <div className="create-control">
+        {segments.length > 0 ? (
+          <>
+            <select
+              id={labelId}
+              className="create-select"
+              value={value ?? ""}
+              onChange={(event) => onChange(event.target.value)}
+            >
+              {segments.map((segment) => (
+                <option key={segment} value={segment}>
+                  {segment}
+                </option>
+              ))}
+            </select>
+            <span className="create-field-note">Une seule, jamais toutes</span>
+          </>
+        ) : enEchec ? (
+          /* Une strategie illisible et une strategie vide donnent la meme liste
+             vide. Envoyer creer une cible quelqu un qui en a six, parce que la
+             base etait verrouillee, le ferait chercher un probleme qui n existe
+             pas. */
+          <p className="create-field-note">
+            La stratégie n&apos;a pas pu être lue. Vos cibles existent peut-être
+            déjà : rouvrez l&apos;écran Stratégie pour vérifier.
+          </p>
+        ) : (
+          /* Aucune liste fantome : un menu vide se lirait comme un chargement.
+             La phrase nomme l endroit ou creer la premiere cible. */
+          <p className="create-field-note">
+            Aucune cible définie. Créez-en une dans l&apos;écran Stratégie, onglet
+            Cibles.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Aide de champ.
  *
  * Deux motifs d aide coexistaient sur cet ecran : « Titre du sujet » et
@@ -115,6 +201,18 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   const [isGeneratingFromStrategy, setIsGeneratingFromStrategy] = useState(false);
   const [query, setQuery] = useState("");
   const [strategyPillars, setStrategyPillars] = useState<string[]>([]);
+  // Segments des cibles de la strategie active, et non leurs identifiants :
+  // `saveBundle` vide la table `icps` puis la reinsere a chaque enregistrement
+  // de la strategie, donc un identifiant retenu ici serait orphelin des la
+  // prochaine visite de l ecran Strategie.
+  const [strategyTargets, setStrategyTargets] = useState<string[]>([]);
+  // Cible du mode « Depuis la strategie ». Etat propre plutot que champ d un
+  // formulaire : ce mode n en a pas, il ne porte qu un bouton.
+  const [targetIcpSegment, setTargetIcpSegment] = useState<string | undefined>();
+  // Distingue « la strategie n a aucune cible » de « la strategie n a pas pu
+  // etre lue ». Les deux donnent une liste vide, les deux ne disent pas la
+  // meme chose a l utilisateur.
+  const [strategieEnEchec, setStrategieEnEchec] = useState(false);
 
   // Feedback IA continu sur les operations composites longues (feature 010,
   // T032) : « Transformer une veille » (phase `news`) et « Generer des sujets »
@@ -144,10 +242,21 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   useEffect(() => {
     Promise.all([
       window.linkedinPoster.ideas.listIdeas(),
-      window.linkedinPoster.strategy.getActiveBundle().catch(() => null)
+      // L echec de chargement est CONSERVE, jamais replie sur `null`. Le
+      // repliait sur `null` faisait dire aux trois onglets « Aucune cible
+      // definie, creez-en une dans l ecran Strategie » a un utilisateur qui en
+      // a six : une base verrouillee ou une erreur IPC l envoyait creer ce
+      // qu il possede deja. Un ecran vide et un ecran en panne ne disent pas la
+      // meme chose.
+      window.linkedinPoster.strategy
+        .getActiveBundle()
+        .then((valeur) => ({ ok: true as const, valeur }))
+        .catch(() => ({ ok: false as const, valeur: null }))
     ])
-      .then(([loadedIdeas, bundle]) => {
+      .then(([loadedIdeas, resultatStrategie]) => {
         setIdeas(loadedIdeas);
+        setStrategieEnEchec(!resultatStrategie.ok);
+        const bundle = resultatStrategie.valeur;
         if (bundle) {
           const labels = bundle.pillars.map((p) => p.label).filter(Boolean);
           setStrategyPillars(labels);
@@ -155,6 +264,22 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
             setForm((current) =>
               current.pillarLabel ? current : { ...current, pillarLabel: labels[0] ?? "" }
             );
+          }
+
+          const segments = bundle.icps.map((icp) => icp.segment).filter(Boolean);
+          setStrategyTargets(segments);
+          if (segments.length > 0) {
+            setForm((current) =>
+              current.targetIcpSegment
+                ? current
+                : { ...current, targetIcpSegment: segments[0] }
+            );
+            setNewsSource((current) =>
+              current.targetIcpSegment
+                ? current
+                : { ...current, targetIcpSegment: segments[0] }
+            );
+            setTargetIcpSegment((current) => current ?? segments[0]);
           }
         }
       })
@@ -173,7 +298,14 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
     setIsCreatingIdea(true);
     try {
       const created = await window.linkedinPoster.ideas.createIdea(form);
-      setForm((current) => ({ ...emptyIdea, pillarLabel: current.pillarLabel }));
+      // Le pilier et la cible survivent a la creation : on enchaine en general
+      // plusieurs idees dans le meme cadrage, et les redemander a chaque fois
+      // ferait repartir le formulaire d un cran en arriere.
+      setForm((current) => ({
+        ...emptyIdea,
+        pillarLabel: current.pillarLabel,
+        targetIcpSegment: current.targetIcpSegment
+      }));
       await loadIdeas();
       return created;
     } catch (error) {
@@ -202,8 +334,15 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
     event.preventDefault();
     setIsCreatingFromNews(true);
     try {
-      const result = await window.linkedinPoster.ideas.createFromNewsSource(newsSource);
-      setNewsSource(emptyNewsSource);
+      const result = await window.linkedinPoster.ideas.createFromNewsSource(
+        newsSource
+      );
+      // La cible survit a la creation, comme sur la saisie manuelle : on
+      // enchaine plusieurs veilles pour le meme public.
+      setNewsSource((current) => ({
+        ...emptyNewsSource,
+        targetIcpSegment: current.targetIcpSegment
+      }));
       await loadIdeas();
       toast.show({ kind: "success", message: "Brouillon créé depuis la veille." });
       onSelect(result.idea.id);
@@ -220,7 +359,10 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   async function handleGenerateFromStrategy() {
     setIsGeneratingFromStrategy(true);
     try {
-      await window.linkedinPoster.ideas.generateFromStrategy();
+      // La cible part au generateur ET se pose sur chaque idee produite. C est
+      // la seule porte d entree ou l utilisateur n aura plus aucun moment pour
+      // la designer : une idee generee sans cible le resterait pour toujours.
+      await window.linkedinPoster.ideas.generateFromStrategy(targetIcpSegment ? { targetIcpSegment } : undefined);
       await loadIdeas();
       toast.show({ kind: "success", message: "Sujets générés depuis la stratégie." });
     } catch (error) {
@@ -366,6 +508,16 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                   )}
                 </div>
               </div>
+
+              <TargetRow
+                labelId="idea-target-label"
+                segments={strategyTargets}
+                value={form.targetIcpSegment}
+                onChange={(segment) =>
+                  setForm((current) => ({ ...current, targetIcpSegment: segment }))
+                }
+                enEchec={strategieEnEchec}
+              />
             </form>
           ) : null}
 
@@ -417,18 +569,37 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
                   />
                 </div>
               </div>
+
+              <TargetRow
+                labelId="news-target-label"
+                segments={strategyTargets}
+                value={newsSource.targetIcpSegment}
+                onChange={(segment) =>
+                  setNewsSource((current) => ({ ...current, targetIcpSegment: segment }))
+                }
+                enEchec={strategieEnEchec}
+              />
             </form>
           ) : null}
 
-          {/* Seul mode sans champ : la phrase n est pas une aide posee a cote
-              d une saisie, c est le contenu du panneau. */}
           {mode === "strategy" ? (
-            <p className="create-strategy-note">
-              L&apos;application propose des sujets à partir de vos piliers éditoriaux, de vos
-              clients visés et de vos offres, et les dépose dans le backlog. Rien à saisir
-              ici : si votre stratégie est vide, remplissez-la d&apos;abord, la génération
-              n&apos;aurait rien sur quoi s&apos;appuyer.
-            </p>
+            <>
+              {/* La phrase n est pas une aide posee a cote d une saisie, c est
+                  le contenu du panneau. */}
+              <p className="create-strategy-note">
+                L&apos;application propose des sujets à partir de vos piliers éditoriaux,
+                de la cible choisie ci-dessous et de vos offres, et les dépose dans le
+                backlog. Si votre stratégie est vide, remplissez-la d&apos;abord, la
+                génération n&apos;aurait rien sur quoi s&apos;appuyer.
+              </p>
+              <TargetRow
+                labelId="strategy-target-label"
+                segments={strategyTargets}
+                value={targetIcpSegment}
+                onChange={setTargetIcpSegment}
+                enEchec={strategieEnEchec}
+              />
+            </>
           ) : null}
         </div>
 

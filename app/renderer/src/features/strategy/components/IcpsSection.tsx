@@ -26,7 +26,7 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
     consequence =
       "Aucun client idéal décrit. Les accroches viseront « tout le monde » plutôt qu'une personne précise, sans que la génération échoue. Il n'y a pas de nombre imposé : un seul portrait suffit pour commencer.";
   } else if (incomplete > 0) {
-    consequence = `${incomplete} ICP sans segment ni douleurs. Ce${
+    consequence = `${incomplete} cible${incomplete > 1 ? "s" : ""} sans segment ni douleurs. Ce${
       incomplete > 1 ? "s portraits ne seront" : " portrait ne sera"
     } pas mobilisé${incomplete > 1 ? "s" : ""} à la génération, sans que celle-ci échoue.`;
   }
@@ -34,12 +34,12 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
   return (
     <section className="strategy-section" aria-label="Clients idéaux">
       <SectionHead
-        title="ICP"
+        title="Cibles"
         hint={<InfoHint term="icp" />}
         lead="Ces portraits permettent d'écrire pour des problèmes et un langage réels, pas pour « tout le monde »."
         action={
           <Button variant="secondary" onClick={onAdd}>
-            Ajouter un ICP
+            Ajouter une cible
           </Button>
         }
       />
@@ -47,9 +47,9 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
       <CompletenessIndicator
         filled={complete}
         total={icps.length}
-        unitOne="ICP"
-        unitMany="ICPs"
-        emptyLabel="Aucun ICP"
+        unitOne="cible"
+        unitMany="cibles"
+        emptyLabel="Aucune cible"
         consequence={consequence}
       />
 
@@ -58,7 +58,7 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
           <EmptyState
             title="Aucun client idéal défini"
             description="Décrivez au moins un client idéal : son métier, ses douleurs et ses mots à lui. Vos posts parleront à de vraies personnes plutôt qu'à tout le monde."
-            action={{ label: "Ajouter un ICP", onClick: onAdd }}
+            action={{ label: "Ajouter une cible", onClick: onAdd }}
           />
         </div>
       ) : null}
@@ -67,10 +67,10 @@ export function IcpsSection({ icps, onAdd, onRemove, onUpdate }: IcpsSectionProp
         <section
           key={`icp-${index}`}
           className="strategy-surface strategy-item"
-          aria-label={`ICP ${index + 1}`}
+          aria-label={`Cible ${index + 1}`}
         >
           <div className="strategy-item__head">
-            <span className="strategy-item__title">ICP {index + 1}</span>
+            <span className="strategy-item__title">Cible {index + 1}</span>
             <Button variant="danger" size="sm" onClick={() => onRemove(index)}>
               Retirer
             </Button>

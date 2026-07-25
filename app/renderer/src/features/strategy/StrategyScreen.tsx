@@ -22,7 +22,7 @@ import "./strategy.css";
 const tabs: Array<{ key: StrategyTab; label: string }> = [
   { key: "profil", label: "Profil" },
   { key: "offres", label: "Offres" },
-  { key: "icps", label: "ICPs" },
+  { key: "icps", label: "Cibles" },
   { key: "piliers", label: "Piliers" },
   { key: "voix", label: "Voix" },
   { key: "socle", label: "Socle éditorial" }

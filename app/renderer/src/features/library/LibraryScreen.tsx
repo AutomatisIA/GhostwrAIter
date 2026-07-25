@@ -4,7 +4,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent
 } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router";
 import { motion } from "motion/react";
 import type { LibraryEntry, LibraryTriage } from "@shared/types/library";
 import type { CalendarItem } from "@shared/types/calendar";

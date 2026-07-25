@@ -46,6 +46,12 @@ export type LibraryEntry = {
   versionCount: number;
   /** Horodatage de la version la plus recente, pour « modifie hier ». */
   lastVersionAt: string;
+  /**
+   * Cible visee du post, choisie a la creation de l idee. `null` pour les
+   * brouillons anterieurs au champ : la ligne de metadonnees est alors omise
+   * plutot que rendue vide.
+   */
+  targetIcpSegment: string | null;
   /** Derive des trois faits ci-dessus, jamais saisi. */
   triage: LibraryTriage;
 };

@@ -109,7 +109,7 @@ un signal négatif gratuit.
 ### Chemins absolus de la machine du développeur, sous l'ancien nom
 
 Vingt liens dans `docs/architecture.md` (18) et `docs/skills-codex.md` (2) pointent vers
-`/Users/philippe/Dev/LinkedIn-Poster/app/...`.
+`/Users/<utilisateur>/Dev/LinkedIn-Poster/app/...`.
 
 Doublement problématique : cassés pour quiconque clone le dépôt, et ils exposent le chemin
 local du développeur dans un dépôt destiné à la publication.

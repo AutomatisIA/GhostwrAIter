@@ -15,6 +15,15 @@ describe("tokenizeTags", () => {
     expect(tokenizeTags(bruit)).toEqual([]);
   });
 
+  it("rejette un mot vide meme accentue", () => {
+    // La base reelle porte « desormais » ACCENTUE. La liste des mots vides est
+    // ecrite sans accents, comme le reste du depot : la comparaison directe le
+    // laissait passer, et le test precedent ne le voyait pas parce qu il
+    // utilisait la forme non accentuee. La fixture doit refleter la donnee.
+    expect(tokenizeTags("désormais")).toEqual([]);
+    expect(tokenizeTags("améliorer envisagé créer")).toEqual([]);
+  });
+
   it("rejette les mots de moins de six lettres", () => {
     // La tranche de cinq lettres est dominee par des formes verbales.
     expect(tokenizeTags("usage cadre offre")).toEqual([]);

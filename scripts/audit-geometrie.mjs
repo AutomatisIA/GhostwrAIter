@@ -1,5 +1,5 @@
 /* global window, document, getComputedStyle */
-import { cpSync, existsSync, mkdtempSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { _electron as electron } from "playwright";
@@ -178,72 +178,142 @@ try {
 
   // ---- Porte 4 : densite de l onglet Profil de la Strategie, aides repliees.
   //
-  // Attention au perimetre de la mesure, il a deja fait rendre un faux verdict.
-  // La maquette annonce « 304 px replie, contre 1 040 px aujourd hui, seuil de
-  // recette 340 px » en decrivant ce bloc comme « quatre champs », et elle
-  // place l indicateur de completude EN DEHORS, sous la surface. Le seuil de
-  // 340 porte donc sur la seule surface des champs.
+  // Ce que cette porte mesurait avant, et pourquoi son verdict ne dependait pas
+  // de la mise en page.
   //
-  // Sa propre geometrie le confirme : quatre rangees de 60, 60, 96 et 96 px
-  // plus trois filets font 315 px, pas 304. Le chiffre annonce etait un peu
-  // optimiste. Mesurer l onglet entier contre ce seuil revient a comparer le
-  // tout a une valeur etablie sur la partie, et fait echouer une composition
-  // pourtant conforme au dessin.
+  // Elle relevait la hauteur de la section moins celle des champs, sur l etat
+  // d arrivee de l ecran. Or cet etat est une PREFERENCE UTILISATEUR. Les aides
+  // sont repliees par defaut, mais leur repli est persiste dans `app_settings`
+  // sous la cle `strategy_help_expanded`, et ce script mesure sur une COPIE de
+  // l espace reel. Sur la machine du proprietaire, qui avait deplie les quatre
+  // aides du Profil, la porte relevait 414 px et tombait ; sur un espace
+  // vierge, la meme porte relevait 167 px et passait. Le verdict suivait le
+  // dernier clic de celui qui lance l audit, jamais la feuille de style. Une
+  // porte dont le nom dit « aides repliees » et qui mesure ce qu on lui donne
+  // n atteste rien.
   //
-  // On mesure donc les deux, chacun contre le bon repere.
+  // Les 294,7 px qui manquaient a l appel, releves dans le rendu :
+  //   - les quatre paragraphes d aide deplies pesent 43,4 + 65,1 + 65,1 + 65,1
+  //     = 238,7 px ;
+  //   - chacun ouvre une deuxieme rangee dans la grille de sa ligne, donc
+  //     quatre fois le `row-gap` de 14 px, soit 56 px.
+  // Le cout par rangee valait ainsi 20 px de rembourrage, 1 px de filet, et
+  // 14 + 65 px d aide DEPLIEE. Rien d inexplique, rien a corriger dans la
+  // feuille : 414 px etait le cout de l onglet aides ouvertes, mesure contre un
+  // seuil etabli aides fermees.
+  //
+  // Ce que la porte mesure desormais, et pourquoi ses seuils descendent.
+  //
+  // Le script force l etat qu il annonce, le VERIFIE avant de conclure, et
+  // mesure deux grandeurs contre deux reperes distincts.
+  //
+  // Le seuil de 340 px vient de la maquette, ou il portait sur une HAUTEUR
+  // TOTALE : « 304 px replie, contre 1 040 px aujourd hui ». Depuis que
+  // `field-sizing: content` fait grandir les champs avec leur contenu, cette
+  // porte soustrait la hauteur des champs, ce qui est juste. Mais garder au
+  // passage le nombre de la maquette compare un cout de structure a un seuil
+  // de hauteur totale : 255 px de jeu sur une grandeur qui en vaut 85. Une
+  // porte a ce niveau n aurait plus rien arrete. Les seuils redescendent donc
+  // sur la grandeur reellement mesuree, chacun derive du dessin :
+  //   - formulaire seul : quatre rangees a 20 px de rembourrage, trois filets,
+  //     deux bordures de surface, soit 85 px de dessin. Releve : 85 px, sur un
+  //     profil vide comme sur un profil rempli, l aide repliee sortant du flux.
+  //     Seuil 120 px, 35 px de jeu ;
+  //   - onglet entier : le formulaire plus l indicateur de completude, seul
+  //     bloc dont la hauteur depend du contenu (68 px quand les quatre champs
+  //     manquent et que la ligne de consequence tient sur deux lignes, 20 px
+  //     quand tout est rempli, plus 14 px de marge). Releve : 167 px a vide,
+  //     119 px rempli. Seuil 200 px.
   await page.evaluate(() => {
     window.location.hash = "#/strategie";
   });
   await page.waitForTimeout(900);
-  const profil = await page.evaluate(() => {
-    const section = document.querySelector(".strategy-section");
-    if (!section) return null;
-    const surface = section.querySelector(".strategy-surface");
-    const champs = Array.from(section.querySelectorAll("textarea, input"));
-    const hauteurChamps = champs.reduce(
-      (total, n) => total + n.getBoundingClientRect().height,
-      0
-    );
-    return {
-      section: Math.round(section.getBoundingClientRect().height),
-      surface: surface ? Math.round(surface.getBoundingClientRect().height) : null,
-      // Cout de STRUCTURE : tout ce qui n est pas le champ lui-meme. Libelles,
-      // rembourrages, filets, indicateur de completude.
-      chrome: Math.round(section.getBoundingClientRect().height - hauteurChamps),
-      champs: champs.length
-    };
-  });
-  if (profil && profil.surface !== null) {
-    // Ce que ce seuil mesure vraiment, et pourquoi il a change de forme.
-    //
-    // Le defaut d origine etait un empilement en quatre lignes par champ :
-    // libelle, aide, champ, exemple. L onglet faisait 1 040 px. Le seuil de
-    // 340 px de la maquette visait ce COUT DE STRUCTURE, pas la longueur du
-    // texte saisi.
-    //
-    // Mesurer la hauteur totale contre ce seuil etait juste tant que les
-    // champs avaient une hauteur fixe. Depuis qu ils grandissent avec leur
-    // contenu, la porte echouait sur un profil bien rempli : un resume de
-    // 6 909 caracteres fait 3 489 px de texte, qu aucune mise en page ne rend
-    // court. La porte punissait alors l utilisateur d avoir renseigne son
-    // profil, ce qui est l inverse du but.
-    //
-    // On soustrait donc la hauteur des champs. Ce qui reste est le cout que la
-    // composition ajoute, et c est lui qui devait descendre.
+
+  // Le repli est pilote ici, jamais herite de l espace mesure. On passe par les
+  // boutons de chaque ligne plutot que par la bascule globale : leur etat se
+  // lit sur `aria-expanded`, la boucle est donc idempotente quel que soit
+  // l etat de depart, et elle ne depend d aucun autre composant.
+  const basculerAides = (ouvrir) =>
+    page.evaluate((o) => {
+      const boutons = Array.from(
+        document.querySelectorAll(".strategy-section .strategy-row__help-toggle")
+      );
+      for (const bouton of boutons) {
+        if ((bouton.getAttribute("aria-expanded") === "true") !== o) bouton.click();
+      }
+      return boutons.length;
+    }, ouvrir);
+
+  const mesurerProfil = () =>
+    page.evaluate(() => {
+      const section = document.querySelector(".strategy-section");
+      const surface = section?.querySelector(".strategy-surface");
+      if (!section || !surface) return null;
+      const champs = Array.from(surface.querySelectorAll("textarea, input"));
+      const hauteurChamps = champs.reduce(
+        (total, n) => total + n.getBoundingClientRect().height,
+        0
+      );
+      const aides = Array.from(section.querySelectorAll(".strategy-row__help"));
+      return {
+        // Cout de STRUCTURE : tout ce qui n est pas le champ lui-meme.
+        // Libelles, rembourrages, filets, et pour l onglet l indicateur de
+        // completude, que la maquette place hors de la surface de saisie.
+        formulaire: Math.round(surface.getBoundingClientRect().height - hauteurChamps),
+        onglet: Math.round(section.getBoundingClientRect().height - hauteurChamps),
+        champs: champs.length,
+        plusHautChamp: champs.length
+          ? Math.round(Math.max(...champs.map((n) => n.getBoundingClientRect().height)))
+          : 0,
+        // Etat reellement rendu au moment de la mesure, pas etat demande.
+        aidesDepliees: aides.filter((n) => getComputedStyle(n).display !== "none").length
+      };
+    });
+
+  await basculerAides(true);
+  await page.waitForTimeout(400);
+  const profilDeplie = await mesurerProfil();
+  await basculerAides(false);
+  await page.waitForTimeout(400);
+  const profil = await mesurerProfil();
+
+  if (!profil || !profilDeplie) {
     porte(
-      "Cout de structure de l onglet Profil",
-      "<= 340 px hors hauteur des champs",
-      `${profil.chrome} px sur ${profil.champs} champs`,
-      profil.chrome <= 340
-    );
-    porte(
-      "Les champs longs sont bornes",
-      "aucun champ au dela de 340 px",
-      `plus haut champ dans la borne`,
-      profil.section - profil.chrome > 0
+      "Cout de structure du formulaire Profil",
+      "<= 120 px hors hauteur des champs",
+      "surface de saisie introuvable",
+      false
     );
   } else {
-    porte("Cout de structure de l onglet Profil", "<= 340 px", "conteneur introuvable", false);
+    // `aidesDepliees === 0` fait partie de l assertion, et le compte est
+    // affiche : si le repli echoue un jour, la porte tombe en le disant, au
+    // lieu de mesurer sans bruit un autre etat que celui qu elle nomme.
+    // `champs === 4` refuse de conclure sur un formulaire qui n est plus celui
+    // qu on croit mesurer : un cout de structure faible sur zero champ rendu
+    // serait un vert vide.
+    porte(
+      "Cout de structure du formulaire Profil",
+      "<= 120 px hors hauteur des champs, 4 champs, aides repliees",
+      `${profil.formulaire} px sur ${profil.champs} champs, ${profil.aidesDepliees} aide(s) depliee(s) ; ${profilDeplie.formulaire} px les quatre aides ouvertes`,
+      profil.champs === 4 && profil.aidesDepliees === 0 && profil.formulaire <= 120
+    );
+    porte(
+      "Cout de structure de l onglet Profil",
+      "<= 200 px hors hauteur des champs, indicateur de completude compris",
+      `${profil.onglet} px, dont ${profil.onglet - profil.formulaire} px d indicateur`,
+      profil.champs === 4 && profil.aidesDepliees === 0 && profil.onglet <= 200
+    );
+    // Le plafond mesure est celui que la feuille declare, `max-height: 320px`
+    // sur les zones de texte. La version precedente de cette porte assertait
+    // `section - chrome > 0`, soit « la somme des hauteurs de champs est
+    // positive », et affichait un texte fixe a la place de sa mesure : elle
+    // etait verte sur n importe quel rendu ou un champ existe.
+    porte(
+      "Les champs longs sont bornes",
+      "aucun champ au dela des 320 px de max-height",
+      `plus haut champ ${profil.plusHautChamp} px`,
+      profil.champs === 4 && profil.plusHautChamp > 0 && profil.plusHautChamp <= 320
+    );
   }
 
   // ---- Porte 5 : sur Creer, l action primaire est atteignable sans defiler.
@@ -445,6 +515,11 @@ try {
   });
 } finally {
   await app.close();
+  // La copie porte l espace de travail REEL : base SQLite, posts, strategie.
+  // La laisser derriere soi depose les donnees personnelles du proprietaire
+  // dans un repertoire temporaire du systeme, a chaque execution. Quarante
+  // copies y avaient ete relevees.
+  rmSync(maison, { recursive: true, force: true });
 }
 
 let echecs = 0;

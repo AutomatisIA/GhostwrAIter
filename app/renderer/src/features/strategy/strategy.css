@@ -220,11 +220,17 @@
   grid-template-columns: 168px 1fr;
   gap: 14px;
   align-items: center;
-  /* 10px et non les 11 du dessin : la zone de deux lignes du Positionnement
-     ajoute 30px a la surface des champs du Profil, qui se mesure contre 340px,
-     et l onglet entier contre 420. A 11px le calcul tombait a 419 sur un
-     profil vide, ou la ligne de consequence occupe deux lignes. Un pixel de
-     rembourrage ne se voit pas ; une porte qui casse, si. */
+  /* 10px et non les 11 du dessin. Ce pixel avait ete rogne pour tenir deux
+     portes de HAUTEUR TOTALE, 340px sur la surface et 420px sur l onglet, que
+     la zone de deux lignes du Positionnement mettait a 419 sur un profil vide.
+     Ces portes ont ete remplacees par une mesure du seul cout de structure,
+     champs deduits : `scripts/audit-geometrie.mjs` releve 85px sur le
+     formulaire pour un seuil de 120, et 167px a vide sur l onglet pour un
+     seuil de 200. Le pixel n est donc plus ce qui separe le vert du rouge, et
+     il ne faut pas relire ce 10 comme une contrainte de recette. Il reste a 10
+     parce que la densite obtenue a ete validee a l oeil, pas pour tenir un
+     calcul. Ce sont ces 20px par rangee, soit 80 des 85px mesures, que la
+     porte surveille. */
   padding: 10px 18px;
   border-bottom: 1px solid var(--line);
 }

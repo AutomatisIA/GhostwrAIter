@@ -242,6 +242,40 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Liste deroulante de la cible visee. Meme surface, meme bordure et meme
+   hauteur que `.create-input`, pour que les deux champs se lisent comme un
+   seul plan de saisie. La fleche native est conservee : elle est le seul
+   signe qui distingue un menu d un champ de texte. */
+.create-select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.create-select:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+/* Mention posee sous un champ : la contrainte qui le regit, ou l endroit ou
+   creer ce qui manque quand la strategie ne fournit aucune option. Un menu vide
+   se lirait comme un chargement qui n aboutit pas. */
+.create-field-note {
+  display: block;
+  margin: 6px 0 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
 .create-strategy-note {
   margin: 0;
   max-width: 62ch;

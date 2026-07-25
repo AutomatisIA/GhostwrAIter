@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { motion } from "motion/react";
 import { ThemeSelector } from "./components/ThemeSelector";
 import { EnginePanel } from "./components/EnginePanel";

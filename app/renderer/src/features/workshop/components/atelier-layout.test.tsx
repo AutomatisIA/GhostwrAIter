@@ -62,7 +62,8 @@ function makeSession(bodyMarkdown: string): WorkshopSession {
       title: "Claude Cowork en PME",
       angle: "Commencer par une tâche connue",
       pillarLabel: "Pédagogie",
-      createdAt: "2026-07-25T09:00:00.000Z"
+      createdAt: "2026-07-25T09:00:00.000Z",
+      targetIcpSegment: null
     },
     draft: {
       id: "d1",

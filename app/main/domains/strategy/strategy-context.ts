@@ -45,12 +45,57 @@ export function summarizeOffers(strategy: StrategyBundle): string {
 }
 
 /**
- * Resume d une cible, avec la totalite des champs renseignes. Les champs vides
+ * Les cibles a transmettre au modele : celle qui est demandee, ou toutes.
+ *
+ * Point unique de la regle. Le generateur de sujets
+ * (`ideas-ipc.ts`) en portait une copie mot pour mot : corriger le
+ * comportement d un seul cote aurait laisse l autre en arriere sans qu aucun
+ * test ne le dise.
+ *
+ * `find` et non `filter` : rien n impose l unicite des segments dans
+ * `icpInputSchema`, et deux cibles homonymes aux douleurs differentes seraient
+ * toutes deux envoyees au modele pendant que l interface affirme « une seule,
+ * jamais toutes ». Sur des homonymes, la premiere gagne.
+ *
+ * Le repli sur la totalite couvre deux cas par le meme chemin, volontairement :
+ * aucune cible demandee (idee anterieure au champ, post importe) et cible
+ * introuvable (segment renomme ou supprime depuis la creation de l idee). Dans
+ * les deux cas l alternative serait de choisir a la place de l utilisateur ou
+ * de refuser de generer, ce qui serait pire que l ancien comportement.
+ */
+export function selectIcps(
+  strategy: StrategyBundle,
+  targetSegment?: string | null
+): StrategyBundle["icps"] {
+  const cible = targetSegment
+    ? strategy.icps.find((icp) => icp.segment === targetSegment)
+    : undefined;
+
+  return cible ? [cible] : strategy.icps;
+}
+
+/**
+ * Resume des cibles, avec la totalite des champs renseignes. Les champs vides
  * sont omis plutot que rendus comme `undefined`, pour ne pas gonfler le prompt
  * avec du bruit.
+ *
+ * `targetSegment` restreint le resume a UNE cible. La doctrine editoriale
+ * exige une cible unique par post ; envoyer les six au modele revient a lui
+ * demander d ecrire pour tout le monde, donc pour personne. C est le champ qui
+ * change le plus la qualite du texte produit.
+ *
+ * Deux cas retombent sur la totalite des cibles, volontairement par le meme
+ * chemin : aucune cible demandee (idee anterieure au champ, idee issue d une
+ * veille) et cible demandee introuvable (segment renomme ou supprime dans la
+ * strategie depuis la creation de l idee). Dans les deux cas l alternative
+ * serait de choisir a la place de l utilisateur ou de refuser de generer, ce
+ * qui serait pire que l ancien comportement.
  */
-export function summarizeIcps(strategy: StrategyBundle): string {
-  return strategy.icps
+export function summarizeIcps(
+  strategy: StrategyBundle,
+  targetSegment?: string | null
+): string {
+  return selectIcps(strategy, targetSegment)
     .map((icp) => {
       const parts = [`Cible: ${icp.segment}`, `douleurs: ${icp.pains}`];
       if (icp.objections) parts.push(`objections: ${icp.objections}`);
@@ -69,12 +114,18 @@ export function summarizeIcps(strategy: StrategyBundle): string {
  * l atelier refuse de generer sans regles de voix, la bibliotheque l acceptait.
  * Le parametre rend cette difference explicite au lieu de la laisser implicite
  * dans deux copies de code.
+ *
+ * `targetIcpSegment` porte la cible visee par le post, telle qu elle a ete
+ * choisie a la creation de l idee. Elle doit accompagner le post sur TOUTE sa
+ * chaine : la generation et la passe de correction lisent le meme contexte, et
+ * corriger avec toutes les cibles un texte ecrit pour une seule reviendrait a
+ * le reecrire pour un autre public que celui pour lequel il a ete redige.
  */
 export function buildStrategyContext(
   strategy: StrategyBundle,
   pillarLabel: string,
   foundationSummary: string | null,
-  options: { requireVoiceRules?: boolean } = {}
+  options: { requireVoiceRules?: boolean; targetIcpSegment?: string | null } = {}
 ): StrategyContext {
   if (!strategy.profile.id) {
     throw new Error("Strategy profile is missing an id.");
@@ -90,7 +141,7 @@ export function buildStrategyContext(
     strategyProfileName: strategy.profile.name,
     strategyPositioning: strategy.profile.positioning,
     strategyOffersSummary: summarizeOffers(strategy),
-    strategyIcpSummary: summarizeIcps(strategy),
+    strategyIcpSummary: summarizeIcps(strategy, options.targetIcpSegment),
     pillarLabel,
     pillarDescription:
       strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
