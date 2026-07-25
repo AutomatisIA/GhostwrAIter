@@ -81,7 +81,7 @@ describe("codex cli runner", () => {
     const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
     expect(prompt).toContain("You are a premium LinkedIn editorial skill runner");
     expect(prompt).toContain("Do not expose internal labels");
-    expect(prompt).toContain("Anti-hype");
+    expect(prompt).toContain("Editorial standard:");
     expect(prompt).toContain("French");
   });
 
@@ -133,7 +133,7 @@ describe("codex cli runner", () => {
     });
 
     const prompt = (executor as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as string;
-    expect(prompt).toContain('Do not use "partial". If the contract cannot be fully satisfied, return "failed".');
+    expect(prompt).toContain('Never "partial": if the contract cannot be fully satisfied, return "failed".');
     expect(prompt).toContain('"data": { "structures": [');
     expect(prompt).toContain('"qualitySignals": { "clarity": 0.0, "specificity": 0.0, "antiHypeAlignment": 0.0 }');
   });
@@ -184,9 +184,13 @@ describe("codex cli runner", () => {
     expect(prompt).toContain('Return hook scores as decimals between 0 and 1. Never use percentages like 87 or 91.');
     expect(prompt).toContain('"hooks":[{"family":"...","text":"...","score":0.0}]');
     expect(prompt).toContain('"qualitySignals":{"clarity":0.0,"specificity":0.0,"antiHypeAlignment":0.0}');
-    expect(prompt).toContain("Use these editorial references for sharpness, not for copy-paste");
-    expect(prompt).toContain("La plupart des PME ne ratent pas l IA a cause des outils.");
-    expect(prompt).toContain("Ban openings that are now too recognizable");
+    // Garde-fou de non-regression : ces citations de calibration etaient
+    // elles-memes des parallelismes negatifs, elles enseignaient le tic
+    // qu elles pretendaient bannir. Elles ne doivent jamais revenir.
+    expect(prompt).not.toContain("Use these editorial references for sharpness");
+    expect(prompt).not.toContain("La plupart des PME ne ratent pas l IA a cause des outils.");
+    expect(prompt).not.toContain("Le vrai probleme avec l IA en PME");
+    expect(prompt).toContain("Structural constraints");
   });
 
   it("demands the publishable post-writer contract in the prompt", () => {
@@ -212,10 +216,13 @@ describe("codex cli runner", () => {
     expect(prompt).toContain('"qualitySignals":{"clarity":0.0,"specificity":0.0,"antiHypeAlignment":0.0}');
     expect(prompt).toContain('If the draft is not publication-ready, return "failed" instead of a weak draft.');
     expect(prompt).toContain("The first two paragraphs must already contain a concrete business consequence or operational cost.");
-    expect(prompt).toContain("Avoid generic openings such as 'On vend X comme l'etape d'apres'");
-    expect(prompt).toContain("Use these editorial references for sharpness, not for copy-paste");
-    expect(prompt).toContain("Une PME n a pas besoin de 20 cas d usage IA. Elle a besoin des 3 bons.");
-    expect(prompt).toContain("Never open with formulas such as 'Le sujet n est pas...', 'Le debat n est pas...'");
+    // Meme garde-fou cote redaction : le bloc de references retire ne doit pas
+    // reapparaitre, et les contraintes structurelles qui le remplacent doivent
+    // etre presentes.
+    expect(prompt).not.toContain("Use these editorial references for sharpness");
+    expect(prompt).not.toContain("Une PME n a pas besoin de 20 cas d usage IA.");
+    expect(prompt).toContain("Structural constraints");
+    expect(prompt).toContain("The voice rules in `context.voiceRules` are binding instructions");
   });
 
   it("demands a real editorial angle shift in the repurpose prompt", () => {
