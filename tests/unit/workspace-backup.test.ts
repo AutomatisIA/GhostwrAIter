@@ -369,6 +369,11 @@ describe("workspace backup, import side", () => {
     await expect(service.importWorkspace(archivePath, new Date())).rejects.toBeInstanceOf(
       ArchiveRejectedError
     );
+
+    // Refusing on the manifest must release the file too: this path reads a
+    // single entry rather than extracting, and it closes its own descriptor.
+    rmSync(archivePath);
+    expect(existsSync(archivePath)).toBe(false);
   });
 
   it("refuses an archive whose entry name escapes the destination", async () => {
@@ -402,6 +407,15 @@ describe("workspace backup, import side", () => {
       UnsafeArchiveEntryError
     );
     expect(existsSync(escapedPath)).toBe(false);
+
+    // A refused archive must also be released. Windows cannot delete or move a
+    // file whose descriptor is still open, so a refusal that returns before the
+    // descriptor is closed leaves the user's own archive locked. POSIX unlinks
+    // open files happily, which is why this only bites on one platform, and why
+    // it is asserted explicitly rather than left to the cleanup hook: it first
+    // showed up as an intermittent ENOTEMPTY on the Windows runner.
+    rmSync(archivePath);
+    expect(existsSync(archivePath)).toBe(false);
   });
 });
 
