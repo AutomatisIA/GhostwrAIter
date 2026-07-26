@@ -94,10 +94,10 @@ export function SettingsScreen() {
     }
   }
 
-  // Sauvegarde : action de portee ecran, donc dans la barre de page. Elle
-  // s'appelait « Exporter l'espace de travail » quand elle produisait un
-  // inventaire ; elle produit maintenant une sauvegarde restaurable, et porte
-  // le meme mot que l'action qui la relit, plus bas dans la section Donnees.
+  // Backup: a screen-wide action, hence the page bar. It read "Export the
+  // workspace" while it produced an inventory; it now produces a restorable
+  // backup, and carries the same word as the action that reads it back, lower
+  // down in the Data section.
   const pageActions = (
     <Button variant="secondary" size="sm" loading={exporting} onClick={handleExport}>
       Enregistrer une sauvegarde
@@ -112,8 +112,8 @@ export function SettingsScreen() {
         initial="hidden"
         animate="visible"
       >
-        {/* Application : deux reglages a une ligne chacun. Ils tenaient dans deux
-            cartes distinctes, ce qui donnait deux en-tetes pour deux controles. */}
+        {/* Application: two one-line settings. They used to sit in two separate
+            cards, which meant two headers for two controls. */}
         <section className="settings-section">
           <header className="settings-section-head">
             <h2 className="settings-section-title">Application</h2>
@@ -140,11 +140,11 @@ export function SettingsScreen() {
               </div>
             </div>
 
-            {/* La version vivait uniquement dans la barre laterale, a cote du
-                logo, ou elle se lit comme un ornement. C est ici qu on la
-                cherche quand on veut savoir ce qu on utilise, ou la citer dans
-                un signalement. Meme source que la barre laterale : le champ
-                `version` de package.json, injecte dans le preload. */}
+            {/* The version used to live only in the sidebar, next to the logo,
+                where it reads as decoration. This is where someone looks to
+                know what they are running, or to quote it in a bug report. Same
+                source as the sidebar: the `version` field of package.json,
+                injected into the preload. */}
             <div className="settings-row">
               <span className="settings-row__label">Version</span>
               <div className="settings-row__control">
@@ -214,9 +214,9 @@ export function SettingsScreen() {
             <div className="settings-row">
               <span className="settings-row__label">Journaux techniques</span>
               <div className="settings-row__control">
-                {/* Bordé, encre rouge. L action la plus destructive de l ecran est
-                    aussi la plus rare : le rouge plein est garde pour la
-                    confirmation, ou il porte enfin une decision. */}
+                {/* Outlined, red ink. The most destructive action on the screen
+                    is also the rarest: solid red is kept for the confirmation,
+                    where it finally carries a decision. */}
                 <Button
                   variant="secondary"
                   size="sm"

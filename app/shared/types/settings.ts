@@ -14,12 +14,12 @@ export type CliEngineStatus = {
   installCommand: string;
   loginCommand: string;
   /**
-   * Ou se procurer le moteur, quand aucune commande ne peut le faire.
+   * Where to obtain the engine, when no command can do it.
    *
-   * Antigravity n est pas un paquet npm et n a pas de sous-commande de
-   * connexion : ses deux champs de commande sont vides, et sans cette phrase
-   * l ecran ne dirait plus rien a qui ne l a pas installe. Une commande
-   * inventee serait pire, une absence totale n aide pas.
+   * Antigravity is not an npm package and has no login subcommand: both of its
+   * command fields are empty, and without this sentence the screen would say
+   * nothing at all to someone who has not installed it. A made-up command would
+   * be worse; a total absence does not help.
    */
   setupHint?: string;
 };
