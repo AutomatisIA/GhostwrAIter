@@ -104,10 +104,11 @@ app.whenReady().then(() => {
     new AntigravityEngine()
   ]);
   /**
-   * Familles de marqueurs d ecriture IA que l utilisateur interdit, reglees dans
-   * l onglet Voix. Relues a chaque generation : un changement de reglage prend
-   * effet sans redemarrer l application. Une preference absente vaut « toutes
-   * interdites », qui est le comportement attendu d une installation neuve.
+   * Families of AI writing tells the user forbids, set in the Voice tab.
+   *
+   * Read again on every generation, so a change of setting takes effect without
+   * restarting the application. An absent preference means "all forbidden",
+   * which is the expected behaviour of a fresh install.
    */
   const getUserConstraints = () => {
     const stored = appSettingsService.getPreference(AI_TELL_PREFERENCE_KEY).value;

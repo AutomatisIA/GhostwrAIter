@@ -33,22 +33,21 @@ function build(overrides: Record<string, unknown> = {}) {
   });
 }
 
-describe("environnement de compilation du module natif", () => {
-  it("force clang quand le cc du PATH n'est pas un compilateur", () => {
+describe("native module build environment", () => {
+  it("pins clang when the cc on PATH is not a compiler", () => {
     const { env, notes } = build({ probeCompiler: () => LAUNCHER_OUTPUT });
 
     expect(env.CC).toBe("/usr/bin/clang");
     expect(env.CXX).toBe("/usr/bin/clang++");
-    // Le contournement doit se voir dans la sortie : une compilation qui
-    // change de compilateur en silence est une surprise pour la session
-    // suivante.
+    // The substitution has to be visible in the output: a build that silently
+    // changes compiler is a surprise for the next session.
     expect(notes).toHaveLength(1);
     expect(notes[0]).toContain("/usr/bin/clang");
   });
 
-  it("ne touche a rien quand cc repond comme un vrai compilateur", () => {
-    for (const sortie of [CLANG_VERSION_OUTPUT, GCC_VERSION_OUTPUT]) {
-      const { env, notes } = build({ probeCompiler: () => sortie });
+  it("leaves everything alone when cc answers like a real compiler", () => {
+    for (const output of [CLANG_VERSION_OUTPUT, GCC_VERSION_OUTPUT]) {
+      const { env, notes } = build({ probeCompiler: () => output });
 
       expect(env.CC).toBeUndefined();
       expect(env.CXX).toBeUndefined();
@@ -56,7 +55,7 @@ describe("environnement de compilation du module natif", () => {
     }
   });
 
-  it("respecte un CC choisi par l'appelant, meme si cc est un lanceur", () => {
+  it("honours a CC chosen by the caller, even when cc is a launcher", () => {
     const { env, notes } = build({
       env: { CC: "/opt/homebrew/bin/gcc-14" },
       probeCompiler: () => LAUNCHER_OUTPUT
@@ -67,7 +66,7 @@ describe("environnement de compilation du module natif", () => {
     expect(notes).toEqual([]);
   });
 
-  it("ne force rien quand clang est absent de la machine", () => {
+  it("pins nothing when clang is absent from the machine", () => {
     const { env } = build({
       fileExists: (path: string) => path === "/usr/bin/python3",
       probeCompiler: () => LAUNCHER_OUTPUT
@@ -76,28 +75,28 @@ describe("environnement de compilation du module natif", () => {
     expect(env.CC).toBeUndefined();
   });
 
-  it("epingle Python quand /usr/bin/python3 existe", () => {
+  it("pins Python when /usr/bin/python3 exists", () => {
     expect(build().env.PYTHON).toBe("/usr/bin/python3");
     expect(build({ fileExists: () => false }).env.PYTHON).toBeUndefined();
   });
 
-  // Sur Windows ni le chemin POSIX ni `cc` n'existent : node-gyp trouve Python
-  // par le PATH et le registre, et le compilateur par MSVC.
-  it("ne touche a rien sur Windows", () => {
-    let sondages = 0;
+  // On Windows neither the POSIX path nor `cc` exists: node-gyp finds Python
+  // through PATH and the registry, and the compiler through MSVC.
+  it("leaves everything alone on Windows", () => {
+    let probes = 0;
     const { env, notes } = build({
       platform: "win32",
       env: { PATH: "C:\\Windows" },
       probeCompiler: () => {
-        sondages += 1;
+        probes += 1;
         return LAUNCHER_OUTPUT;
       }
     });
 
     expect(env).toEqual({ PATH: "C:\\Windows" });
     expect(notes).toEqual([]);
-    // Aucun sondage lance : inutile, et `cc --version` sous cmd afficherait
-    // une erreur dans les journaux de CI pour rien.
-    expect(sondages).toBe(0);
+    // No probe is run: pointless here, and `cc --version` under cmd would print
+    // an error into the CI logs for nothing.
+    expect(probes).toBe(0);
   });
 });

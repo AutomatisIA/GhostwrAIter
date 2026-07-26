@@ -42,6 +42,26 @@ npm run verify-hardening      # 6 security-hardening checks (macOS only)
 
 The full gate is automated in GitHub Actions across macOS, Ubuntu, and Windows for every pull request.
 
+## Language
+
+**Everything a contributor reads is written in English**: code comments, commit
+messages, pull request descriptions, documentation, release notes, and issue and
+PR templates.
+
+**Everything a user reads stays in French**: the application interface, its
+labels, and the error messages it displays. The product is aimed at
+French-speaking users; the repository is aimed at developers.
+
+Most existing files still carry French comments, from an earlier convention.
+They are converted opportunistically rather than in one sweep: **when you modify
+a file, translate the French comments it contains as part of your change.** Do
+not open a pull request whose only purpose is to translate comments in files you
+are not otherwise touching — that produces a large diff nobody can review
+against a behaviour change.
+
+New files, new comments and new commit messages are in English from the start,
+with no exception.
+
 ## Commit convention
 
 GhostwrAIter uses [Conventional Commits](https://www.conventionalcommits.org/) for every commit message. The format is:
@@ -53,6 +73,11 @@ GhostwrAIter uses [Conventional Commits](https://www.conventionalcommits.org/) f
 ```
 
 Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`. Scopes are optional but encouraged — for spec-driven features, use the feature number, e.g., `feat(005): add dependabot configuration`.
+
+Commit messages are written in English, subject and body alike. Commits before
+2026-07-26 are in French, from the earlier convention; they are left as they are,
+since rewriting history to translate it would break every existing reference to a
+commit.
 
 ## Test-driven development (Constitution IV)
 

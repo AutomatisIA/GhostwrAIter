@@ -8,7 +8,7 @@ The application drives an external AI assistant (Codex, Claude Code or Antigravi
 
 > The application interface is in French, because the product is aimed at French-speaking users. This README, the documentation and the release notes are in English, because the repository is public.
 >
-> Code comments are moving to English, and new code is written that way. Most existing files still carry French comments: converting several thousand lines is its own piece of work, not a prerequisite for contributing. If a French comment blocks you, say so in an issue.
+> Code comments and commit messages are in English too. Most existing files still carry French comments, from an earlier convention: they are translated as the files are modified, rather than in one sweep. See [CONTRIBUTING.md](CONTRIBUTING.md#language).
 
 ---
 
