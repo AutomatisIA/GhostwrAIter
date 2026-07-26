@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -43,6 +43,28 @@ const DAY = 86_400_000;
  * Une fixture qui lit l horloge mesure la machine autant que le code.
  */
 const MAINTENANT = Date.parse("2026-07-26T12:00:00.000Z");
+
+/*
+ * L horloge du composant est calee sur la meme reference que les fixtures.
+ *
+ * Figer les fixtures ne suffisait pas : le composant, lui, lisait l heure
+ * reelle pour rendre « modifie hier ». Tant que la suite tournait le
+ * 26 juillet, `daysAgo(1)` etait bien la veille et le test passait. Il a
+ * echoue au passage de minuit, sur une assertion qui n avait pas bouge :
+ * `expected '...modifie il y...' to contain 'modifie hier'`.
+ *
+ * Une reference figee d un cote et vivante de l autre ne fige rien du tout.
+ */
+beforeAll(() => {
+  // `shouldAdvanceTime` laisse les minuteries progresser, sans quoi `waitFor`
+  // et les interactions `userEvent` attendraient indefiniment.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(MAINTENANT);
+});
+
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 function daysAgo(days: number): string {
   return new Date(MAINTENANT - days * DAY).toISOString();

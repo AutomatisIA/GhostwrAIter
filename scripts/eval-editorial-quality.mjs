@@ -241,7 +241,6 @@ async function exerciseFixture(page, fixture) {
 }
 
 async function main() {
-  let exitCode = 0;
   const filter = parseArgs(process.argv.slice(2));
 
   // Pre-requis : l app packagee doit exister (le harnais lance dist-electron).
@@ -367,14 +366,12 @@ async function main() {
   const jsonPath = writeJsonReport(reportDir, timestamp, report);
   console.log(`Report written:\n  ${mdPath}\n  ${jsonPath}`);
 
-  if (interrupted) {
-    exitCode = 2;
-  } else if (summary.overallVerdict === "fail") {
-    exitCode = 1;
-  } else {
-    exitCode = 0;
-  }
-  process.exit(exitCode);
+  // 2 = interrupted, 1 = the benchmark ran and the editorial verdict is fail,
+  // 0 = pass. Computed here rather than accumulated in a variable declared at
+  // the top of the function: every branch overwrote the initial value, so the
+  // declaration carried no information over the 130 lines it spanned.
+  // Surfaced by eslint 10's no-useless-assignment.
+  process.exit(interrupted ? 2 : summary.overallVerdict === "fail" ? 1 : 0);
 }
 
 main().catch((err) => {
