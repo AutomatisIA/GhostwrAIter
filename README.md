@@ -1,31 +1,33 @@
 # GhostwrAIter
 
-Produisez des posts LinkedIn de qualite professionnelle, en local, avec l'IA de votre choix.
+Write professional LinkedIn posts locally, with the AI of your choice.
 
-GhostwrAIter est une application desktop qui guide la production editoriale de A a Z : strategie, ideation, redaction structuree, correction, capitalisation et planification. Le contenu reste sur votre machine. Pas de backend cloud, pas de compte a creer, pas de donnees qui sortent.
+GhostwrAIter is a desktop application that guides editorial production end to end: strategy, ideation, structured writing, correction, reuse and scheduling. Your content stays on your machine. No cloud backend, no account to create, no data leaving your computer.
 
-L'application utilise un assistant IA externe (ChatGPT, Claude ou Gemini) via votre propre abonnement pour generer les contenus. Vous gardez le controle editorial a chaque etape.
+The application drives an external AI assistant (Codex, Claude Code or Antigravity) through your own subscription. You keep editorial control at every step.
+
+> The application interface is in French. This README, the code comments and the release notes are in English, because the repository is public.
 
 ---
 
 ## Installation
 
-### Option A — Installeur (recommande)
+### Option A: installer (recommended)
 
-Telechargez la derniere version depuis les [Releases GitHub](https://github.com/AutomatisIA/GhostwrAIter/releases) :
+Download the latest version from [GitHub Releases](https://github.com/AutomatisIA/GhostwrAIter/releases):
 
-| Plateforme | Fichier |
-|------------|---------|
+| Platform | File |
+|----------|------|
 | **macOS (Apple Silicon)** | `GhostwrAIter-x.x.x-arm64.dmg` |
 | **macOS (Intel)** | `GhostwrAIter-x.x.x-x64.dmg` |
 | **Windows** | `GhostwrAIter-x.x.x-setup.exe` |
 | **Linux** | `GhostwrAIter-x.x.x.AppImage` |
 
-Ouvrez le `.dmg`, glissez l'application dans le dossier Applications, et lancez-la depuis le Dock ou Spotlight.
+Open the `.dmg`, drag the application into your Applications folder, and launch it from the Dock or Spotlight.
 
-### Option B — Depuis les sources (developpeurs)
+### Option B: from source (developers)
 
-Prerequis : [Node.js 20+](https://nodejs.org/) et [Git](https://git-scm.com/).
+Requirements: [Node.js 20+](https://nodejs.org/) and [Git](https://git-scm.com/).
 
 ```bash
 git clone https://github.com/AutomatisIA/GhostwrAIter.git
@@ -36,100 +38,113 @@ npm run dev
 
 ---
 
-## Configurer un moteur IA
+## Setting up an AI engine
 
-L'application a besoin d'un assistant IA pour generer les contenus. Installez celui qui correspond a votre abonnement :
+The application needs an AI assistant to generate content. Install the one that matches your subscription.
 
-**Codex** (ChatGPT Plus ou Team)
+**Codex** (ChatGPT Plus or Team)
+
 ```bash
 npm install -g @openai/codex
 codex login
 ```
 
-**Claude Code** (Claude Pro ou Team)
+**Claude Code** (Claude Pro or Team)
+
 ```bash
 npm install -g @anthropic-ai/claude-code
-claude login
+claude auth login
 ```
 
-**Gemini CLI** (Google AI Premium)
-```bash
-npm install -g @google/gemini-cli
-gemini login
-```
+**Antigravity** (Google)
 
-L'application detecte automatiquement les CLI installes. Vous pouvez en installer plusieurs et basculer dans Parametres > Moteur.
+Antigravity ships the `agy` command as part of the Antigravity suite. There is no npm package and no separate login command: install the suite from [antigravity.google](https://antigravity.google), then rerun detection from Settings.
 
-> **Pas encore d'abonnement ?** L'application fonctionne avec un compte gratuit sur certains services, mais les limites de generation seront plus basses. Un abonnement payant est recommande pour un usage editorial regulier.
+The application detects installed CLIs automatically. You can install several and switch between them in Settings, under Engine.
+
+Whatever the engine, GhostwrAIter pins its own execution policy on every call: read only, no external tools, your machine's CLI configuration ignored, and an empty working directory. It asks the model for text and nothing else.
+
+> **No subscription yet?** The application works with a free account on some services, but generation limits will be lower. A paid subscription is recommended for regular editorial use.
 
 ---
 
-## Ce que fait l'application
+## What the application does
 
-| Ecran | Role |
-|-------|------|
-| **Cockpit** | Vue d'ensemble du pipeline editorial, prochaine action recommandee, metriques |
-| **Strategie** | Positionnement, offres, ICPs, piliers editoriaux, regles de voix |
-| **Creer** | Capturer une idee (manuelle, veille, generation) puis la transformer en post via un workflow en 4 etapes |
-| **Bibliotheque** | Retrouver les drafts, creer des variantes, planifier la publication |
-| **Parametres** | Theme clair/sombre, choix du moteur IA, diagnostics, export |
+| Screen | Purpose |
+|--------|---------|
+| **Cockpit** | Overview of the editorial pipeline, recommended next action, metrics |
+| **Strategy** | Positioning, offers, target audiences, editorial pillars, voice rules |
+| **Create** | Capture an idea (manual, news item, generated) then turn it into a post through a four-step workflow |
+| **Library** | Triage drafts by what is left to do, read the post itself, create variants, schedule publication |
+| **Settings** | Light and dark theme, AI engine selection, diagnostics, export |
 
-Le workflow de production suit 4 etapes guidees :
-1. **Cadrage** — choisir la typologie et l'objectif du post
-2. **Structure** — selectionner un schema narratif adapte
-3. **Accroche** — generer et choisir la premiere phrase
-4. **Redaction** — produire le post complet, corriger, iterer
+The production workflow follows four guided steps:
+
+1. **Framing**: choose the post typology, its objective and its target audience
+2. **Structure**: pick a narrative pattern
+3. **Hook**: generate and choose the opening line
+4. **Writing**: produce the full post, correct it, iterate
+
+Editorial doctrine requires a single target audience per post. The audience you pick at framing follows the post through structure, hook, writing, variants and correction, so every stage writes for the same reader.
 
 ---
 
 ## Architecture
 
-- **Electron** 41 — shell desktop multi-plateforme
-- **React** 19 + **Vite** 7 — interface utilisateur
-- **SQLite** — stockage local (zero serveur)
-- **8 skills IA** — chaque etape du workflow est un prompt specialise avec un contrat d'entree/sortie structure
+- **Electron** 41: cross-platform desktop shell
+- **React** 19 and **Vite** 7: user interface
+- **SQLite**: local storage, no server
+- **Eight AI skills**: each workflow step is a specialised prompt with a structured input and output contract
 
-Les donnees sont stockees dans le dossier de donnees utilisateur de l'application : `~/Library/Application Support/GhostwrAIter/workspace` sur macOS, `~/.config/GhostwrAIter/workspace` sur Linux, `%APPDATA%\GhostwrAIter\workspace` sur Windows. Pour deplacer ce dossier (par exemple sur un disque externe ou hors synchronisation cloud), definissez la variable d'environnement `LINKEDIN_POSTER_WORKSPACE_ROOT` vers un chemin absolu de votre choix.
+Data is stored in the application's user data folder: `~/Library/Application Support/GhostwrAIter/workspace` on macOS, `~/.config/GhostwrAIter/workspace` on Linux, `%APPDATA%\GhostwrAIter\workspace` on Windows. To move that folder (onto an external drive, or out of a cloud-synced directory), set the `LINKEDIN_POSTER_WORKSPACE_ROOT` environment variable to an absolute path of your choice.
 
 ---
 
-## Commandes utiles (developpeurs)
+## Developer commands
 
-| Commande | Description |
-|----------|-------------|
-| `npm run dev` | Lancer en mode developpement (HMR) |
-| `npm run test` | Executer les tests (Vitest) |
-| `npm run typecheck` | Verification TypeScript |
-| `npm run lint` | Verification ESLint |
-| `npm run package:mac` | Build macOS (.dmg + .app) |
-| `npm run package:win` | Build Windows (.exe) |
-| `npm run package:linux` | Build Linux (.AppImage) |
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Run in development mode with hot reload |
+| `npm test` | Run the test suite (Vitest) |
+| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint check |
+| `npm run audit:contraste` | WCAG AA contrast audit of the palette, both themes |
+| `npm run audit:geometrie` | Layout gates, measured on the running application |
+| `npm run verify-hardening` | Electron hardening checks, including the served CSP |
+| `npm run captures` | Screenshots of every screen in both themes |
+| `npm run package:mac` | Build for macOS (.dmg and .app) |
+| `npm run package:win` | Build for Windows (.exe) |
+| `npm run package:linux` | Build for Linux (.AppImage) |
 
 ---
 
 ## Documentation
 
-| Document | Contenu |
-|----------|---------|
-| [Guide de decouverte](docs/guide-decouverte.md) | Presentation du produit |
-| [Fonctionnalites](docs/fonctionnalites.md) | Reference par ecran |
-| [Parcours utilisateur](docs/parcours-utilisateur.md) | Premier lancement pas a pas |
-| [Architecture](docs/architecture.md) | Architecture technique |
-| [Skills Codex](docs/skills-codex.md) | Contrats des 8 skills IA |
+Reference documents under `docs/` are currently written in French, alongside the application interface. New documentation is written in English.
+
+| Document | Contents |
+|----------|----------|
+| [Guide de decouverte](docs/guide-decouverte.md) | Product overview |
+| [Fonctionnalites](docs/fonctionnalites.md) | Per-screen reference |
+| [Parcours utilisateur](docs/parcours-utilisateur.md) | First launch, step by step |
+| [Architecture](docs/architecture.md) | Technical architecture |
+| [Skills Codex](docs/skills-codex.md) | Contracts of the eight AI skills |
 | [Exploitation](docs/exploitation.md) | Diagnostics, logs, audits |
 
 ---
 
-## Contribuer
+## Contributing
 
-Les contributions sont bienvenues. Lisez [`CONTRIBUTING.md`](CONTRIBUTING.md) avant d'ouvrir une PR. Le projet suit un workflow TDD strict et utilise spec-kit pour la specification des features. Le [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) s'applique a tous les echanges autour du projet.
+Contributions are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a PR. The project follows a strict TDD workflow and uses spec-kit for feature specification. [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) applies to every exchange around the project.
 
-Pour signaler une faille de securite, suivez le processus decrit dans [`SECURITY.md`](SECURITY.md).
+Code comments, release notes and this README are written in English. The application interface and its user-facing messages are in French.
 
-Le journal des versions est tenu sur la page [Releases GitHub](https://github.com/AutomatisIA/GhostwrAIter/releases).
+To report a security issue, follow the process described in [`SECURITY.md`](SECURITY.md).
+
+The version log lives on the [GitHub Releases](https://github.com/AutomatisIA/GhostwrAIter/releases) page.
 
 ---
 
-## Licence
+## License
 
-MIT — Copyright (c) 2026 Philippe Cohen ([AutomatisIA](https://automatisia.fr))
+MIT. Copyright (c) 2026 Philippe Cohen ([AutomatisIA](https://automatisia.fr))
