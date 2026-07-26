@@ -49,39 +49,59 @@ export async function writeArchive(
   await pipeline(zip.outputStream, createWriteStream(destinationPath));
 }
 
-function openArchive(archivePath: string): Promise<yauzl.ZipFile> {
+type OpenedArchive = {
+  zipFile: yauzl.ZipFile;
+  /** Resolves when the `close` event has fired, whoever triggered the close. */
+  closed: Promise<void>;
+};
+
+function openArchive(archivePath: string): Promise<OpenedArchive> {
   return new Promise((resolvePromise, rejectPromise) => {
     yauzl.open(archivePath, { lazyEntries: true }, (err, zipFile) => {
       if (err || !zipFile) {
         rejectPromise(err ?? new Error("Archive illisible."));
         return;
       }
-      resolvePromise(zipFile);
+      // The listener is attached here, before anything can close the file.
+      // yauzl runs with autoClose on, so it closes on its own at `end` and on
+      // error: by the time a caller reacts, `close()` may already have been
+      // called and the event already emitted. Subscribing after the fact would
+      // wait for an event that will never fire again.
+      const closed = new Promise<void>((resolveClosed) => {
+        zipFile.once("close", () => resolveClosed());
+      });
+      resolvePromise({ zipFile, closed });
     });
   });
 }
 
 /**
- * Settles a promise only once the archive's file descriptor is really closed.
+ * Settles a promise only once the archive's file descriptor is really released.
  *
- * `zipFile.close()` returns before the descriptor is released; yauzl emits
- * `close` when it actually is. On POSIX that distinction is invisible, because
- * an open file can still be unlinked. On Windows it is not: deleting or moving
- * a file whose descriptor is open fails, so returning early leaves the user's
- * archive locked for as long as the application runs, right after an import
- * that was refused.
+ * `zipFile.close()` returns before the descriptor is gone; yauzl emits `close`
+ * when it actually is. On POSIX the distinction is invisible, since an open
+ * file can still be unlinked. On Windows it is not: deleting or moving a file
+ * whose descriptor is open fails, so returning early leaves the user's archive
+ * locked for as long as the application runs, right after an import that was
+ * refused.
  *
- * It surfaced as an intermittent `ENOTEMPTY` on the Windows CI runner and
- * passed locally and on the other two platforms, which is exactly how this
- * class of defect hides.
+ * The wait is on the promise captured at open time, not on a listener attached
+ * here. A first version tested `zipFile.isOpen` and settled immediately when it
+ * was already false, which is the common case: yauzl closes on its own when it
+ * rejects an entry name, so by the time this runs the close is under way but
+ * NOT finished. Windows then reported `EPERM ... lstat hostile.zip` on a file
+ * that had been deleted, because a delete against an open handle only takes
+ * effect once the last handle goes.
  */
-function afterClose(zipFile: yauzl.ZipFile, settle: () => void): void {
-  if (!zipFile.isOpen) {
-    settle();
-    return;
+async function afterClose(
+  archive: OpenedArchive,
+  settle: () => void
+): Promise<void> {
+  if (archive.zipFile.isOpen) {
+    archive.zipFile.close();
   }
-  zipFile.once("close", settle);
-  zipFile.close();
+  await archive.closed;
+  settle();
 }
 
 function readEntryBuffer(zipFile: yauzl.ZipFile, entry: yauzl.Entry): Promise<Buffer> {
@@ -109,9 +129,15 @@ export async function readArchiveEntry(
   archivePath: string,
   entryName: string
 ): Promise<Buffer | null> {
-  const zipFile = await openArchive(archivePath);
+  const archive = await openArchive(archivePath);
+  const { zipFile } = archive;
 
   return new Promise<Buffer | null>((resolvePromise, rejectPromise) => {
+    const succeed = (value: Buffer | null) =>
+      void afterClose(archive, () => resolvePromise(value));
+    const fail = (err: unknown) =>
+      void afterClose(archive, () => rejectPromise(asArchiveError(err)));
+
     let found = false;
     zipFile.on("entry", (entry: yauzl.Entry) => {
       if (entry.fileName !== entryName) {
@@ -119,17 +145,12 @@ export async function readArchiveEntry(
         return;
       }
       found = true;
-      readEntryBuffer(zipFile, entry).then(
-        (buffer) => afterClose(zipFile, () => resolvePromise(buffer)),
-        (err: unknown) => afterClose(zipFile, () => rejectPromise(err))
-      );
+      readEntryBuffer(zipFile, entry).then(succeed, fail);
     });
     zipFile.on("end", () => {
-      if (!found) afterClose(zipFile, () => resolvePromise(null));
+      if (!found) succeed(null);
     });
-    zipFile.on("error", (err: unknown) =>
-      afterClose(zipFile, () => rejectPromise(asArchiveError(err)))
-    );
+    zipFile.on("error", fail);
     zipFile.readEntry();
   });
 }
@@ -180,12 +201,13 @@ export async function extractArchive(
   const root = resolve(destinationDirectory);
   mkdirSync(root, { recursive: true });
 
-  const zipFile = await openArchive(archivePath);
+  const archive = await openArchive(archivePath);
+  const { zipFile } = archive;
   const extracted: string[] = [];
 
   return new Promise<string[]>((resolvePromise, rejectPromise) => {
     const fail = (err: unknown) =>
-      afterClose(zipFile, () => rejectPromise(asArchiveError(err)));
+      void afterClose(archive, () => rejectPromise(asArchiveError(err)));
 
     zipFile.on("entry", (entry: yauzl.Entry) => {
       // Directory entries carry no content; the parent directories of each
@@ -224,7 +246,7 @@ export async function extractArchive(
       });
     });
 
-    zipFile.on("end", () => afterClose(zipFile, () => resolvePromise(extracted)));
+    zipFile.on("end", () => void afterClose(archive, () => resolvePromise(extracted)));
     zipFile.on("error", fail);
     zipFile.readEntry();
   });

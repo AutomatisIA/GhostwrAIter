@@ -308,10 +308,14 @@ describe("Ecran Creer", () => {
     api.strategy.getActiveBundle.mockRejectedValue(new Error("base verrouillee"));
     renderSelector();
 
-    await screen.findByRole("button", { name: "Aide : Cible visée" });
+    // L'attente porte sur le message lui-meme, pas sur le bouton d'aide : ce
+    // dernier s'affiche des le premier rendu, independamment du rejet de
+    // `getActiveBundle`. Sur une machine lente le bouton etait la et l'etat
+    // d'erreur pas encore pose, et le test tombait sur le runner macOS de la CI
+    // en passant partout ailleurs.
+    await screen.findByText(/La stratégie n'a pas pu être lue/);
 
     expect(screen.queryByLabelText("Cible visée")).toBeNull();
-    expect(screen.getByText(/La stratégie n'a pas pu être lue/)).toBeTruthy();
     expect(screen.queryByText(/Aucune cible définie/)).toBeNull();
   });
 
