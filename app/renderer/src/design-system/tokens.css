@@ -91,11 +91,10 @@
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
 
-  /* Le glassmorphisme est retire. Ces trois jetons restent declares parce que
-     la feuille heritee les consomme encore par endroits ; ils rendent
-     desormais une surface opaque. La convention maison prevoit du
-     glassmorphisme sur les applications AutomatisIA : c est ici une deviation
-     assumee, la direction commandee l ecarte explicitement. */
+  /* Glassmorphism is gone. These three tokens stay declared because the
+     inherited stylesheet still reads them in places; they now render an opaque
+     surface. Blur was dropped on purpose: on dense editorial screens it cost
+     legibility for an effect nobody was reading text through. */
   --glass-blur: 0px;
   --glass-bg: var(--surface-raised);
   --glass-border: var(--line);

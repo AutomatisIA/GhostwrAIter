@@ -46,7 +46,10 @@ export function ProfileSection({ profile, onUpdate }: ProfileSectionProps) {
           <input
             value={profile.name}
             onChange={(event) => onUpdate("name", event.target.value)}
-            placeholder="Ex. Philippe Cohen"
+            // Aucun nom propre ici : l application est publique et distribuee.
+            // Un exemple nominatif affiche le nom d une personne reelle a tous
+            // ses utilisateurs, et ne dit pas mieux quoi saisir qu une consigne.
+            placeholder="Votre nom, tel qu'il apparaît sur LinkedIn"
           />
         </StrategyField>
 
