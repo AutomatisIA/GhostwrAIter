@@ -99,6 +99,13 @@ export function EnginePanel() {
         setActiveEngine(active.engine);
         setError(null);
         setLoading(false);
+        // Cette detection peut avoir vu un etat neuf : l utilisateur s est
+        // authentifie, ou deconnecte, dans un terminal pendant que
+        // l application tournait. Le pied de la barre laterale lit le meme fait
+        // par un appel independant et ne relit que sur annonce : sans celle-ci
+        // il garde « connecté » ou « non authentifié » jusqu au redemarrage,
+        // pendant que ce panneau affiche le contraire juste au-dessus.
+        annoncerChangementDeMoteur();
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Impossible de charger les moteurs IA.");

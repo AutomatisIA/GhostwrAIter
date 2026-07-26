@@ -22,6 +22,28 @@ export type CliResult = {
 };
 
 /**
+ * Sursis entre SIGTERM et SIGKILL, en millisecondes.
+ *
+ * SIGTERM est une DEMANDE : un processus a le droit de l intercepter et de ne
+ * rien faire, et des CLI le font. Cinq secondes laissent le temps d une sortie
+ * propre, qui est le seul interet du signal doux ; au-dela, attendre davantage
+ * ne rend plus rien, le processus a decide de rester.
+ */
+const KILL_GRACE_MS = 5_000;
+
+/**
+ * Silence a observer sur les deux flux, APRES la sortie de l enfant, avant de
+ * regler la promesse sans attendre `close`.
+ *
+ * `close` n arrive qu une fois tous les flux fermes. Un processus descendant qui
+ * herite de la sortie standard la retient ouverte bien apres la mort de son
+ * parent : le code de sortie est connu, la sortie est complete, et la promesse
+ * attendait quand meme. Le compteur est REARME a chaque octet recu, ce qui
+ * interdit de tronquer une sortie encore en cours de lecture.
+ */
+const DRAIN_QUIET_MS = 1_000;
+
+/**
  * Variables d environnement transmises a TOUT CLI lance par l application.
  *
  * Le processus enfant recevait `process.env` en entier. Pas d escalade de
@@ -219,6 +241,25 @@ export function buildChildEnv(
   return completeIdentity(childEnv, identity);
 }
 
+/**
+ * TOUT LANCEMENT SE REGLE, ET DANS UN DELAI BORNE.
+ *
+ * La version precedente posait un delai qui envoyait SIGTERM, puis attendait
+ * `close` pour resoudre. Deux situations reelles font que cet evenement
+ * n arrive jamais : une CLI qui ignore SIGTERM, et un processus descendant qui
+ * garde les flux ouverts apres la mort de son parent. Le delai de 120 ou 300
+ * secondes ne bornait donc plus rien : la generation restait suspendue sans fin
+ * et le dossier temporaire du moteur n etait jamais nettoye, le `finally` de
+ * l appelant n etant lui-meme jamais atteint.
+ *
+ * Deux chemins de reglage repondent chacun a l une de ces situations, et aucun
+ * ne depend de `close` :
+ *
+ *   - Delai depasse : SIGTERM, puis SIGKILL apres un sursis, puis reglage
+ *     immediat. SIGKILL ne s intercepte pas.
+ *   - Enfant sorti mais flux encore ouverts : reglage apres un silence franc
+ *     sur les deux flux, avec le code de sortie deja connu.
+ */
 export function spawnCli(
   command: string,
   args: readonly string[],
@@ -230,6 +271,11 @@ export function spawnCli(
     envKeys?: readonly string[];
     /** Prefixes autorises. Reserve aux CLI dont les variables ne sont pas enumerables. */
     envPrefixes?: readonly string[];
+    /**
+     * Sursis entre SIGTERM et SIGKILL. Injectable pour que les tests exercent
+     * l escalade sans attendre cinq secondes reelles.
+     */
+    killGraceMs?: number;
   }
 ): Promise<CliResult> {
   return new Promise((resolve, reject) => {
@@ -243,33 +289,75 @@ export function spawnCli(
     let stderr = "";
     let timedOut = false;
     let settled = false;
+    let exited = false;
+    let exitStatus: number | null = null;
+    let killTimer: NodeJS.Timeout | undefined;
+    let drainTimer: NodeJS.Timeout | undefined;
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-    }, options.timeoutMs);
+    // Purge unique : les trois chemins de reglage passent par la, sinon un
+    // minuteur survivant garderait la boucle d evenements en vie apres coup.
+    const clearTimers = () => {
+      clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
+      if (drainTimer) clearTimeout(drainTimer);
+    };
 
     const finish = (result: CliResult) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      clearTimers();
       resolve(result);
     };
+
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimers();
+      reject(error);
+    };
+
+    // Arme, ou reporte, le reglage par silence decrit sur DRAIN_QUIET_MS.
+    const scheduleDrain = () => {
+      if (settled || !exited) return;
+      if (drainTimer) clearTimeout(drainTimer);
+      drainTimer = setTimeout(() => {
+        finish({ status: exitStatus, stdout, stderr, timedOut });
+      }, DRAIN_QUIET_MS);
+    };
+
+    // Declare APRES les fonctions ci-dessus : son rappel les utilise, et
+    // `clearTimers` l utilise en retour. Aucune n est appelee avant ce point.
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      killTimer = setTimeout(() => {
+        child.kill("SIGKILL");
+        // Regle SANS attendre la suite : c est le point de tout ce correctif.
+        // Meme mort, l enfant peut laisser un descendant tenir les flux, et
+        // `close` ne viendrait toujours pas.
+        finish({ status: null, stdout, stderr, timedOut: true });
+      }, options.killGraceMs ?? KILL_GRACE_MS);
+    }, options.timeoutMs);
 
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
       stdout += chunk;
+      scheduleDrain();
     });
     child.stderr.on("data", (chunk: string) => {
       stderr += chunk;
+      scheduleDrain();
     });
 
     child.on("error", (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(error);
+      fail(error);
+    });
+
+    child.on("exit", (status) => {
+      exited = true;
+      exitStatus = status;
+      scheduleDrain();
     });
 
     child.on("close", (status) => {

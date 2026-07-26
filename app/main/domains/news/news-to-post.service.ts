@@ -20,6 +20,7 @@ import { createId } from "../../shared/create-id";
 import { recordExecutionRun } from "../execution/execution-runs.repository";
 import { SkillRunError, skillRunError } from "../execution/skill-run-error";
 import { buildStrategyContext } from "../strategy/strategy-context";
+import { resolveAnnouncedEngine } from "../execution/announced-engine";
 
 export class NewsToPostService {
   constructor(
@@ -72,7 +73,11 @@ export class NewsToPostService {
       attachments: []
     };
 
-    const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
+    // Le moteur annonce est celui qui SERA utilise, pas le seul choix explicite :
+    // sans preference enregistree, ce parcours annoncait « Codex » alors que la
+    // resolution active pouvait retenir Claude ou Antigravity. Cf.
+    // announced-engine.ts pour le cout de cette resolution.
+    const announced = await resolveAnnouncedEngine(this.skillRunnerService);
     emitPhaseStarted(sender, { runId, phase: "news", engine: announced });
 
     let result: SkillRunnerResult;

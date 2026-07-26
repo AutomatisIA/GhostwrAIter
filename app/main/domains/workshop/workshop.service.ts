@@ -31,6 +31,7 @@ import {
   summarizeOffers
 } from "../strategy/strategy-context";
 import { insertExecutionRun, recordExecutionRun } from "../execution/execution-runs.repository";
+import { resolveAnnouncedEngine } from "../execution/announced-engine";
 
 type WorkshopColumnSpec = {
   readonly table: "drafts" | "execution_runs";
@@ -863,15 +864,17 @@ export class WorkshopService {
    * resultat metier.
    *
    * L'etiquette de moteur n'est plus codee en dur : `started` annonce le moteur
-   * choisi (lecture en base, sans appel systeme), et la borne terminale reprend
-   * le moteur reellement utilise, tel que le runner l'a estampille.
+   * qui SERA utilise (choix explicite, sinon selection active resolue), et la
+   * borne terminale reprend le moteur reellement utilise, tel que le runner
+   * l'a estampille. Voir `announced-engine.ts` pour le cout de cette
+   * resolution et la raison pour laquelle elle est memorisee.
    */
   private async runPhase(
     phase: ExecutionPhase,
     invocation: SkillRunnerInvocation,
     sender: WebContents | undefined
   ): Promise<SkillRunnerResult> {
-    const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
+    const announced = await resolveAnnouncedEngine(this.skillRunnerService);
     emitPhaseStarted(sender, { runId: invocation.runId, phase, engine: announced });
 
     let result: SkillRunnerResult;

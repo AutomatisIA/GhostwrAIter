@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ALL_TELL_FAMILIES, TELL_FAMILIES, type TellFamilyId } from "../../../../../shared/ai-tells";
+import { useToast } from "../../../design-system/primitives";
 import { SectionHead } from "./SectionHead";
 import {
   AI_TELL_FAMILIES_PREFERENCE_KEY,
@@ -13,9 +14,11 @@ import {
  * famille l'interdit à la génération via la préférence `ai_tell_families`,
  * lue au montage et écrite à chaque bascule : même mécanisme que
  * `ThemeSelector`, avec la même limite (un changement ne se propage pas tout
- * seul ailleurs dans l'application).
+ * seul ailleurs dans l'application). Une écriture qui échoue est en revanche
+ * annulée à l'écran, pas ignorée : voir `toggle`.
  */
 export function AiTellFamiliesSection() {
+  const toast = useToast();
   const [enabled, setEnabled] = useState<TellFamilyId[]>([...ALL_TELL_FAMILIES]);
   const [loaded, setLoaded] = useState(false);
 
@@ -31,13 +34,25 @@ export function AiTellFamiliesSection() {
   }, []);
 
   function toggle(id: TellFamilyId) {
+    const previous = enabled;
     const next = enabled.includes(id)
       ? enabled.filter((familyId) => familyId !== id)
       : [...enabled, id];
     setEnabled(next);
     window.linkedinPoster.settings
       .setPreference(AI_TELL_FAMILIES_PREFERENCE_KEY, JSON.stringify(next))
-      .catch(() => {});
+      // Base en lecture seule, disque plein : l ecriture echoue et la case
+      // restait cochee. L interface affirmait alors qu une famille etait
+      // interdite pendant que la generation continuait d appliquer l ancienne
+      // preference. On revient a l etat reellement enregistre et on le dit.
+      .catch(() => {
+        setEnabled(previous);
+        toast.show({
+          kind: "error",
+          message:
+            "Impossible d'enregistrer ce réglage. La génération garde la préférence précédente."
+        });
+      });
   }
 
   return (

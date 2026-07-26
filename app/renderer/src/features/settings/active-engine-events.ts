@@ -16,9 +16,22 @@
  * canal reste strictement interne au renderer, aucun contrat IPC n est touche.
  */
 
+/*
+ * Le fait annonce est « le moteur actif, tel qu il sera utilise » : son nom
+ * comme son etat d authentification. Une detection fraiche compte donc autant
+ * qu une selection. L utilisateur se connecte a son moteur dans un terminal,
+ * hors de l application ; en revenant aux Parametres, le panneau redetecte et
+ * affiche « Connecté » pendant que le pied, faute d annonce, continue d annoncer
+ * « non authentifié ». Deux affirmations contradictoires a deux centimetres
+ * l une de l autre, et c est la plus discrete qui est fausse.
+ */
+
 export const ACTIVE_ENGINE_CHANGED = "ghostwraiter:active-engine-changed";
 
-/** A appeler APRES que le processus principal a confirme le changement. */
+/**
+ * A appeler APRES que le processus principal a confirme le changement, ou
+ * apres une detection qui vient de rafraichir l etat des moteurs.
+ */
 export function annoncerChangementDeMoteur(): void {
   window.dispatchEvent(new CustomEvent(ACTIVE_ENGINE_CHANGED));
 }

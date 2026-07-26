@@ -6,6 +6,7 @@ import {
   emitPhaseStarted
 } from "../domains/execution/execution-progress-emitter";
 import { SkillRunError } from "../domains/execution/skill-run-error";
+import { resolveAnnouncedEngine } from "../domains/execution/announced-engine";
 import {
   StrategyRepository,
   createStrategyTables
@@ -45,10 +46,10 @@ export class StrategyService {
     // Le moteur annonce n est plus code en dur. `runPhase` de l atelier a cesse
     // de le faire au commit e794e11 ; ce parcours-ci et celui des sujets
     // etaient restes en arriere, et annoncaient « Codex » a un utilisateur qui
-    // a choisi un autre moteur. Le nom vient donc de la preference lue en base
-    // avant l appel, puis du moteur reellement utilise tel que le runner l a
-    // estampille.
-    const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
+    // a choisi un autre moteur. Le nom vient donc du moteur qui SERA utilise,
+    // resolu avant l appel, puis du moteur reellement utilise tel que le runner
+    // l a estampille.
+    const announced = await resolveAnnouncedEngine(this.skillRunnerService);
     emitPhaseStarted(sender, { runId, phase: "foundation", engine: announced });
     let result;
     try {

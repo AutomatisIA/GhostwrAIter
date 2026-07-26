@@ -176,6 +176,100 @@ describe("library triage", () => {
     expect(entries[0]?.tags.length).toBeGreaterThan(0);
   });
 
+  /*
+   * Ces quatre cas suivent le VRAI chemin d ecriture, pas une idee de ce qu il
+   * devrait etre. `scheduleDraft` INSERE une ligne a chaque appel : « Marquer
+   * comme publie » (LibraryScreen) rappelle donc ce meme service avec le statut
+   * `published` sur la meme date, et la ligne `planned` d origine RESTE en base.
+   * Un correctif qui se contenterait de filtrer les statuts la retrouverait et
+   * ne changerait rien a l ecran.
+   */
+  it("sort de planifie un brouillon marque publie", async () => {
+    const { draftId } = await createDraft("Pourquoi cadrer avant de prompter");
+
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "planned"
+    });
+    // Exactement ce qu ecrit « Copier et marquer comme publie » : meme date,
+    // nouvelle ligne, aucune mise a jour de la precedente.
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "published"
+    });
+
+    const entry = entryFor(draftId);
+
+    expect(entry.triage).not.toBe("planifie");
+    // Le brouillon retombe dans le triage que ses versions decrivent.
+    expect(entry.triage).toBe("a-relire");
+  });
+
+  it("garde planifie un brouillon dont un autre creneau attend encore", async () => {
+    const { draftId } = await createDraft("Pourquoi cadrer avant de prompter");
+
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "planned"
+    });
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-15",
+      status: "planned"
+    });
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "published"
+    });
+
+    const entry = entryFor(draftId);
+
+    // La date du 15 n a pas ete publiee : elle reste a tenir.
+    expect(entry.triage).toBe("planifie");
+  });
+
+  it("redevient planifie si le brouillon est reprogramme apres publication", async () => {
+    const { draftId } = await createDraft("Pourquoi cadrer avant de prompter");
+
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "planned"
+    });
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "published"
+    });
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "planned"
+    });
+
+    const entry = entryFor(draftId);
+
+    expect(entry.triage).toBe("planifie");
+  });
+
+  it("ne compte pas comme planifie un creneau manque", async () => {
+    const { draftId } = await createDraft("Pourquoi cadrer avant de prompter");
+
+    calendarService.scheduleDraft({
+      draftId,
+      plannedDate: "2026-08-01",
+      status: "missed"
+    });
+
+    const entry = entryFor(draftId);
+
+    expect(entry.triage).not.toBe("planifie");
+  });
+
   it("compte les versions et retient la plus recente sans dupliquer les tags", async () => {
     const { draftId } = await createDraft("Pourquoi cadrer avant de prompter");
     addVersion(draftId, "correction", 1 * DAY);

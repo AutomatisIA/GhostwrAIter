@@ -6,6 +6,7 @@ import {
   emitPhaseStarted
 } from "../domains/execution/execution-progress-emitter";
 import { SkillRunError } from "../domains/execution/skill-run-error";
+import { resolveAnnouncedEngine } from "../domains/execution/announced-engine";
 import { createStrategyTables, StrategyRepository } from "../domains/strategy/strategy.repository";
 import { selectIcps } from "../domains/strategy/strategy-context";
 import { createIdeasTables, IdeasRepository } from "../domains/ideas/ideas.repository";
@@ -83,10 +84,12 @@ export class IdeasService {
       throw new Error("Strategy must define at least one pillar before generating ideas.");
     }
     const runId = `run_${Date.now()}`;
-    // Meme correction que sur le socle editorial : le moteur annonce vient de
-    // la preference, pas d un litteral. Un utilisateur ayant choisi Antigravity
-    // voyait « Codex » pendant la generation de ses sujets.
-    const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
+    // Meme correction que sur le socle editorial : le moteur annonce est celui
+    // qui SERA utilise, pas un litteral ni le seul choix explicite. Un
+    // utilisateur ayant choisi Antigravity voyait « Codex » pendant la
+    // generation de ses sujets ; un utilisateur n ayant jamais choisi le voyait
+    // aussi, alors que la resolution active pouvait retenir un autre moteur.
+    const announced = await resolveAnnouncedEngine(this.skillRunnerService);
     emitPhaseStarted(sender, { runId, phase: "idees", engine: announced });
     let result;
     try {

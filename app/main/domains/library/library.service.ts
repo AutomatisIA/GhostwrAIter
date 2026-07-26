@@ -490,7 +490,35 @@ export class LibraryService {
           GROUP BY draft_id
         ) v ON v.draft_id = d.id
         LEFT JOIN (
-          SELECT DISTINCT draft_id AS draftId FROM calendar_items
+          /*
+           * « Planifie » decrit ce qu il RESTE a faire, donc une date encore
+           * devant soi. La sous-requete comptait toute ligne de calendrier, quel
+           * que soit son statut.
+           *
+           * Filtrer sur le statut ne suffit PAS, et le chemin d ecriture dit
+           * pourquoi : scheduleDraft INSERE une ligne a chaque appel, il ne met
+           * rien a jour. « Marquer comme publie » ajoute donc une ligne
+           * 'published' A COTE de la ligne 'planned', qui reste en base. Un
+           * simple WHERE status IN (...) retrouverait cette ligne 'planned'
+           * perimee et laisserait le brouillon sous « Planifies », soit
+           * exactement le defaut a corriger.
+           *
+           * On lit donc l ETAT COURANT de chaque creneau : la derniere ligne
+           * ecrite pour un couple (brouillon, date), et le brouillon reste
+           * planifie si au moins un de ses creneaux attend encore. Grouper par
+           * date, et pas seulement par brouillon, est ce qui evite de declarer
+           * fait un brouillon date deux fois dont une seule occurrence a ete
+           * publiee.
+           *
+           * Le statut 'missed' est exclu au meme titre que 'published' : un
+           * creneau manque est passe, il ne decrit plus une echeance a tenir.
+           */
+          SELECT DISTINCT draft_id AS draftId
+          FROM calendar_items
+          WHERE rowid IN (
+            SELECT MAX(rowid) FROM calendar_items GROUP BY draft_id, planned_date
+          )
+          AND status IN ('planned', 'ready')
         ) c ON c.draftId = d.id
         ${whereClause}
         GROUP BY d.id

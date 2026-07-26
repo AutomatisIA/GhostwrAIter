@@ -4,6 +4,7 @@ import { LINKEDIN_MAX_CHARS, measurePost } from "../../../../shared/post-metrics
 import type { IdeaRecord } from "@shared/types/ideas";
 import type { LibraryEntry } from "@shared/types/library";
 import { Button, EmptyState, PageFrame, Skeleton } from "../../design-system/primitives";
+import { localDayIso } from "./local-day";
 
 import "./cockpit.css";
 
@@ -276,8 +277,10 @@ export function CockpitScreen() {
         const draftedIdeaIds = new Set(drafts.map((entry) => entry.ideaId));
         const scheduledDraftIds = new Set(calendarItems.map((entry) => entry.draftId));
 
-        // Date du jour au format ISO court, pour comparer a `plannedDate`.
-        const today = new Date().toISOString().slice(0, 10);
+        // Jour du jour au format ISO court, pour comparer a `plannedDate`.
+        // LOCAL, pas UTC : `plannedDate` est une date civile, et `toISOString()`
+        // calculait le jour a Greenwich (cf. `local-day.ts`).
+        const today = localDayIso();
         const due = calendarItems
           .filter((entry) => entry.status !== "published" && entry.plannedDate <= today)
           .sort((a, b) => a.plannedDate.localeCompare(b.plannedDate));

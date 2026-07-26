@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, basename } from "node:path";
+import { dirname, basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -151,9 +151,18 @@ describe("politique d execution du runner Codex synchrone", () => {
   // meme commande avec le meme prompt : elle porte donc la meme politique, et
   // ce test empeche les deux chemins de diverger.
   it("passe les memes drapeaux que le moteur asynchrone", () => {
+    // Le repertoire temporaire est compose avec `join`, donc son separateur
+    // suit la plateforme. Ecrire l attendu en POSIX faisait echouer ce test sur
+    // Windows, et seulement la : `\tmp\codex-runner-test\last-message.json`
+    // contre `/tmp/...`. Le defaut etait dans l attendu, pas dans le code.
+    //
+    // Les DRAPEAUX restent ecrits en toutes lettres, parce qu ils sont la
+    // propriete mesuree. Seul le chemin est compose, parce que son separateur
+    // est un fait de plateforme et non un comportement a verifier.
+    const tempDirectory = join("/tmp", "codex-runner-test");
     const executor = vi.fn().mockReturnValue({ status: 1, stdout: "", stderr: "boom" });
     const filesystem = {
-      makeTempDir: vi.fn().mockReturnValue("/tmp/codex-runner-test"),
+      makeTempDir: vi.fn().mockReturnValue(tempDirectory),
       readFile: vi.fn(),
       removeDir: vi.fn()
     };
@@ -174,11 +183,11 @@ describe("politique d execution du runner Codex synchrone", () => {
       "--ignore-user-config",
       "--ignore-rules",
       "-C",
-      "/tmp/codex-runner-test",
+      tempDirectory,
       "--skip-git-repo-check",
       "--ephemeral",
       "--output-last-message",
-      "/tmp/codex-runner-test/last-message.json",
+      join(tempDirectory, "last-message.json"),
       "-"
     ]);
   });

@@ -21,11 +21,17 @@ import { ToastProvider } from "../feedback/ToastProvider";
 import { EnginePanel } from "../features/settings/components/EnginePanel";
 import { ActiveEngineFooter } from "./ActiveEngineFooter";
 
-function moteur(name: string, displayName: string) {
+type EtatInstallation = "authenticated" | "installed" | "not-installed";
+
+function moteur(
+  name: string,
+  displayName: string,
+  installState: EtatInstallation = "authenticated"
+) {
   return {
     name,
     displayName,
-    installState: "authenticated" as const,
+    installState,
     installCommand: "",
     loginCommand: "",
     setupHint: ""
@@ -36,28 +42,37 @@ function moteur(name: string, displayName: string) {
  * `getActiveEngine` suit un moteur courant mutable, comme le fait le processus
  * principal : un double qui rendrait toujours la meme valeur ne pourrait pas
  * distinguer « le pied relit » de « le pied ne relit pas ».
+ *
+ * Chaque appel rend une COPIE, parce que l IPC serialise : le renderer ne
+ * partage aucune reference avec le processus principal. Un double qui rendait
+ * l objet du catalogue laissait une mutation de cet objet apparaitre dans
+ * l etat React sans la moindre relecture, et le test declarait vert un pied qui
+ * n avait rien relu.
  */
-function installApi() {
+function installApi(etatCodex: EtatInstallation = "authenticated") {
   const etat = { actif: "codex" };
   const catalogue: Record<string, ReturnType<typeof moteur>> = {
-    codex: moteur("codex", "Codex (ChatGPT)"),
+    codex: moteur("codex", "Codex (ChatGPT)", etatCodex),
     antigravity: moteur("antigravity", "Antigravity")
   };
+  const copie = (name: string) => ({ ...catalogue[name]! });
 
   (window as unknown as { linkedinPoster: unknown }).linkedinPoster = {
     settings: {
       getActiveEngine: vi.fn(async () => ({
         engine: etat.actif,
-        status: catalogue[etat.actif]
+        status: copie(etat.actif)
       })),
-      detectEngines: vi.fn(async () => ({ engines: Object.values(catalogue) })),
+      detectEngines: vi.fn(async () => ({
+        engines: Object.keys(catalogue).map(copie)
+      })),
       setActiveEngine: vi.fn(async (name: string) => {
         etat.actif = name;
-        return { engine: name, status: catalogue[name] };
+        return { engine: name, status: copie(name) };
       })
     }
   };
-  return etat;
+  return { etat, catalogue };
 }
 
 afterEach(() => {
@@ -67,7 +82,7 @@ afterEach(() => {
 
 describe("Pied de la barre laterale, moteur actif", () => {
   it("relit le moteur quand un changement est annonce", async () => {
-    const etat = installApi();
+    const { etat } = installApi();
     render(<ActiveEngineFooter />);
 
     expect(await screen.findByText(/Codex \(ChatGPT\)/)).toBeTruthy();
@@ -100,6 +115,41 @@ describe("Pied de la barre laterale, moteur actif", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Antigravity,/)).toBeTruthy();
+    });
+  });
+
+  it("suit une authentification faite dans un terminal des que le panneau redetecte", async () => {
+    // L utilisateur passe `codex login` dans son terminal, hors de
+    // l application, puis revient aux Parametres. La detection du panneau voit
+    // le nouvel etat ; sans annonce, le pied gardait « non authentifié »
+    // jusqu au redemarrage, a cote d un panneau qui affichait « Connecté ».
+    const { catalogue } = installApi("installed");
+
+    function Coque({ parametres }: { parametres: boolean }) {
+      return (
+        <ToastProvider>
+          {parametres ? <EnginePanel /> : null}
+          <ActiveEngineFooter />
+        </ToastProvider>
+      );
+    }
+
+    const { container, rerender } = render(<Coque parametres={false} />);
+
+    const valeur = () => container.querySelector(".sidebar-engine__value")?.textContent;
+    await waitFor(() => {
+      expect(valeur()).toBe("Codex (ChatGPT), non authentifié");
+    });
+
+    // L authentification se fait ailleurs : aucun evenement ne part de la.
+    catalogue.codex!.installState = "authenticated";
+    expect(valeur()).toBe("Codex (ChatGPT), non authentifié");
+
+    // Retour aux Parametres : le panneau monte et redetecte.
+    rerender(<Coque parametres />);
+
+    await waitFor(() => {
+      expect(valeur()).toBe("Codex (ChatGPT), connecté");
     });
   });
 
