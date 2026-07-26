@@ -111,3 +111,73 @@ describe("strategy repository", () => {
     expect(offersCount.count).toBe(1);
   });
 });
+
+/**
+ * A fresh install has no active profile.
+ *
+ * That state used to be reported by throwing, which left every caller to guess
+ * whether it meant "empty" or "broken". They guessed differently: App.tsx read
+ * it as empty and offered the guided tour, while the Create screen rendered
+ * « La stratégie n'a pas pu être lue » — a failure announced on the very first
+ * screen of a new install, where nothing had failed.
+ */
+describe("strategie absente, premier lancement", () => {
+  let db: Database.Database;
+  let repository: StrategyRepository;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+    createStrategyTables(db);
+    repository = new StrategyRepository(db);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it("rend une strategie vide, sans lever, sur une base neuve", () => {
+    const bundle = repository.findActiveStrategyBundle();
+
+    expect(bundle.profile.name).toBe("");
+    expect(bundle.offers).toEqual([]);
+    expect(bundle.icps).toEqual([]);
+    expect(bundle.pillars).toEqual([]);
+    expect(bundle.voiceRules).toEqual([]);
+  });
+
+  // Les appelants qui ne peuvent rien faire sans profil gardent une erreur qui
+  // NOMME la cause : generer un socle editorial sur une base vide produirait un
+  // texte sur personne.
+  it("leve encore pour les appelants qui exigent un profil", () => {
+    expect(() => repository.getActiveStrategyBundle()).toThrow(
+      "No active strategy profile found"
+    );
+  });
+
+  // La distinction n a de valeur que si elle survit a l ecriture : une fois la
+  // strategie enregistree, les deux chemins doivent rendre la meme chose.
+  it("rend la meme strategie que le chemin strict une fois remplie", () => {
+    repository.saveStrategyBundle({
+      profile: {
+        name: "Une personne",
+        positioning: "Un positionnement",
+        bio: "",
+        expertiseSummary: ""
+      },
+      offers: [],
+      icps: [
+        {
+          segment: "Un segment",
+          pains: "Une douleur"
+        }
+      ],
+      pillars: [],
+      voiceRules: []
+    });
+
+    expect(repository.findActiveStrategyBundle()).toEqual(
+      repository.getActiveStrategyBundle()
+    );
+    expect(repository.findActiveStrategyBundle().icps[0]?.segment).toBe("Un segment");
+  });
+});

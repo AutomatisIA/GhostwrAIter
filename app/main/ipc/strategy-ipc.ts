@@ -36,8 +36,13 @@ export class StrategyService {
     this.repository.saveStrategyBundle(input);
   }
 
+  /**
+   * Served to the interface, so it must tolerate an empty strategy: a fresh
+   * install has none, and that is not an error to report to someone who has
+   * just opened the application for the first time.
+   */
   getActiveStrategyBundle() {
-    return this.repository.getActiveStrategyBundle();
+    return this.repository.findActiveStrategyBundle();
   }
 
   async generateFoundation(sender?: WebContents) {
