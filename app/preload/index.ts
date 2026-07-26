@@ -165,6 +165,10 @@ const execution: ExecutionApi = {
 
 const settings: SettingsApi = {
   exportWorkspace: () => unwrap("settings:export-workspace", ipcRenderer.invoke("settings:export-workspace")),
+  // No path parameter on either side: the save and open dialogs are opened by
+  // the main process, so the renderer never gets to choose where the
+  // application writes or which file it reads back in.
+  importWorkspace: () => unwrap("settings:import-workspace", ipcRenderer.invoke("settings:import-workspace")),
   countExecutionLogs: () =>
     unwrap("settings:count-execution-logs", ipcRenderer.invoke("settings:count-execution-logs")),
   purgeExecutionLogs: () =>

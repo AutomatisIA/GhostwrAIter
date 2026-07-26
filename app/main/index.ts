@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { join } from "node:path";
 import log from "electron-log/main.js";
 import {
@@ -36,6 +36,9 @@ import {
   WorkspaceConfigurationError
 } from "./workspace/workspace.service";
 import { ExportService } from "./domains/export/export.service";
+import { ImportService } from "./domains/export/import.service";
+import { summarizeArchiveContents } from "../shared/backup-summary";
+import type { WorkspaceBackupDialogs } from "./ipc/settings-ipc";
 import { PrivacyService } from "./domains/privacy/privacy.service";
 
 log.initialize();
@@ -160,16 +163,65 @@ app.whenReady().then(() => {
     join(workspacePaths.logsDirectory, "executions"),
     engineRegistry
   );
+  /**
+   * File dialogs for the backup flow, owned by the main process.
+   *
+   * The renderer asks for an export or an import and gets a result; it never
+   * names a path. Cancelling any of the three is a normal outcome and travels
+   * back as `canceled: true`, not as an error.
+   */
+  const backupDialogs: WorkspaceBackupDialogs = {
+    askExportDestination: async (defaultFileName) => {
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title: "Enregistrer la sauvegarde",
+        defaultPath: join(app.getPath("documents"), defaultFileName),
+        filters: [{ name: "Sauvegarde GhostwrAIter", extensions: ["zip"] }],
+        properties: ["createDirectory", "showOverwriteConfirmation"]
+      });
+      return canceled || !filePath ? null : filePath;
+    },
+    askArchiveToImport: async () => {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: "Choisir une sauvegarde à restaurer",
+        filters: [{ name: "Sauvegarde GhostwrAIter", extensions: ["zip"] }],
+        properties: ["openFile"]
+      });
+      return canceled || filePaths.length === 0 ? null : (filePaths[0] ?? null);
+    },
+    confirmImport: async (preview) => {
+      const exportedAt = preview.exportedAt
+        ? new Date(preview.exportedAt).toLocaleString("fr-FR")
+        : "date inconnue";
+      const { response } = await dialog.showMessageBox({
+        type: "warning",
+        // The default button is the harmless one: an accidental Return key
+        // must not replace someone's work.
+        buttons: ["Annuler", "Remplacer mes données"],
+        defaultId: 0,
+        cancelId: 0,
+        title: "Restaurer une sauvegarde",
+        message: "Cette sauvegarde va remplacer toutes vos données actuelles.",
+        detail:
+          `Sauvegarde du ${exportedAt} (version ${preview.appVersion})\n` +
+          `Elle contient : ${summarizeArchiveContents(preview.tableCounts)}.\n\n` +
+          "Vos données actuelles seront copiées dans le dossier data de votre espace de travail avant d'être remplacées."
+      });
+      return response === 1;
+    }
+  };
+
   const settingsService = new SettingsRuntimeService(
     new ExportService(
+      db,
       workspacePaths.rootDirectory,
-      join(workspacePaths.contentDirectory, "exports"),
-      join(workspacePaths.contentDirectory, "strategy"),
-      join(workspacePaths.logsDirectory, "executions")
+      workspacePaths.databasePath,
+      app.getVersion()
     ),
     new PrivacyService(join(workspacePaths.logsDirectory, "executions")),
     appSettingsService,
-    engineRegistry
+    engineRegistry,
+    new ImportService(db, workspacePaths.rootDirectory, workspacePaths.dataDirectory),
+    backupDialogs
   );
 
   registerStrategyIpcHandlers(ipcMain, strategyService);
