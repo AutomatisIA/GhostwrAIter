@@ -282,6 +282,30 @@ describe("auto-release.yml", () => {
       "body_path: .github/release-notes/v${{ needs.check-version.outputs.version }}.md"
     );
 
+    /*
+     * `generate_release_notes: true` ECRASE `body_path`, il ne s y ajoute pas.
+     *
+     * La v2.0.0 est partie avec les notes automatiques et sans une seule ligne
+     * du fichier redige, alors que la version precedente de CE TEST etait
+     * verte : elle assertait la presence de `body_path` dans le YAML, et rien
+     * sur ce qui serait publie. Une porte qui verifie la configuration ne
+     * verifie pas le resultat, et c est exactement le defaut que ce fichier
+     * passe son temps a traquer ailleurs.
+     *
+     * Le lien de comparaison que produisait la generation automatique vit
+     * desormais a la fin du fichier de notes, ou il est relisible.
+     */
+    // Assertion sur les REGLAGES, commentaires exclus : la premiere version
+    // cherchait la chaine dans le fichier brut et tombait sur le commentaire
+    // qui explique justement le piege.
+    const reglages = raw
+      .split(/\r?\n/)
+      .filter((ligne) => !ligne.trim().startsWith("#"))
+      .join("\n");
+
+    expect(reglages).toContain("generate_release_notes: false");
+    expect(reglages).not.toContain("generate_release_notes: true");
+
     const version = JSON.parse(
       readFileSync(join(__dirname, "..", "..", "package.json"), "utf-8")
     ).version as string;
@@ -295,6 +319,12 @@ describe("auto-release.yml", () => {
     // Un fichier vide passerait `existsSync` sans rien apprendre a personne.
     const notes = readFileSync(chemin, "utf-8").trim();
     expect(notes.length).toBeGreaterThan(200);
+
+    // Le lien de comparaison n est plus produit par GitHub : il doit etre dans
+    // le fichier, sinon la release perd la seule entree vers le detail
+    // technique.
+    expect(notes).toContain(`compare/`);
+    expect(notes).toContain(`v${version}`);
   });
 
   /*
@@ -385,9 +415,23 @@ describe("auto-release.yml", () => {
       "APPLE_TEAM_ID"
     ];
 
+    /*
+     * On interdit l'INTERPOLATION de la valeur, pas la mention du nom.
+     *
+     * La premiere version comparait le nom nu et a fait tomber une etape
+     * legitime : la detection de configuration nomme les secrets ABSENTS dans
+     * son message d'erreur, pour que le mainteneur sache lesquels poser. Un nom
+     * de secret est deja public, il est ecrit en clair dans le YAML ; c'est la
+     * VALEUR qui ne doit jamais atteindre un `run:`, ou elle pourrait etre
+     * ecrite sur disque ou exfiltree.
+     *
+     * La porte large qui refuse tout `secrets.` dans un corps de `run:` couvre
+     * deja le cas general ; celle-ci nomme les cinq du parcours de signature
+     * pour que leur mutation soit lisible dans le message d'echec.
+     */
     for (const body of runCommandBodies(raw)) {
       for (const secret of secretsDeSignature) {
-        expect(body).not.toContain(secret);
+        expect(body).not.toMatch(new RegExp(`\\$\\{\\{\\s*secrets\\.${secret}\\s*\\}\\}`));
       }
     }
   });

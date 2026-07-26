@@ -158,20 +158,43 @@ jobs:
       #
       # On decide donc explicitement, et le resultat est lisible dans les logs
       # plutot que devine.
+      # La detection porte sur les CINQ secrets, pas sur le seul certificat.
+      # `package.json` declare `notarize: true` : un certificat sans identifiants
+      # Apple produirait une signature reussie puis un echec de notarisation,
+      # APRES avoir construit les trois systemes. Une configuration a moitie
+      # posee doit echouer tout de suite, en nommant ce qui manque.
       - name: Detect macOS signing configuration
         id: signing
         if: matrix.os == 'macos-latest'
         shell: bash
         env:
           CERTIFICAT: ${{ secrets.MAC_CSC_LINK }}
+          MOT_DE_PASSE: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          IDENTIFIANT: ${{ secrets.APPLE_ID }}
+          MOT_DE_PASSE_APP: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          EQUIPE: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -n "$CERTIFICAT" ]; then
-            echo "Certificat Developer ID present : build signe et notarise."
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
+          if [ -z "$CERTIFICAT" ]; then
             echo "Aucun certificat Developer ID : build NON SIGNE."
             echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          manquants=""
+          [ -z "$MOT_DE_PASSE" ]     && manquants="$manquants MAC_CSC_KEY_PASSWORD"
+          [ -z "$IDENTIFIANT" ]      && manquants="$manquants APPLE_ID"
+          [ -z "$MOT_DE_PASSE_APP" ] && manquants="$manquants APPLE_APP_SPECIFIC_PASSWORD"
+          [ -z "$EQUIPE" ]           && manquants="$manquants APPLE_TEAM_ID"
+
+          if [ -n "$manquants" ]; then
+            echo "::error::Certificat present mais configuration incomplete. Secrets manquants :$manquants"
+            echo "La signature reussirait et la notarisation echouerait apres le build."
+            echo "Poser les secrets manquants, ou retirer MAC_CSC_LINK pour un build non signe."
+            exit 1
+          fi
+
+          echo "Les cinq secrets sont poses : build signe et notarise."
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Package for macOS (signed and notarized)
         if: matrix.os == 'macos-latest' && steps.signing.outputs.configured == 'true'
@@ -251,7 +274,16 @@ jobs:
           # `tests/unit/ci-workflows.test.ts` exige qu il existe pour la version
           # portee par `package.json`.
           body_path: .github/release-notes/v${{ needs.check-version.outputs.version }}.md
-          generate_release_notes: true
+          # `generate_release_notes: true` ECRASE `body_path`, il ne s y ajoute
+          # pas. La v2.0.0 est partie avec les notes automatiques et sans une
+          # ligne du fichier redige, alors que la porte qui devait l empecher
+          # etait verte : elle assertait la presence de `body_path` dans le
+          # YAML, pas le contenu publie. Une porte qui verifie la configuration
+          # ne verifie pas le resultat.
+          #
+          # Le lien de comparaison que produisait la generation automatique est
+          # desormais ecrit a la fin du fichier de notes.
+          generate_release_notes: false
           # Le defaut de cette entree est `false` (verifie dans l'`action.yml`
           # de softprops/action-gh-release : « Fails if any of the `files` globs
           # match nothing. Defaults to false »). Sans elle, un motif qui ne

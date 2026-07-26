@@ -35,3 +35,15 @@ docs/editorial-iteration-playbook.md
 
 # Strategic editorial source documents — local-only, never published
 *.docx
+
+# Cles privees et certificats de signature. JAMAIS dans un depot public.
+# Un .p12 a ete depose dans docs/ le 2026-07-26 ; il n a pas ete commite, mais
+# rien ne l en empechait. Ces motifs couvrent tous les emplacements.
+*.p12
+*.pfx
+*.cer
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+**/certificats/
+**/certificates/

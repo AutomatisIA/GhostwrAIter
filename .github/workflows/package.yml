@@ -47,14 +47,32 @@ jobs:
         shell: bash
         env:
           CERTIFICAT: ${{ secrets.MAC_CSC_LINK }}
+          MOT_DE_PASSE: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          IDENTIFIANT: ${{ secrets.APPLE_ID }}
+          MOT_DE_PASSE_APP: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          EQUIPE: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          if [ -n "$CERTIFICAT" ]; then
-            echo "Certificat Developer ID present : build signe et notarise."
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
+          if [ -z "$CERTIFICAT" ]; then
             echo "Aucun certificat Developer ID : build NON SIGNE."
             echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          manquants=""
+          [ -z "$MOT_DE_PASSE" ]     && manquants="$manquants MAC_CSC_KEY_PASSWORD"
+          [ -z "$IDENTIFIANT" ]      && manquants="$manquants APPLE_ID"
+          [ -z "$MOT_DE_PASSE_APP" ] && manquants="$manquants APPLE_APP_SPECIFIC_PASSWORD"
+          [ -z "$EQUIPE" ]           && manquants="$manquants APPLE_TEAM_ID"
+
+          if [ -n "$manquants" ]; then
+            echo "::error::Certificat present mais configuration incomplete. Secrets manquants :$manquants"
+            echo "La signature reussirait et la notarisation echouerait apres le build."
+            echo "Poser les secrets manquants, ou retirer MAC_CSC_LINK pour un build non signe."
+            exit 1
+          fi
+
+          echo "Les cinq secrets sont poses : build signe et notarise."
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
       - name: Package for macOS (signed and notarized)
         if: matrix.os == 'macos-latest' && steps.signing.outputs.configured == 'true'
