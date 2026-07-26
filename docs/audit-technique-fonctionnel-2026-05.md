@@ -1,5 +1,7 @@
 # Audit GhostwrAIter — technique, distribution, confidentialité & fonctionnel
 
+> **Document historique du 30 mai 2026.** Une grande partie des constats ci-dessous a été traitée depuis par les features 006, 010, 011 et 012, et par les audits du 25 juillet 2026 (`docs/audit-2026-07-*.md`). À lire comme une archive, pas comme un état des lieux.
+
 > Date : 2026-05-30 · Version auditée : v1.3.0 (`aa9f7fb`) · Audit statique (code lu, app non exécutée)
 > Hypothèse d'audience validée : **grand public non-technique**, install CLI assumée, compensée par un **onboarding guidé** dans l'app.
 

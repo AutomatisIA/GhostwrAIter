@@ -2,7 +2,7 @@
 
 ## Principe
 
-Les skills editoriales sont orchestrees par [skill-runner.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/execution/skill-runner.service.ts) et executees par [codex-cli-runner.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/execution/codex-cli-runner.ts).
+Les skills editoriales sont orchestrees par [skill-runner.service.ts](app/main/domains/execution/skill-runner.service.ts) et executees par [codex-cli-runner.ts](app/main/domains/execution/codex-cli-runner.ts).
 
 Le contrat est strict:
 
@@ -225,7 +225,7 @@ Tous les skills suivent le meme principe:
   - `error.code`
   - `error.message`
 
-La validation par skill est faite dans [skill-runner.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/execution/skill-runner.service.ts).
+La validation par skill est faite dans [skill-runner.service.ts](app/main/domains/execution/skill-runner.service.ts).
 
 ## Contexte strategie envoye aux skills
 
@@ -267,8 +267,8 @@ Audit reel Electron:
 node scripts/real-app-audit.mjs
 ```
 
-Benchmark editorial multi-sujets:
+Evaluation editoriale multi-sujets:
 
 ```bash
-node scripts/benchmark-editorial-quality.mjs
+npm run eval:editorial
 ```

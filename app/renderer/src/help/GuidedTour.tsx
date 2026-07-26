@@ -16,7 +16,7 @@
  *
  * Aucun token en dur : tout le style passe par var(--…) (cf. styles.css).
  */
-import React, { useCallback, useEffect, useId, useRef } from "react";
+import React, { useEffect, useId, useRef } from "react";
 import { motion } from "motion/react";
 import { Button } from "../design-system/primitives";
 import {
@@ -25,9 +25,7 @@ import {
   useMotionVariants
 } from "../design-system/motion/variants";
 import { TOUR_STEPS } from "./guided-tour-steps";
-
-const FOCUSABLE =
-  'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { useDialogKeyboard } from "../design-system/primitives/use-dialog-keyboard";
 
 export interface GuidedTourProps {
   open: boolean;
@@ -61,48 +59,10 @@ export function GuidedTour({ open, onClose }: GuidedTourProps) {
     }
   }, [open, index]);
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") {
-        return;
-      }
-      const dialog = dialogRef.current;
-      if (!dialog) {
-        return;
-      }
-      const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (focusables.length === 0) {
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (!first || !last) {
-        return;
-      }
-      const active = document.activeElement;
-      // Garde : si le focus est hors du dialogue (ou nul), on le ramène sur le
-      // premier élément focusable plutôt que de comparer un `activeElement`
-      // étranger à `first`/`last`. Même protection que ConfirmDialog.
-      if (!active || !dialog.contains(active)) {
-        event.preventDefault();
-        first.focus();
-        return;
-      }
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    },
-    [onClose]
-  );
+  // Meme mecanisme que `ConfirmDialog` : l ecoute est sur `document`, sans quoi
+  // un clic sur le corps de l etape rendait la visite sourde a Echap et laissait
+  // la tabulation sortir vers la page situee derriere le voile.
+  useDialogKeyboard(open, dialogRef, onClose);
 
   if (!open || !step) {
     return null;
@@ -129,7 +89,6 @@ export function GuidedTour({ open, onClose }: GuidedTourProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        onKeyDown={handleKeyDown}
       >
         <motion.div
           key={index}

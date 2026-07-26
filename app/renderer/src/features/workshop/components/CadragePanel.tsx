@@ -27,9 +27,9 @@ export function CadragePanel({
 
   return (
     <div className="workshop-step">
-      <h3>
+      <h2>
         Choisis le cadrage <InfoHint term="cadrage" />
-      </h3>
+      </h2>
       <p className="step-description">
         Commence par définir le type de post et son objectif prioritaire.
         Cela sert à orienter la structure et le niveau de tension du draft.

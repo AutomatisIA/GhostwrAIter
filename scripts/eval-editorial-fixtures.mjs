@@ -258,14 +258,16 @@ const ideaInputSchema = z
   .object({
     title: z.string().min(1, "title is required"),
     angle: z.string().min(1, "angle is required"),
-    pillarLabel: z.string().min(1, "pillarLabel is required")
+    pillarLabel: z.string().min(1, "pillarLabel is required"),
+    targetIcpSegment: z.string().trim().min(1, "targetIcpSegment must not be blank").optional()
   })
   .strict();
 
 const newsSourceInputSchema = z
   .object({
     sourceTitle: z.string().min(1, "sourceTitle is required"),
-    sourceSummary: z.string().min(1, "sourceSummary is required")
+    sourceSummary: z.string().min(1, "sourceSummary is required"),
+    targetIcpSegment: z.string().trim().min(1, "targetIcpSegment must not be blank").optional()
   })
   .strict();
 

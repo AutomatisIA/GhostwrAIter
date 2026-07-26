@@ -147,13 +147,22 @@ export function createDefaultSkillPromptLoader(skillsRoot?: string): SkillPrompt
 export function assembleSkillPrompt(
   invocation: unknown,
   skillPrompt: string,
-  frameworkPreamble: string
+  frameworkPreamble: string,
+  /**
+   * Contraintes reglees par l utilisateur dans les Parametres de voix. Elles
+   * sont placees APRES le contrat de la skill et AVANT l invocation, donc en
+   * position d instruction et non de donnee : c est le defaut central releve
+   * par l audit editorial, ou les regles de style arrivaient noyees dans le
+   * JSON en fin de prompt.
+   */
+  userConstraints = ""
 ): string {
   return [
     frameworkPreamble,
     "",
     "Contract-specific instructions:",
     skillPrompt,
+    ...(userConstraints ? ["", userConstraints] : []),
     "",
     "Invocation:",
     JSON.stringify(invocation, null, 2)

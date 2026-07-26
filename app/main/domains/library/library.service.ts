@@ -4,11 +4,54 @@ import {
   type SkillRunnerInvocation
 } from "../execution/skill-runner.service";
 import { recordExecutionRun } from "../execution/execution-runs.repository";
+import { skillRunError } from "../execution/skill-run-error";
+import { buildStrategyContext } from "../strategy/strategy-context";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   LibraryEntry,
-  LibrarySearchInput
+  LibrarySearchInput,
+  LibraryTriage
 } from "../../../shared/types/library";
+
+/**
+ * Nom de la fonction SQLite de pliage, cote base.
+ *
+ * `lower()` de SQLite ne traite que l ASCII : il replie « E » en « e » et
+ * laisse « E accentue » intact. Sur une application francaise, un post
+ * contenant « Ecole » accentue n etait donc JAMAIS trouve, que l utilisateur
+ * tape la forme accentuee ou non, `LIKE` ne repliant pas les accents non plus.
+ *
+ * On enregistre donc une fonction qui applique la MEME regle que le cote
+ * JavaScript, plutot que de comparer deux normalisations differentes de part et
+ * d autre de la requete. C etait la racine du defaut : `lower()` SQLite en
+ * ASCII face a `toLowerCase()` JavaScript en Unicode.
+ */
+const PLIAGE = "plier_pour_recherche";
+
+/** Minuscules et suppression des signes diacritiques, sans toucher au texte affiche. */
+function plierPourRecherche(valeur: string): string {
+  return valeur
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+/**
+ * Enregistre la fonction de pliage sur la connexion, une seule fois.
+ *
+ * `db.function` leve si le nom existe deja, et plusieurs services peuvent
+ * partager la meme connexion : la garde rend l enregistrement idempotent, comme
+ * les `CREATE TABLE IF NOT EXISTS` voisins.
+ */
+function enregistrerPliage(db: Database.Database) {
+  try {
+    db.function(PLIAGE, { deterministic: true }, (valeur: unknown) =>
+      typeof valeur === "string" ? plierPourRecherche(valeur) : valeur
+    );
+  } catch {
+    // Deja enregistree sur cette connexion.
+  }
+}
 
 type RawLibraryRow = {
   draftId: string;
@@ -22,7 +65,37 @@ type RawLibraryRow = {
   pillarLabel: string;
   sourceDraftId: string | null;
   tags: string | null;
+  ideaTitle: string;
+  targetIcpSegment: string | null;
+  versionCount: number;
+  lastVersionAt: string;
+  /**
+   * Colonne technique : SQLite ne connait pas les booleens, la requete renvoie
+   * 0 ou 1. Elle sert a deriver `triage` et ne quitte jamais ce fichier.
+   */
+  isPlanned: number;
 };
+
+/**
+ * Traduit trois faits deja en base en un etat de triage. L ordre des regles est
+ * significatif : un brouillon planifie reste `planifie` meme s il n a qu une
+ * version, parce que la date posee prime sur la relecture qui reste a faire.
+ *
+ * Le seuil est `<= 1` et non `=== 1` : aucun brouillon sans version n existe
+ * aujourd hui, mais s il en apparaissait un il serait encore moins relu qu un
+ * brouillon a une seule version, pas plus.
+ */
+export function deriveTriage(isPlanned: boolean, versionCount: number): LibraryTriage {
+  if (isPlanned) {
+    return "planifie";
+  }
+
+  if (versionCount <= 1) {
+    return "a-relire";
+  }
+
+  return "pret";
+}
 
 type VariantSourceRow = {
   draftId: string;
@@ -31,6 +104,12 @@ type VariantSourceRow = {
   bodyMarkdown: string;
   qualityScore: number;
   pillarLabel: string;
+  /**
+   * Cible visee de l idee d origine. Une variante reecrit un post existant :
+   * elle doit viser la meme personne que l original, sinon elle n en est plus
+   * une variante mais un autre post.
+   */
+  targetIcpSegment: string | null;
   typology: string | null;
   objective: string | null;
   structureKey: string | null;
@@ -44,7 +123,9 @@ export class LibraryService {
     private readonly skillRunnerService: SkillRunnerService = new SkillRunnerService(),
     private readonly getActiveStrategy?: () => StrategyBundle | null,
     private readonly getFoundationSummary?: () => string | null
-  ) {}
+  ) {
+    enregistrerPliage(db);
+  }
 
   listEntries(): LibraryEntry[] {
     return this.readEntries({});
@@ -54,7 +135,7 @@ export class LibraryService {
     return this.readEntries(input);
   }
 
-  createVariantFromDraft(draftId: string): LibraryEntry {
+  async createVariantFromDraft(draftId: string): Promise<LibraryEntry> {
     const source = this.db
       .prepare(`
         SELECT
@@ -64,6 +145,7 @@ export class LibraryService {
           d.body_markdown AS bodyMarkdown,
           d.quality_score AS qualityScore,
           i.pillar_label AS pillarLabel,
+          i.target_icp_segment AS targetIcpSegment,
           d.typology AS typology,
           d.objective AS objective,
           d.structure_key AS structureKey,
@@ -86,7 +168,7 @@ export class LibraryService {
       runId,
       skillName: "linkedin-repurpose",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(source.pillarLabel),
+      context: this.buildRunnerContext(source),
       payload: {
         headline: source.headline,
         bodyMarkdown: source.bodyMarkdown,
@@ -99,10 +181,10 @@ export class LibraryService {
       },
       attachments: []
     };
-    const result = this.skillRunnerService.execute(invocation);
+    const result = await this.skillRunnerService.executeAsync(invocation);
 
     if (result.status !== "succeeded" || !result.data?.draft) {
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     const headline = result.data.draft.headline;
@@ -160,7 +242,21 @@ export class LibraryService {
       }
     }
 
-    const created = this.readEntries({ query: headline }).find((entry) => entry.draftId === variantId);
+    // Relecture par identifiant, jamais par titre.
+    //
+    // La version precedente cherchait la variante par `query: headline`, ce qui
+    // la rendait dependante du moteur de recherche pour retrouver une ligne
+    // dont elle connait deja la cle. Tant que `lower()` de SQLite etait
+    // utilise, une accroche a majuscule accentuee n etait pas retrouvee et la
+    // methode levait « Variant could not be reloaded » sur un travail pourtant
+    // ecrit en entier.
+    //
+    // Le pliage des accents corrige ce cas precis, et la mutation le confirme :
+    // remettre la recherche par titre ne fait plus tomber aucune porte. Ce
+    // changement-ci n est donc pas la correction du defaut, c est le retrait de
+    // la dependance qui l avait rendu possible. Le chemin divergent, trente
+    // lignes plus bas, faisait deja ainsi.
+    const created = this.readEntries({}).find((entry) => entry.draftId === variantId);
 
     if (!created) {
       throw new Error("Variant could not be reloaded");
@@ -208,7 +304,7 @@ export class LibraryService {
     this.db.prepare("DELETE FROM drafts WHERE id = ?").run(draftId);
   }
 
-  createDivergentVariant(sourceDraftId: string): LibraryEntry {
+  async createDivergentVariant(sourceDraftId: string): Promise<LibraryEntry> {
     const source = this.db
       .prepare(`
         SELECT
@@ -218,6 +314,7 @@ export class LibraryService {
           d.body_markdown AS bodyMarkdown,
           d.quality_score AS qualityScore,
           i.pillar_label AS pillarLabel,
+          i.target_icp_segment AS targetIcpSegment,
           d.typology AS typology,
           d.objective AS objective,
           d.structure_key AS structureKey,
@@ -240,7 +337,7 @@ export class LibraryService {
       runId,
       skillName: "linkedin-repurpose",
       skillVersion: "2.0.0",
-      context: this.buildRunnerContext(source.pillarLabel),
+      context: this.buildRunnerContext(source),
       payload: {
         mode: "divergent",
         sourceHeadline: source.headline,
@@ -254,10 +351,10 @@ export class LibraryService {
       },
       attachments: []
     };
-    const result = this.skillRunnerService.execute(invocation);
+    const result = await this.skillRunnerService.executeAsync(invocation);
 
     if (result.status !== "succeeded" || !result.data?.draft) {
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     const headline = result.data.draft.headline;
@@ -299,49 +396,25 @@ export class LibraryService {
     return created;
   }
 
-  private buildRunnerContext(pillarLabel: string) {
+  /**
+   * Le contexte est construit a partir de la ligne source entiere : la cible
+   * visee suit le post sur toute sa chaine. Reecrire avec toutes les cibles un
+   * texte redige pour une seule reviendrait a le destiner a un autre public que
+   * celui pour lequel il a ete ecrit.
+   */
+  private buildRunnerContext(source: Pick<VariantSourceRow, "pillarLabel" | "targetIcpSegment">) {
     const strategy = this.getActiveStrategy?.();
 
     if (!strategy) {
       throw new Error("No active strategy bundle is available.");
     }
 
-    if (!strategy.profile.id) {
-      throw new Error("Strategy profile is missing an id.");
-    }
-
-    const foundation = this.getFoundationSummary?.() ?? null;
-
-    return {
-      profileId: strategy.profile.id,
-      foundationSummary: foundation,
-      strategyProfileName: strategy.profile.name,
-      strategyPositioning: strategy.profile.positioning,
-      strategyBio: strategy.profile.bio,
-      strategyExpertiseSummary: strategy.profile.expertiseSummary,
-      strategyOffersSummary: this.summarizeOffers(strategy),
-      strategyIcpSummary: this.summarizeIcps(strategy),
-      pillarLabel,
-      pillarDescription:
-        strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
-      voiceRules: strategy.voiceRules.map((rule) => ({
-        category: rule.category,
-        ruleType: rule.ruleType,
-        ruleText: rule.ruleText
-      }))
-    };
-  }
-
-  private summarizeOffers(strategy: StrategyBundle) {
-    return strategy.offers
-      .map((offer) => `${offer.name}: ${offer.promise}. Problemes: ${offer.problems}`)
-      .join(" | ");
-  }
-
-  private summarizeIcps(strategy: StrategyBundle) {
-    return strategy.icps
-      .map((icp) => `${icp.segment}: douleurs=${icp.pains}. objections=${icp.objections ?? ""}`)
-      .join(" | ");
+    return buildStrategyContext(
+      strategy,
+      source.pillarLabel,
+      this.getFoundationSummary?.() ?? null,
+      { targetIcpSegment: source.targetIcpSegment }
+    );
   }
 
   private readEntries(input: LibrarySearchInput): LibraryEntry[] {
@@ -349,9 +422,9 @@ export class LibraryService {
     const values: string[] = [];
 
     if (input.query) {
-      clauses.push("(lower(d.headline) LIKE ? OR lower(d.body_markdown) LIKE ?)");
-      const lowered = `%${input.query.toLowerCase()}%`;
-      values.push(lowered, lowered);
+      clauses.push(`(${PLIAGE}(d.headline) LIKE ? OR ${PLIAGE}(d.body_markdown) LIKE ?)`);
+      const cherche = `%${plierPourRecherche(input.query)}%`;
+      values.push(cherche, cherche);
     }
 
     if (input.pillarLabel) {
@@ -378,6 +451,13 @@ export class LibraryService {
 
     const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
 
+    /*
+     * Les deux tables agregees sont pre-reduites a UNE ligne par brouillon avant
+     * d etre jointes. C est ce qui permet de tenir mille brouillons en une seule
+     * requete : une agregation par table, pas une requete par brouillon. C est
+     * aussi ce qui protege le GROUP_CONCAT des tags, qui compterait double si
+     * `draft_versions` ou `calendar_items` multipliaient les lignes.
+     */
     const rows = this.db
       .prepare(`
         SELECT
@@ -390,21 +470,70 @@ export class LibraryService {
           d.created_at AS createdAt,
           d.status AS status,
           i.pillar_label AS pillarLabel,
+          i.title AS ideaTitle,
+          i.target_icp_segment AS targetIcpSegment,
           d.source_draft_id AS sourceDraftId,
+          COALESCE(v.versionCount, 0) AS versionCount,
+          COALESCE(v.lastVersionAt, d.created_at) AS lastVersionAt,
+          CASE WHEN c.draftId IS NOT NULL THEN 1 ELSE 0 END AS isPlanned,
           GROUP_CONCAT(t.label, '|') AS tags
         FROM drafts d
         INNER JOIN ideas i ON i.id = d.idea_id
         LEFT JOIN tag_links tl ON tl.draft_id = d.id
         LEFT JOIN tags t ON t.id = tl.tag_id
+        LEFT JOIN (
+          SELECT
+            draft_id,
+            COUNT(*) AS versionCount,
+            MAX(created_at) AS lastVersionAt
+          FROM draft_versions
+          GROUP BY draft_id
+        ) v ON v.draft_id = d.id
+        LEFT JOIN (
+          /*
+           * « Planifie » decrit ce qu il RESTE a faire, donc une date encore
+           * devant soi. La sous-requete comptait toute ligne de calendrier, quel
+           * que soit son statut.
+           *
+           * Filtrer sur le statut ne suffit PAS, et le chemin d ecriture dit
+           * pourquoi : scheduleDraft INSERE une ligne a chaque appel, il ne met
+           * rien a jour. « Marquer comme publie » ajoute donc une ligne
+           * 'published' A COTE de la ligne 'planned', qui reste en base. Un
+           * simple WHERE status IN (...) retrouverait cette ligne 'planned'
+           * perimee et laisserait le brouillon sous « Planifies », soit
+           * exactement le defaut a corriger.
+           *
+           * On lit donc l ETAT COURANT de chaque creneau : la derniere ligne
+           * ecrite pour un couple (brouillon, date), et le brouillon reste
+           * planifie si au moins un de ses creneaux attend encore. Grouper par
+           * date, et pas seulement par brouillon, est ce qui evite de declarer
+           * fait un brouillon date deux fois dont une seule occurrence a ete
+           * publiee.
+           *
+           * Le statut 'missed' est exclu au meme titre que 'published' : un
+           * creneau manque est passe, il ne decrit plus une echeance a tenir.
+           */
+          SELECT DISTINCT draft_id AS draftId
+          FROM calendar_items
+          WHERE rowid IN (
+            SELECT MAX(rowid) FROM calendar_items GROUP BY draft_id, planned_date
+          )
+          AND status IN ('planned', 'ready')
+        ) c ON c.draftId = d.id
         ${whereClause}
         GROUP BY d.id
         ORDER BY d.created_at DESC
       `)
       .all(...values) as RawLibraryRow[];
 
-    return rows.map((row) => ({
-      ...row,
-      tags: row.tags ? row.tags.split("|").filter(Boolean) : []
-    }));
+    return rows.map((row) => {
+      const { isPlanned, tags, ...rest } = row;
+
+      return {
+        ...rest,
+        tags: tags ? tags.split("|").filter(Boolean) : [],
+        triage: deriveTriage(isPlanned === 1, row.versionCount)
+      };
+    });
   }
 }

@@ -129,7 +129,7 @@ function probeWindowsCandidates(
 /**
  * Generic CLI binary finder. Same cross-platform detection logic as
  * `findCodexBinary` but parameterised by binary name so it works for
- * any CLI engine (codex, claude, gemini).
+ * any CLI engine (codex, claude, agy).
  */
 export function findCliBinary(binaryName: string, deps?: FindCliBinaryDeps): string | null {
   const resolved = resolveDeps(deps);

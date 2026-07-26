@@ -1,0 +1,637 @@
+/*
+ * Feuille de l ecran Strategie.
+ *
+ * Extraite de la feuille monolithique le 25 juillet 2026, lors de la mise en
+ * oeuvre de la direction visuelle. Un fichier par ecran : les regles se lisent
+ * a cote du composant qu elles habillent, et deux chantiers paralleles ne se
+ * disputent plus le meme fichier.
+ *
+ * Le probleme que cette feuille corrige est le plus couteux du produit. Chaque
+ * champ occupait quatre lignes empilees : libelle, aide, champ, exemple.
+ * L onglet Profil faisait 1 040 px de haut, alors qu il contient quatre
+ * champs. Trois gestes le ramenent a une lecture directe :
+ *   - le champ passe sur la meme ligne que son libelle (grille 176px / 1fr) ;
+ *   - l aide se replie et son etat est memorise par nature de champ ;
+ *   - l exemple quitte le flux et devient le texte indicatif du champ.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Barre d onglets
+ * ------------------------------------------------------------------------- */
+
+/* La barre reste dans le flux du corps de page, donc en retrait des 28px de
+   padding de `.page__body`. La sortir en pleine largeur demanderait des marges
+   negatives qui recopieraient en dur une valeur du chantier commun : le jour ou
+   elle change, la barre deborde. Ecart assume a la maquette. */
+.strategy-tabbar {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-3);
+  height: 44px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* Le trait bas est porte par la barre, pour qu il file aussi sous la bascule
+   des aides. Les onglets eux-memes le reprennent en 2px sur l element actif. */
+.strategy-tabbar .ds-tabs {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+  overflow-x: auto;
+}
+
+/* `height: 100%` et non `44px` : la barre est en `border-box` et porte un trait
+   bas, sa boite de contenu fait donc 43px. Un onglet de 44px la deborderait
+   d un pixel, ce qui suffit a faire apparaitre une barre de defilement dans
+   `.ds-tabs` (son `overflow-x: auto` rend l axe vertical defilant lui aussi) et
+   a decaler le soulignement de l onglet actif du separateur. */
+.strategy-tabbar .ds-tab {
+  height: 100%;
+  background: transparent;
+  padding: 0 14px;
+}
+
+.strategy-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+/* Decompte des elements saisis, a droite du libelle d onglet. Il remplace six
+   coches vertes identiques, qui ne hierarchisaient rien et epuisaient une
+   couleur reservee au terminal, le post publie. Encre tertiaire, chiffres
+   tabulaires pour que la largeur ne saute pas quand le compte change. */
+.strategy-tab-mark {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Seul le socle perime porte une teinte : l ambre signale ce sur quoi il y a
+   quelque chose a faire, jamais un etat satisfaisant. */
+.strategy-tab-mark[data-tone="attention"] {
+  color: var(--amber-ink);
+  font-variant-numeric: normal;
+}
+
+/* Confort de lecture, pas action metier : ce controle ne porte donc pas de
+   bordure, qui le mettrait au rang des actions reelles de l ecran. Texte seul,
+   aligne sur la ligne des onglets. */
+.strategy-help-master {
+  flex: none;
+  align-self: center;
+  height: 26px;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  color: var(--ink-subtle);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.strategy-help-master:hover {
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * Corps de l onglet
+ * ------------------------------------------------------------------------- */
+
+/* Deux colonnes : la saisie a gauche, le panneau d effet a droite. Avant, le
+   formulaire occupait une colonne de 860px et laissait tout le reste vide, a
+   droite comme en dessous, sur un ecran par ailleurs juge trop long.
+   `flex-wrap` fait passer le panneau sous le formulaire quand la fenetre est
+   trop etroite pour les deux : jamais de colonne ecrasee. */
+.strategy-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+/* Base a 760px et non a la largeur minimale souhaitable : une base plus basse
+   fait partager l espace libre a parts egales avec le panneau, et le
+   formulaire se stabilise 76px sous sa largeur de dessin. Le champ y perd
+   autant, ce qui est precisement l ecart que la colonne de 168px corrige. */
+.strategy-panel {
+  flex: 1 1 760px;
+  min-width: 0;
+  max-width: 760px;
+}
+
+.strategy-section {
+  display: block;
+}
+
+.strategy-section + .strategy-section {
+  margin-top: 28px;
+}
+
+.strategy-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: 14px;
+}
+
+.strategy-section-head__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-height-tight);
+  color: var(--ink);
+}
+
+.strategy-section-head__lead {
+  margin: 4px 0 0;
+  max-width: 70ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+.strategy-section-head__action {
+  flex: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Surface de saisie
+ * ------------------------------------------------------------------------- */
+
+.strategy-surface {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.strategy-item {
+  margin-top: 14px;
+}
+
+.strategy-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 9px 18px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--line);
+}
+
+.strategy-item__title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink);
+}
+
+/* `EmptyState` porte deja son propre rembourrage : n en ajouter aucun ici,
+   sinon la boite double sa hauteur pour trois lignes de texte. */
+.strategy-empty {
+  margin-top: 14px;
+}
+
+/* Une ligne = un champ. `align-items: center` pour les champs d une ligne,
+   `start` pour les zones de texte, dont le libelle descend alors de 8px pour
+   s aligner sur la premiere ligne saisie.
+   La colonne de libelles fait 168px : au-dela, le libelle et son champ sont
+   separes par assez de vide pour que l oeil perde l association entre les
+   deux. Le champ porte un plafond de 592px pour la meme raison en sens
+   inverse, une ligne de saisie plus large qu une ligne de lecture ne se
+   relisant plus. Dans la colonne de 760px ce plafond n est pas atteint : la
+   piste vaut 540px. Il ne mord que si la colonne s elargit un jour. */
+.strategy-row {
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: 14px;
+  align-items: center;
+  /* 10px et non les 11 du dessin. Ce pixel avait ete rogne pour tenir deux
+     portes de HAUTEUR TOTALE, 340px sur la surface et 420px sur l onglet, que
+     la zone de deux lignes du Positionnement mettait a 419 sur un profil vide.
+     Ces portes ont ete remplacees par une mesure du seul cout de structure,
+     champs deduits : `scripts/audit-geometrie.mjs` releve 85px sur le
+     formulaire pour un seuil de 120, et 167px a vide sur l onglet pour un
+     seuil de 200. Le pixel n est donc plus ce qui separe le vert du rouge, et
+     il ne faut pas relire ce 10 comme une contrainte de recette. Il reste a 10
+     parce que la densite obtenue a ete validee a l oeil, pas pour tenir un
+     calcul. Ce sont ces 20px par rangee, soit 80 des 85px mesures, que la
+     porte surveille. */
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.strategy-row:last-child {
+  border-bottom: none;
+}
+
+.strategy-row[data-align="start"] {
+  align-items: start;
+}
+
+.strategy-row[data-align="start"] .strategy-row__labelcell {
+  padding-top: 8px;
+}
+
+.strategy-row--plain {
+  grid-template-columns: 1fr;
+}
+
+.strategy-row__labelcell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.strategy-row__label {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+  color: var(--ink);
+}
+
+/* Bouton de repli de l aide : 20px, discret au repos, teinte primaire quand
+   l aide est depliee. C est le seul indicateur d etat de la ligne. */
+.strategy-row__help-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  color: var(--ink-subtle);
+  background: transparent;
+  /* `--line-field` et non `--line-strong` : ce bouton n est identifiable que
+     par sa bordure, cas ou WCAG 1.4.11 exige 3:1. `--line-strong` n en donne
+     que 1,48 sur une surface claire. */
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-circle);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.strategy-row__help-toggle:hover {
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+}
+
+.strategy-row__help-toggle[aria-expanded="true"] {
+  color: var(--primary-ink);
+  background: var(--primary-tint);
+  border-color: var(--primary-line);
+}
+
+.strategy-row__help {
+  grid-column: 2;
+  margin: 0;
+  max-width: 46ch;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--ink-muted);
+}
+
+.strategy-row__help[hidden] {
+  display: none;
+}
+
+/* Le combinateur d enfant direct est volontaire : il vise la commande posee
+   dans la grille par `StrategyField`, jamais une case a cocher imbriquee dans
+   son libelle, qui doit garder sa taille naturelle. */
+.strategy-row > input,
+.strategy-row > select,
+.strategy-row > textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 592px;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-md);
+  outline: none;
+}
+
+.strategy-row > input,
+.strategy-row > select {
+  height: 34px;
+  padding: 0 12px;
+}
+
+/* Le champ grandit avec son contenu, il ne le masque pas.
+   Une hauteur fixe de 72 px, soit trois lignes, tronquait des valeurs de six
+   lignes pendant que six cents pixels restaient vides sous le formulaire.
+   `field-sizing: content` fait suivre la hauteur au texte reellement saisi :
+   court quand le champ est vide, donc l ecran reste dense a l arrivee, et
+   deploye quand il y a quelque chose a relire. Les bornes evitent qu un seul
+   champ tres long chasse les autres hors de l ecran, et le redimensionnement
+   manuel reste possible. */
+.strategy-row > textarea {
+  field-sizing: content;
+  min-height: 72px;
+  max-height: 320px;
+  padding: 9px 12px;
+  line-height: var(--line-height-normal);
+  resize: vertical;
+  overflow-y: auto;
+}
+
+/* Zone de deux lignes, pour les champs dont la valeur depasse regulierement
+   90 caracteres : sur une seule ligne, la fin sortait du champ et ne se
+   relisait plus. La hauteur est calculee, jamais recopiee : deux lignes
+   pleines, plus le rembourrage et le trait. Une valeur figee a l oeil tronque
+   la deuxieme ligne des que l interlignage bouge. Le rembourrage vaut 18px et
+   le trait 2 : les 22px comptes laissent deux pixels de jeu, de quoi absorber
+   l arrondi sous-pixel plutot que de rogner le jambage de la seconde ligne. */
+/* Le champ Positionnement s ouvre sur deux lignes, sa valeur ne tenant pas sur
+   une seule. Il grandit ensuite comme les autres. */
+.strategy-row > textarea[rows="2"] {
+  min-height: calc(2 * var(--font-size-base) * var(--line-height-normal) + 22px);
+}
+
+.strategy-row > input:focus,
+.strategy-row > select:focus,
+.strategy-row > textarea:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+.strategy-row > input::placeholder,
+.strategy-row > textarea::placeholder {
+  color: var(--ink-subtle);
+}
+
+.strategy-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.strategy-check input {
+  width: auto;
+  height: auto;
+  margin: 0;
+  accent-color: var(--primary-fill);
+}
+
+/* ---------------------------------------------------------------------------
+ * Completude
+ * ------------------------------------------------------------------------- */
+
+.strategy-completeness {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: 14px;
+}
+
+.strategy-completeness__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Un segment par element compte, jamais une resolution fixe : cinq segments
+   sous « 4 sur 4 » laissaient une case grise a cote d un decompte complet, et
+   l indicateur se contredisait. La jauge garde une largeur constante quel que
+   soit le nombre de segments, sinon elle s allongerait avec le nombre de
+   regles de voix. A quatre segments, chacun retombe sur les 44px du dessin. */
+.strategy-completeness__segments {
+  display: flex;
+  gap: 3px;
+  width: 185px;
+}
+
+.strategy-completeness__segment {
+  flex: 1 1 0;
+  min-width: 4px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--line-strong);
+  transition: background var(--duration-base) var(--ease-standard);
+}
+
+.strategy-completeness__segment[data-lit="true"] {
+  background: var(--ink-muted);
+}
+
+.strategy-completeness__count {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ligne de consequence : elle dit ce qui manque et ce que ca change, en encre
+   tertiaire. Ni ambre ni rouge : un profil incomplet n est pas une erreur, et
+   un accent d attention pose ici cesserait d en signaler ailleurs. */
+.strategy-completeness__consequence {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+.strategy-completeness__consequence svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Panneau de droite
+ * ------------------------------------------------------------------------- */
+
+/* Les classes de ce panneau ne reprennent ni `strategy-section` ni
+   `strategy-surface` : ces deux noms sont les reperes de mesure des portes de
+   recette geometriques, qui visent la premiere occurrence dans le document.
+   Les reutiliser ici ferait mesurer la mauvaise boite. */
+.strategy-aside {
+  flex: 1 1 280px;
+  min-width: 0;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.strategy-aside__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.strategy-aside__lead {
+  margin: 0;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--ink-muted);
+}
+
+.strategy-aside__rule {
+  height: 1px;
+  background: var(--line);
+}
+
+.strategy-aside__status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.strategy-aside__status-label {
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+}
+
+.strategy-aside__status-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink);
+}
+
+.strategy-aside__status-value[data-tone="attention"] {
+  color: var(--amber-ink);
+}
+
+.strategy-aside__note {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+ * Onglet Socle editorial
+ * ------------------------------------------------------------------------- */
+
+.strategy-outdated {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--amber-ink);
+  background: var(--amber-tint);
+  border: 1px solid var(--amber-line);
+  border-radius: var(--radius-md);
+}
+
+.strategy-foundation-editor {
+  display: grid;
+  gap: 14px;
+}
+
+.strategy-foundation-input {
+  width: 100%;
+  min-height: 320px;
+  padding: 14px 16px;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-md);
+  outline: none;
+  resize: vertical;
+}
+
+.strategy-foundation-input:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+.strategy-foundation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.strategy-foundation-preview {
+  padding: 18px;
+  white-space: pre-wrap;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  color: var(--ink-muted);
+}
+
+.strategy-foundation-hint {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+.strategy-savedat {
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+ * Marqueurs d ecriture IA (onglet Voix)
+ * ------------------------------------------------------------------------- */
+
+.strategy-tells {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.strategy-tell {
+  display: grid;
+  gap: var(--space-2);
+  padding: 14px 16px;
+}
+
+.strategy-tell__description {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+/* ---------------------------------------------------------------------------
+ * Chargement
+ * ------------------------------------------------------------------------- */
+
+.strategy-skeleton {
+  display: grid;
+  gap: 18px;
+}

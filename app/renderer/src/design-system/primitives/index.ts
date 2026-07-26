@@ -4,6 +4,8 @@
  * Le feedback (ToastProvider/useToast) vit dans `../../feedback` : il est
  * re-exporte ici par commodite pour offrir une surface d'import unique.
  */
+export { PageFrame } from "./PageFrame";
+
 export { Button } from "./Button";
 export type { ButtonProps, ButtonVariant, ButtonSize } from "./Button";
 
@@ -33,6 +35,16 @@ export type { ConfirmDialogProps } from "./ConfirmDialog";
 
 export { AiProgress } from "./AiProgress";
 export type { AiProgressProps } from "./AiProgress";
+
+export {
+  CheckCircleIcon,
+  AlertTriangleIcon,
+  XCircleIcon,
+  LightbulbIcon,
+  PencilIcon,
+  CalendarIcon
+} from "./icons";
+export type { IconProps } from "./icons";
 
 // Feedback (toasts) : surface unique re-exportee depuis feedback/.
 export { ToastProvider } from "../../feedback/ToastProvider";

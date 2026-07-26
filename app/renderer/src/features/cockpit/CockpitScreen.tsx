@@ -1,14 +1,12 @@
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { motion, useMotionTemplate, useReducedMotion, useSpring } from "motion/react";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { LINKEDIN_MAX_CHARS, measurePost } from "../../../../shared/post-metrics";
 import type { IdeaRecord } from "@shared/types/ideas";
 import type { LibraryEntry } from "@shared/types/library";
-import { Button, Card, EmptyState, Skeleton } from "../../design-system/primitives";
-import {
-  fadeInUp,
-  staggerContainer,
-  useMotionVariants
-} from "../../design-system/motion/variants";
+import { Button, EmptyState, PageFrame, Skeleton } from "../../design-system/primitives";
+import { localDayIso } from "./local-day";
+
+import "./cockpit.css";
 
 type CockpitState = {
   strategyReady: boolean;
@@ -18,9 +16,21 @@ type CockpitState = {
   publishedCount: number;
   recentIdeas: IdeaRecord[];
   recentDrafts: LibraryEntry[];
+  /** Idees jamais transformees en brouillon. */
+  ideasWithoutDraft: number;
+  /** Brouillons prets mais absents du calendrier. */
+  draftsUnscheduled: number;
+  /** Posts planifies a aujourd hui ou en retard, non publies. */
+  postsDue: number;
+  /** Titre du prochain post a publier, pour nommer l action. */
+  nextDueHeadline: string | null;
 };
 
 const initialState: CockpitState = {
+  ideasWithoutDraft: 0,
+  draftsUnscheduled: 0,
+  postsDue: 0,
+  nextDueHeadline: null,
   strategyReady: false,
   ideasCount: 0,
   draftsCount: 0,
@@ -30,66 +40,195 @@ const initialState: CockpitState = {
   recentDrafts: []
 };
 
-function getNextAction(state: CockpitState): {
+/** Les cinq etapes de la reglette, dans l ordre du pipeline. */
+type PipelineStepKey =
+  | "strategy"
+  | "ideas"
+  | "drafts"
+  | "planned"
+  | "published";
+
+type NextAction = {
   label: string;
   explanation: string;
-  to: string | null;
-} {
+  /** Verbe d action du bouton. Distinct du titre : repeter le titre mot pour
+   *  mot dans le bouton n apporte rien et allonge le bloc pour rien. */
+  cta: string;
+  to: string;
+  /** Etape du pipeline que cette action concerne. La reglette la souligne en
+   *  ambre : le bloc heros et la reglette racontent ainsi la meme histoire,
+   *  et ils ne peuvent pas diverger puisqu ils sortent du meme calcul. */
+  attention: PipelineStepKey;
+};
+
+function getNextAction(state: CockpitState): NextAction {
   if (!state.strategyReady) {
     return {
       label: "Définir votre stratégie éditoriale",
       explanation:
         "La stratégie est la fondation de tout votre contenu. Sans elle, l'IA ne peut pas générer de posts pertinents.",
-      to: "/strategie"
+      cta: "Ouvrir la stratégie",
+      to: "/strategie",
+      attention: "strategy"
     };
   }
   if (state.ideasCount === 0) {
     return {
       label: "Créer votre première idée",
       explanation:
-        "L'atelier de création transforme vos idées en drafts LinkedIn. Commencez par capturer un sujet.",
-      to: "/creer"
+        "L'atelier de création transforme vos idées en brouillons LinkedIn. Commencez par capturer un sujet.",
+      cta: "Capturer une idée",
+      to: "/creer",
+      attention: "ideas"
     };
   }
   if (state.draftsCount === 0) {
     return {
       label: "Rédiger votre premier post",
       explanation:
-        "Vous avez des idées en stock. Passez à l'étape rédaction pour générer un draft complet.",
-      to: "/creer"
+        "Vous avez des idées en stock. Passez à l'étape rédaction pour générer un brouillon complet.",
+      cta: "Ouvrir l'atelier",
+      to: "/creer",
+      attention: "drafts"
     };
   }
   if (state.plannedCount === 0) {
     return {
-      label: "Planifier vos drafts",
+      label: "Planifier vos brouillons",
       explanation:
-        "Vos drafts sont prêts. Placez-les dans le calendrier pour organiser votre publication.",
-      to: "/bibliotheque"
+        "Vos brouillons sont prêts. Placez-les dans le calendrier pour organiser votre publication.",
+      cta: "Ouvrir la bibliothèque",
+      to: "/bibliotheque",
+      attention: "planned"
     };
   }
+
+  // A partir d'ici l'utilisateur est installe. Le bloc affichait « Tout est en
+  // place », c'est-a-dire un appel a l'action qui n'appelait a rien, alors qu'il
+  // occupe la position la plus visible de l'ecran. Il calcule desormais ce qui
+  // attend reellement, du plus urgent au moins urgent
+  // (cf. docs/audit-2026-07-ui-ux.md section 1).
+
+  if (state.postsDue > 0) {
+    const plural = state.postsDue > 1;
+    return {
+      label: plural
+        ? `${state.postsDue} posts à publier`
+        : `À publier : ${state.nextDueHeadline ?? "votre post planifié"}`,
+      explanation: plural
+        ? "Leur date de publication est arrivée. Copiez le texte, publiez, puis marquez-les comme publiés."
+        : "Sa date de publication est arrivée. Copiez le texte, publiez, puis marquez-le comme publié.",
+      cta: "Ouvrir la bibliothèque",
+      to: "/bibliotheque",
+      attention: "planned"
+    };
+  }
+
+  if (state.draftsUnscheduled > 0) {
+    const plural = state.draftsUnscheduled > 1;
+    return {
+      label: `${state.draftsUnscheduled} ${plural ? "brouillons non planifiés" : "brouillon non planifié"}`,
+      explanation: plural
+        ? "Ils sont rédigés mais n'ont pas de date. Un post sans date attend indéfiniment."
+        : "Il est rédigé mais n'a pas de date. Un post sans date attend indéfiniment.",
+      cta: "Planifier",
+      to: "/bibliotheque",
+      attention: "drafts"
+    };
+  }
+
+  if (state.ideasWithoutDraft > 0) {
+    const plural = state.ideasWithoutDraft > 1;
+    return {
+      label: `${state.ideasWithoutDraft} ${plural ? "idées en attente de rédaction" : "idée en attente de rédaction"}`,
+      explanation: plural
+        ? "Elles sont dans votre backlog et n'ont pas encore de brouillon. Passez la plus mûre à l'atelier."
+        : "Elle est dans votre backlog et n'a pas encore de brouillon. Passez-la à l'atelier.",
+      cta: "Ouvrir l'atelier",
+      to: "/creer",
+      attention: "ideas"
+    };
+  }
+
   return {
-    label: "Tout est en place",
-    explanation: "Votre pipeline de contenu est opérationnel.",
-    to: null
+    label: "Capturer un nouveau sujet",
+    explanation:
+      "Tout ce que vous aviez en stock est rédigé et planifié. Le pipeline se vide : alimentez-le pour ne pas manquer de matière.",
+    cta: "Capturer un sujet",
+    to: "/creer",
+    attention: "ideas"
   };
 }
 
-type Metric = {
-  to: string;
-  icon: string;
+type PipelineStep = {
+  key: PipelineStepKey;
   label: string;
   value: string;
-  caption: string;
+  /** Compteur a zero : la valeur passe en encre tertiaire. */
+  empty: boolean;
+  to: string;
 };
+
+function getPipelineSteps(state: CockpitState): PipelineStep[] {
+  return [
+    {
+      key: "strategy",
+      label: "Stratégie",
+      value: state.strategyReady ? "Prête" : "À définir",
+      empty: !state.strategyReady,
+      to: "/strategie"
+    },
+    {
+      key: "ideas",
+      label: "Idées",
+      value: String(state.ideasCount),
+      empty: state.ideasCount === 0,
+      to: "/creer"
+    },
+    {
+      key: "drafts",
+      label: "Brouillons",
+      value: String(state.draftsCount),
+      empty: state.draftsCount === 0,
+      to: "/bibliotheque"
+    },
+    {
+      key: "planned",
+      label: "Planifiés",
+      value: String(state.plannedCount),
+      empty: state.plannedCount === 0,
+      to: "/bibliotheque?view=planning"
+    },
+    {
+      key: "published",
+      label: "Publiés",
+      value: String(state.publishedCount),
+      empty: state.publishedCount === 0,
+      to: "/bibliotheque?view=planning"
+    }
+  ];
+}
+
+/**
+ * Compte de caracteres d un brouillon, rapporte a la limite LinkedIn.
+ * « 1 048 sur 3 000 » dit en un coup d oeil ce que « 1 048 caracteres » ne dit
+ * pas : la marge restante. Les deux nombres sont mesures, jamais estimes.
+ */
+function formatCharBudget(bodyMarkdown: string): { text: string; over: boolean } {
+  const { chars, overLimit } = measurePost(bodyMarkdown);
+  return {
+    text: `${chars.toLocaleString("fr-FR")} sur ${LINKEDIN_MAX_CHARS.toLocaleString("fr-FR")}`,
+    over: overLimit
+  };
+}
 
 export function CockpitScreen() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [state, setState] = useState<CockpitState>(initialState);
-
-  const prefersReducedMotion = useReducedMotion() ?? false;
-  const container = useMotionVariants(staggerContainer);
-  const item = useMotionVariants(fadeInUp);
+  const [loadFailed, setLoadFailed] = useState(false);
+  /** Incremente par « Reessayer » : relance l effet de chargement. */
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -97,12 +236,14 @@ export function CockpitScreen() {
     Promise.all([
       window.linkedinPoster.strategy
         .getActiveBundle()
+        // Le badge doit refleter ce que le moteur EXIGE reellement, pas la
+        // simple presence de donnees. `buildStrategyContext` leve une erreur
+        // sans regle de voix, et une idee sans pilier ne porte aucun contexte
+        // editorial. Un OU sur quatre tableaux affichait « Prete » avec un seul
+        // pilier au libelle vide, puis l atelier echouait sans explication
+        // (cf. docs/audit-2026-07-fonctionnel.md section 6).
         .then((bundle) => ({
-          ready:
-            bundle.offers.length > 0 ||
-            bundle.icps.length > 0 ||
-            bundle.pillars.length > 0 ||
-            bundle.voiceRules.length > 0
+          ready: bundle.voiceRules.length > 0 && bundle.pillars.length > 0
         }))
         .catch(() => ({ ready: false })),
       window.linkedinPoster.ideas.listIdeas(),
@@ -133,7 +274,22 @@ export function CockpitScreen() {
           )
           .slice(0, 3);
 
+        const draftedIdeaIds = new Set(drafts.map((entry) => entry.ideaId));
+        const scheduledDraftIds = new Set(calendarItems.map((entry) => entry.draftId));
+
+        // Jour du jour au format ISO court, pour comparer a `plannedDate`.
+        // LOCAL, pas UTC : `plannedDate` est une date civile, et `toISOString()`
+        // calculait le jour a Greenwich (cf. `local-day.ts`).
+        const today = localDayIso();
+        const due = calendarItems
+          .filter((entry) => entry.status !== "published" && entry.plannedDate <= today)
+          .sort((a, b) => a.plannedDate.localeCompare(b.plannedDate));
+
         setState({
+          ideasWithoutDraft: ideas.filter((idea) => !draftedIdeaIds.has(idea.id)).length,
+          draftsUnscheduled: drafts.filter((entry) => !scheduledDraftIds.has(entry.draftId)).length,
+          postsDue: due.length,
+          nextDueHeadline: due[0]?.draftHeadline ?? null,
           strategyReady: strategy.ready,
           ideasCount: ideas.length,
           draftsCount: drafts.length,
@@ -143,6 +299,15 @@ export function CockpitScreen() {
           recentDrafts: sortedDrafts
         });
       })
+      // Sans cette branche, un echec de lecture laissait l ecran sur
+      // `initialState` : tous les compteurs a zero et la strategie « a definir »,
+      // c est-a-dire l etat exact d un espace vierge. Un utilisateur ayant trente
+      // brouillons recevait l ecran d accueil du premier lancement, et la
+      // reglette affichait cinq zeros mesures nulle part. On prefere dire qu on
+      // ne sait pas.
+      .catch(() => {
+        if (mounted) setLoadFailed(true);
+      })
       .finally(() => {
         if (mounted) setLoading(false);
       });
@@ -150,301 +315,236 @@ export function CockpitScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
-
-  const isFirstRun =
-    !loading &&
-    !state.strategyReady &&
-    state.ideasCount === 0 &&
-    state.draftsCount === 0;
-
-  const nextAction = getNextAction(state);
-
-  const segments = [
-    { label: "Stratégie", lit: state.strategyReady },
-    { label: "Idées", lit: state.ideasCount > 0 },
-    { label: "Drafts", lit: state.draftsCount > 0 },
-    { label: "Planifiés", lit: state.plannedCount > 0 },
-    { label: "Publiés", lit: state.publishedCount > 0 }
-  ];
-  const litCount = segments.filter((seg) => seg.lit).length;
-  const progress = litCount / segments.length;
-  const progressVariants = useMotionVariants({
-    hidden: { scaleX: 0 },
-    visible: {
-      scaleX: progress,
-      transition: { duration: 0.4, ease: [0.2, 0, 0, 1] as [number, number, number, number] }
-    }
-  });
-
-  // Parallaxe subtile sur la carte hero « Prochaine action » (feature 010, T044,
-  // FR-017). L'inclinaison suit le curseur avec une amplitude faible (±5 deg) et
-  // un ressort doux. ENTIEREMENT neutralisee sous prefers-reduced-motion : on
-  // n'attache alors aucun handler et la transformation reste a zero (voir
-  // `handleNextActionPointerMove`). Reste discret, pas un gadget.
-  const NEXT_ACTION_TILT_DEG = 5;
-  const tiltSpringConfig = { stiffness: 150, damping: 18, mass: 0.4 };
-  const nextActionRotateX = useSpring(0, tiltSpringConfig);
-  const nextActionRotateY = useSpring(0, tiltSpringConfig);
-  const nextActionTransform = useMotionTemplate`perspective(900px) rotateX(${nextActionRotateX}deg) rotateY(${nextActionRotateY}deg)`;
-
-  function handleNextActionPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    if (prefersReducedMotion) return;
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const ratioX = (event.clientX - bounds.left) / bounds.width - 0.5;
-    const ratioY = (event.clientY - bounds.top) / bounds.height - 0.5;
-    nextActionRotateY.set(ratioX * NEXT_ACTION_TILT_DEG * 2);
-    nextActionRotateX.set(-ratioY * NEXT_ACTION_TILT_DEG * 2);
-  }
-
-  function handleNextActionPointerLeave() {
-    nextActionRotateX.set(0);
-    nextActionRotateY.set(0);
-  }
-
-  const metrics: Metric[] = [
-    {
-      to: "/strategie",
-      icon: state.strategyReady ? "✅" : "⚠️",
-      label: "Stratégie",
-      value: state.strategyReady ? "Prête" : "À définir",
-      caption: state.strategyReady
-        ? "Positionnement, piliers et voix configurés"
-        : "Configurez offres, ICPs et piliers"
-    },
-    {
-      to: "/creer",
-      icon: "💡",
-      label: "Idées",
-      value: String(state.ideasCount),
-      caption:
-        state.ideasCount > 0
-          ? `${state.ideasCount > 1 ? "idées" : "idée"} dans le backlog`
-          : "Aucune idée encore"
-    },
-    {
-      to: "/bibliotheque",
-      icon: "📝",
-      label: "Drafts",
-      value: String(state.draftsCount),
-      caption:
-        state.draftsCount > 0
-          ? `${state.draftsCount > 1 ? "drafts" : "draft"} en bibliothèque`
-          : "Aucun draft rédigé"
-    },
-    {
-      to: "/bibliotheque?view=planning",
-      icon: "📅",
-      label: "Planifiés",
-      value: String(state.plannedCount),
-      caption:
-        state.plannedCount > 0
-          ? `${state.plannedCount > 1 ? "posts planifiés" : "post planifié"}`
-          : "Rien au calendrier"
-    }
-  ];
+  }, [reloadToken]);
 
   if (loading) {
     return (
-      <section className="panel page-panel dashboard-page">
-        <h1>Cockpit</h1>
-        <div className="dashboard-grid cockpit-skeleton-metrics">
-          <Skeleton variant="card" />
-          <Skeleton variant="card" />
-          <Skeleton variant="card" />
-          <Skeleton variant="card" />
-        </div>
-        <div className="cockpit-skeleton-pipeline">
-          <Skeleton variant="card" />
-        </div>
-        <div className="dashboard-grid dashboard-grid-secondary cockpit-skeleton-lists">
-          <div className="cockpit-list-stack">
-            <Skeleton variant="card" />
-            <Skeleton variant="card" />
-            <Skeleton variant="card" />
+      <PageFrame eyebrow="Cockpit">
+        <div className="cockpit" aria-busy="true">
+          <div className="cockpit-skeleton cockpit-skeleton--hero">
+            <Skeleton variant="block" />
           </div>
-          <div className="cockpit-list-stack">
-            <Skeleton variant="card" />
-            <Skeleton variant="card" />
-            <Skeleton variant="card" />
+          <div className="cockpit-skeleton cockpit-skeleton--pipeline">
+            <Skeleton variant="block" />
+          </div>
+          <div className="cockpit-columns">
+            <div className="cockpit-skeleton cockpit-skeleton--list">
+              <Skeleton variant="block" />
+            </div>
+            <div className="cockpit-skeleton cockpit-skeleton--list">
+              <Skeleton variant="block" />
+            </div>
           </div>
         </div>
-      </section>
+      </PageFrame>
     );
   }
 
-  return (
-    <section className="panel page-panel dashboard-page">
-      <h1>Cockpit</h1>
-
-      {/* Metrics Row : profondeur via elevation, surfaces neutres, lift au survol */}
-      <motion.div
-        className="dashboard-grid"
-        variants={container}
-        initial="hidden"
-        animate="visible"
-      >
-        {metrics.map((metric) => (
-          <motion.div key={metric.to} variants={item}>
-            <Card
-              as={Link}
-              to={metric.to}
-              interactive
-              elevation={2}
-              className="metric-card"
-            >
-              <span className="status-label">
-                {metric.icon} {metric.label}
-              </span>
-              <strong className="metric-card-value">{metric.value}</strong>
-              <span className="metric-card-caption">{metric.caption}</span>
-            </Card>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      {/* Pipeline Progress : barre tokenisee, remplissage anime */}
-      <div className="cockpit-pipeline">
-        <div className="cockpit-pipeline-track">
-          <motion.div
-            className="cockpit-pipeline-fill"
-            variants={progressVariants}
-            initial={prefersReducedMotion ? "visible" : "hidden"}
-            animate="visible"
-          />
-        </div>
-        <div className="cockpit-pipeline-labels">
-          {segments.map((seg) => (
-            <span
-              key={seg.label}
-              className={`cockpit-pipeline-label${seg.lit ? " lit" : ""}`}
-            >
-              {seg.label}
+  if (loadFailed) {
+    return (
+      <PageFrame eyebrow="Cockpit">
+        <div className="cockpit">
+          <section className="cockpit-hero cockpit-hero--failed" role="alert">
+            <span className="cockpit-hero__eyebrow cockpit-hero__eyebrow--failed">
+              Lecture impossible
             </span>
-          ))}
-        </div>
-      </div>
-
-      {/* First-run card */}
-      {isFirstRun ? (
-        <Card accent elevation={2} className="first-run-card">
-          <strong>Bienvenue : trois étapes pour démarrer</strong>
-          <ol className="first-run-steps">
-            <li>
-              <strong>Stratégie</strong> : positionnement, offres, piliers, voix
-            </li>
-            <li>
-              <strong>Idées</strong> : capturer vos premiers sujets
-            </li>
-            <li>
-              <strong>Rédiger</strong> : produire votre premier draft
-            </li>
-          </ol>
-          <Button variant="primary" onClick={() => navigate("/strategie")}>
-            Commencer par la stratégie
-          </Button>
-        </Card>
-      ) : null}
-
-      {/* Next Action Card : surface mise en avant (gradient d'accent + glow),
-          parallaxe subtile au survol (T044) neutralisee si reduced-motion. */}
-      {!isFirstRun ? (
-        <motion.div
-          className="next-action-parallax"
-          style={prefersReducedMotion ? undefined : { transform: nextActionTransform }}
-          onPointerMove={prefersReducedMotion ? undefined : handleNextActionPointerMove}
-          onPointerLeave={prefersReducedMotion ? undefined : handleNextActionPointerLeave}
-        >
-          <Card accent elevation={3} className="next-action-card">
-            <span className="next-action-eyebrow">Prochaine action</span>
-            <strong className="next-action-title">{nextAction.label}</strong>
-            <span className="next-action-explanation">
-              {nextAction.explanation}
-            </span>
-            {nextAction.to ? (
+            <h2 className="cockpit-hero__title">
+              Votre espace de travail n&apos;a pas répondu
+            </h2>
+            <p className="cockpit-hero__explanation">
+              Les compteurs et les listes ne sont pas affichés : ils seraient
+              faux. Réessayez, puis vérifiez l&apos;emplacement de
+              l&apos;espace de travail dans les paramètres si l&apos;échec
+              persiste.
+            </p>
+            <div className="cockpit-hero__actions">
               <Button
                 variant="primary"
-                size="lg"
-                onClick={() => navigate(nextAction.to as string)}
+                onClick={() => {
+                  // Remise a l etat de chargement depuis le gestionnaire
+                  // d evenement, jamais depuis l effet : l effet ne fait que
+                  // lire, il ne reinitialise pas ce qui l a declenche.
+                  setLoadFailed(false);
+                  setLoading(true);
+                  setReloadToken((token) => token + 1);
+                }}
               >
-                {nextAction.label}
+                Réessayer
               </Button>
-            ) : null}
-          </Card>
-        </motion.div>
-      ) : null}
-
-      {/* Recent Drafts + Recent Ideas : zones de lecture, fonds neutres */}
-      <div className="dashboard-grid dashboard-grid-secondary">
-        <div>
-          <h2 className="cockpit-list-heading">Derniers drafts</h2>
-          {state.recentDrafts.length > 0 ? (
-            <div className="cockpit-list-stack">
-              {state.recentDrafts.map((draft) => (
-                <Link
-                  key={draft.draftId}
-                  to="/bibliotheque"
-                  className="list-card cockpit-list-card"
-                >
-                  <span className="status-label">{draft.pillarLabel}</span>
-                  <strong className="cockpit-list-title">
-                    {draft.headline}
-                  </strong>
-                  <div className="cockpit-list-footer">
-                    <span className="cockpit-list-meta">
-                      Qualité : {Math.round(draft.qualityScore * 100)}%
-                    </span>
-                    <span className="inline-link">Ouvrir</span>
-                  </div>
-                </Link>
-              ))}
             </div>
-          ) : (
-            <Card elevation={1}>
-              <EmptyState
-                title="Aucun draft"
-                description="Vos drafts apparaîtront ici. Commencez par créer une idée pour lancer la rédaction."
-                action={{
-                  label: "Créer une idée",
-                  onClick: () => navigate("/creer")
-                }}
-              />
-            </Card>
-          )}
+          </section>
         </div>
+      </PageFrame>
+    );
+  }
 
-        <div>
-          <h2 className="cockpit-list-heading">Dernières idées</h2>
-          {state.recentIdeas.length > 0 ? (
-            <div className="cockpit-list-stack">
-              {state.recentIdeas.map((idea) => (
-                <Link
-                  key={idea.id}
-                  to="/creer"
-                  className="list-card cockpit-list-card"
-                >
-                  <span className="status-label">{idea.pillarLabel}</span>
-                  <strong className="cockpit-list-title">{idea.title}</strong>
-                  <span className="inline-link cockpit-list-link">
-                    Ouvrir dans l'atelier
-                  </span>
-                </Link>
-              ))}
+  const isFirstRun =
+    !state.strategyReady && state.ideasCount === 0 && state.draftsCount === 0;
+
+  const nextAction = getNextAction(state);
+  const steps = getPipelineSteps(state);
+
+  return (
+    <PageFrame eyebrow="Cockpit">
+      <div className="cockpit">
+        {/* Bloc heros. Au premier lancement il accueille, ensuite il porte la
+            prochaine action reellement calculee. Un seul des deux a la fois :
+            les afficher ensemble reviendrait a dire deux fois la meme chose au
+            meme endroit. */}
+        {isFirstRun ? (
+          <section className="cockpit-hero">
+            <span className="cockpit-hero__eyebrow">Bienvenue</span>
+            <h2 className="cockpit-hero__title">Trois étapes pour démarrer</h2>
+            <ol className="cockpit-hero__steps">
+              <li>
+                <strong>Stratégie</strong> : positionnement, offres, piliers, voix
+              </li>
+              <li>
+                <strong>Idées</strong> : capturer vos premiers sujets
+              </li>
+              <li>
+                <strong>Rédiger</strong> : produire votre premier brouillon
+              </li>
+            </ol>
+            <div className="cockpit-hero__actions">
+              <Button variant="primary" onClick={() => navigate("/strategie")}>
+                Commencer par la stratégie
+              </Button>
             </div>
-          ) : (
-            <Card elevation={1}>
-              <EmptyState
-                title="Aucune idée"
-                description="Capturez vos premiers sujets pour alimenter votre pipeline de contenu."
-                action={{
-                  label: "Créer votre première idée",
-                  onClick: () => navigate("/creer")
-                }}
-              />
-            </Card>
-          )}
+          </section>
+        ) : (
+          <section className="cockpit-hero">
+            <span className="cockpit-hero__eyebrow">Prochaine action</span>
+            <h2 className="cockpit-hero__title">{nextAction.label}</h2>
+            <p className="cockpit-hero__explanation">{nextAction.explanation}</p>
+            <div className="cockpit-hero__actions">
+              <Button variant="primary" onClick={() => navigate(nextAction.to)}>
+                {nextAction.cta}
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {/* Reglette du pipeline : cinq colonnes egales sur une seule surface.
+            L etape qui demande une action porte un lisere ambre, la meme que
+            celle nommee par le bloc heros. */}
+        <nav className="cockpit-pipeline" aria-label="Pipeline éditorial">
+          {steps.map((step) => {
+            const attention = step.key === nextAction.attention;
+            return (
+              <Link
+                key={step.key}
+                to={step.to}
+                className="cockpit-pipeline__step"
+                data-attention={attention ? "true" : undefined}
+              >
+                <span className="cockpit-pipeline__label">{step.label}</span>
+                <span
+                  className="cockpit-pipeline__value"
+                  data-empty={step.empty ? "true" : undefined}
+                >
+                  {step.value}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="cockpit-columns">
+          <section className="cockpit-section">
+            <div className="cockpit-section__head">
+              <h2 className="cockpit-section__title">Derniers brouillons</h2>
+              <Link to="/bibliotheque" className="cockpit-section__all">
+                Tout voir
+              </Link>
+            </div>
+            {state.recentDrafts.length > 0 ? (
+              <div className="cockpit-list">
+                {state.recentDrafts.map((draft) => {
+                  const budget = formatCharBudget(draft.bodyMarkdown);
+                  return (
+                    <Link
+                      key={draft.draftId}
+                      to="/bibliotheque"
+                      className="cockpit-row"
+                    >
+                      <span className="cockpit-row__title">{draft.headline}</span>
+                      <span className="cockpit-row__meta">
+                        {draft.pillarLabel ? (
+                          <>
+                            <span className="cockpit-row__dot" aria-hidden="true" />
+                            {draft.pillarLabel}
+                            <span className="cockpit-row__sep" aria-hidden="true">
+                              ·
+                            </span>
+                          </>
+                        ) : null}
+                        <span
+                          className="cockpit-row__count"
+                          data-over={budget.over ? "true" : undefined}
+                          title={
+                            budget.over
+                              ? "Au-delà de la limite LinkedIn"
+                              : undefined
+                          }
+                        >
+                          {budget.text}
+                        </span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="cockpit-list cockpit-list--empty">
+                <EmptyState
+                  title="Aucun brouillon"
+                  description="Vos brouillons apparaîtront ici. Commencez par créer une idée pour lancer la rédaction."
+                  action={{
+                    label: "Créer une idée",
+                    onClick: () => navigate("/creer")
+                  }}
+                />
+              </div>
+            )}
+          </section>
+
+          <section className="cockpit-section">
+            <div className="cockpit-section__head">
+              <h2 className="cockpit-section__title">Dernières idées</h2>
+              <Link to="/creer" className="cockpit-section__all">
+                Tout voir
+              </Link>
+            </div>
+            {state.recentIdeas.length > 0 ? (
+              <div className="cockpit-list">
+                {state.recentIdeas.map((idea) => (
+                  <Link key={idea.id} to="/creer" className="cockpit-row">
+                    <span className="cockpit-row__title">{idea.title}</span>
+                    {idea.pillarLabel ? (
+                      <span className="cockpit-row__meta">
+                        <span className="cockpit-row__dot" aria-hidden="true" />
+                        {idea.pillarLabel}
+                      </span>
+                    ) : null}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="cockpit-list cockpit-list--empty">
+                <EmptyState
+                  title="Aucune idée"
+                  description="Capturez vos premiers sujets pour alimenter votre pipeline de contenu."
+                  action={{
+                    label: "Créer votre première idée",
+                    onClick: () => navigate("/creer")
+                  }}
+                />
+              </div>
+            )}
+          </section>
         </div>
       </div>
-    </section>
+    </PageFrame>
   );
 }

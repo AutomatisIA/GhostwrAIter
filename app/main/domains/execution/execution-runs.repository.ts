@@ -27,14 +27,19 @@ export type ExecutionRunPayload = {
   startedAt: string;
   finishedAt: string;
   createdAt: string;
+  /**
+   * Moteur qui a produit ce resultat. Sans cette colonne, la provenance d un
+   * texte est indeterminable apres coup (cf. docs/audit-2026-07-fonctionnel.md).
+   */
+  engine: string | null;
 };
 
 const INSERT_STATEMENT = `
   INSERT INTO execution_runs (
     id, idea_id, draft_id, skill_name, skill_version, status, summary, input_json, output_json,
-    output_markdown, error_message, log_path, started_at, finished_at, created_at
+    output_markdown, error_message, log_path, started_at, finished_at, created_at, engine
   )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 export function insertExecutionRun(db: Database.Database, payload: ExecutionRunPayload): void {
@@ -53,7 +58,8 @@ export function insertExecutionRun(db: Database.Database, payload: ExecutionRunP
     payload.logPath,
     payload.startedAt,
     payload.finishedAt,
-    payload.createdAt
+    payload.createdAt,
+    payload.engine
   );
 }
 
@@ -93,6 +99,7 @@ export function recordExecutionRun(
     logPath: params.logPath ?? null,
     startedAt: createdAt,
     finishedAt: createdAt,
+    engine: result.engine ?? null,
     createdAt
   });
 }

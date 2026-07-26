@@ -28,9 +28,9 @@ export function HookPanel({
 
   return (
     <div className="workshop-step">
-      <h3>
+      <h2>
         Choisis ton accroche <InfoHint term="accroche" />
-      </h3>
+      </h2>
       <p className="step-description">
         L'accroche sert à faire entrer le lecteur dans le sujet. Le score
         donne un signal de potentiel, pas une vérité absolue.

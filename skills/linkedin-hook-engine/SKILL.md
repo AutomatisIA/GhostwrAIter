@@ -14,15 +14,32 @@ Produire plusieurs hooks credibles et varies a partir d'une idee, d'un angle et 
 
 - hooks classes
 
+## Revision 2026-07-25
+
+Le bloc de cinq « references editoriales » a ete retire, comme dans
+`linkedin-post-writer/SKILL.md`. Il etait duplique a l identique entre les deux
+skills, donc le modele y etait expose deux fois dans une meme chaine de
+generation. Trois de ces cinq citations etaient elles-memes des parallelismes
+negatifs, et ce fichier interdisait par ailleurs, trois lignes plus bas, la
+formule exacte qu il venait de donner en modele.
+
+Contrainte de format : jamais de titre `##` dans la section `## Prompt`,
+`extractPromptBody` s y arreterait en silence.
+
 ## Prompt
 
 Return 3 to 5 hooks with distinct families.
 No soft openers, no generic LinkedIn intros, no vague abstractions.
 Each hook must be specific to the idea, typology, and structure.
 Do not repeat the raw title, and do not use shell formulas unless they are made concrete and sharply differentiated.
-Use these editorial references for sharpness, not for copy-paste: 'La plupart des PME ne ratent pas l IA a cause des outils.', 'Le vrai probleme avec l IA en PME n est presque jamais technique.', 'On parle beaucoup de prompts. Pas assez de process.', 'Un bon outil IA ne corrige pas une mauvaise organisation.', 'Une PME n a pas besoin de 20 cas d usage IA. Elle a besoin des 3 bons.'
-Avoid weak patterns such as: 'Le vrai probleme avec X...', 'Si votre projet n'avance pas...', 'Une PME n'a pas besoin de plus de ...' unless the line is materially grounded in the supplied angle.
-Ban openings that are now too recognizable when they are not fully earned by the input: 'On vend X comme un raccourci', 'Le sujet n est pas...', 'Le debat n est pas...', 'Dans beaucoup de PME...'.
+The voice rules in `context.voiceRules` are binding instructions and define the author's register.
+A hook earns its place by naming a situation the reader recognises: a cost, a decision, a moment where something goes wrong. Not by announcing that a widespread belief is mistaken.
+
+Structural constraints, which take precedence over any stylistic preference:
+- Do not build a hook on the opposition between what something is not and what it is, in any of its forms.
+- Do not open with a formula announcing that the real point is arriving.
+- Do not group three items for rhythm.
+- Do not use dashes as separators.
 Prefer families such as direct, contrastive, diagnostic, narrative, interrogative, or signal-of-market when they fit.
 Score hooks honestly: do not inflate scores.
 Return hook scores as decimals between 0 and 1. Never use percentages like 87 or 91.

@@ -1,35 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent
+} from "react";
+import { useSearchParams, useNavigate } from "react-router";
 import { motion } from "motion/react";
-import type { LibraryEntry } from "@shared/types/library";
+import type { LibraryEntry, LibraryTriage } from "@shared/types/library";
 import type { CalendarItem } from "@shared/types/calendar";
 import {
   Button,
-  Card,
   ConfirmDialog,
   EmptyState,
+  PageFrame,
   Skeleton,
   Tabs,
   useToast
 } from "../../design-system/primitives";
+import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
+import { MetaLine, PillarDot } from "./meta-line";
+import { PostReader } from "./PostReader";
+import { TriageList } from "./TriageList";
 import {
-  fadeInUp,
-  staggerContainer,
-  useMotionVariants
-} from "../../design-system/motion/variants";
-import { InfoHint } from "../../help";
+  TRIAGE_BUCKETS,
+  countByTriage,
+  flattenGroups,
+  groupBySubject
+} from "./triage";
 
-function formatLibraryStatus(status: LibraryEntry["status"]) {
-  if (status === "scheduled") {
-    return "Planifié";
-  }
-
-  if (status === "variant") {
-    return "Variante";
-  }
-
-  return "Brouillon";
-}
+import "./library.css";
 
 function formatCalendarStatus(status: CalendarItem["status"]) {
   if (status === "planned") {
@@ -47,6 +47,46 @@ function formatCalendarStatus(status: CalendarItem["status"]) {
   return "Prêt";
 }
 
+/**
+ * Trois points du revelateur d actions secondaires. Le jeu d icones partage
+ * (`design-system/primitives/icons`) appartient au chantier commun : ce trace
+ * reste confine a l ecran Bibliotheque plutot que d y etre ajoute.
+ */
+function MoreHorizontalIcon() {
+  return (
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+      aria-hidden="true"
+    >
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
+/** Trois lignes fantomes dans la meme surface bordee que la liste reelle. */
+function LoadingList({ label }: { label: string }) {
+  return (
+    <div className="library-list" aria-busy="true" aria-label={label}>
+      {[0, 1, 2].map((index) => (
+        <div className="library-entry" key={index}>
+          <div className="library-row">
+            <div className="library-row__main">
+              <Skeleton variant="text" />
+              <Skeleton variant="text" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type TabView = "drafts" | "planning";
 
 export function LibraryScreen() {
@@ -54,8 +94,7 @@ export function LibraryScreen() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const container = useMotionVariants(staggerContainer);
-  const item = useMotionVariants(fadeInUp);
+  const listReveal = useMotionVariants(fadeInUp);
 
   // `activeTab` est DERIVE de l'URL (`?view=planning`), pas un state local
   // (finding revue Codex). La transition de route d'App.tsx est keyee sur le
@@ -67,28 +106,42 @@ export function LibraryScreen() {
   // suit l'URL en continu sans setState dans un effet.
   const activeTab: TabView = searchParams.get("view") === "planning" ? "planning" : "drafts";
 
-  // --- Drafts state ---
+  // --- Brouillons ---
   const [entries, setEntries] = useState<LibraryEntry[]>([]);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<LibraryEntry["status"] | "all">("all");
   const [loading, setLoading] = useState(true);
   const [busyDraftId, setBusyDraftId] = useState<string | null>(null);
-  const [confirmingVariantId, setConfirmingVariantId] = useState<string | null>(null);
   const [deletingDraftId, setDeletingDraftId] = useState<string | null>(null);
+
+  // --- Triage ---
+  // Entree choisie A LA MAIN. Tant qu'elle vaut `null`, l'entree active est
+  // deduite des comptes : arriver sur « À relire 0 » alors que cinq brouillons
+  // sont prets ferait ouvrir l'ecran sur un vide.
+  const [pickedBucket, setPickedBucket] = useState<LibraryTriage | null>(null);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [expandedKeys, setExpandedKeys] = useState<ReadonlySet<string>>(() => new Set());
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [confirmingVariant, setConfirmingVariant] = useState(false);
+
+  // --- Edition et planification, portees par le brouillon selectionne ---
+  // Les deux etats retiennent un identifiant et non un booleen : la selection
+  // peut changer sous eux (suppression, changement d'entree de triage), et un
+  // tampon d'edition applique au brouillon suivant ecraserait un texte au
+  // hasard.
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editHeadline, setEditHeadline] = useState("");
   const [editBody, setEditBody] = useState("");
-
-  // --- Inline scheduling state ---
   const [schedulingDraftId, setSchedulingDraftId] = useState<string | null>(null);
   const [schedulingDate, setSchedulingDate] = useState("");
 
-  // --- Planning state ---
+  // --- Planning ---
   const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
-  const [calendarStatusFilter, setCalendarStatusFilter] = useState<CalendarItem["status"] | "all">("all");
+  const [calendarStatusFilter, setCalendarStatusFilter] = useState<CalendarItem["status"] | "all">(
+    "all"
+  );
   const [planningLoading, setPlanningLoading] = useState(false);
 
-  // --- Scheduled dates lookup (draftId -> plannedDate) ---
+  // --- Dates planifiees (draftId -> plannedDate) ---
   const [scheduledDates, setScheduledDates] = useState<Map<string, string>>(new Map());
 
   function switchTab(tab: TabView) {
@@ -97,7 +150,6 @@ export function LibraryScreen() {
     setSearchParams(tab === "drafts" ? {} : { view: "planning" });
   }
 
-  // Load library entries on mount
   useEffect(() => {
     window.linkedinPoster.library
       .listEntries()
@@ -111,7 +163,6 @@ export function LibraryScreen() {
         setLoading(false);
       });
 
-    // Also load calendar items to populate scheduled dates badges
     window.linkedinPoster.calendar
       .listItems()
       .then((items) => {
@@ -122,12 +173,11 @@ export function LibraryScreen() {
         setScheduledDates(dateMap);
       })
       .catch(() => {
-        // Non-critique : les badges de date ne s'affichent simplement pas.
+        // Non-critique : les dates planifiees ne s'affichent simplement pas.
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load planning items when switching to planning tab
   useEffect(() => {
     if (activeTab !== "planning") return;
 
@@ -136,7 +186,6 @@ export function LibraryScreen() {
     window.linkedinPoster.calendar
       .listItems()
       .then((items) => {
-        // Sort chronologically
         const sorted = [...items].sort(
           (a, b) => new Date(a.plannedDate).getTime() - new Date(b.plannedDate).getTime()
         );
@@ -151,12 +200,134 @@ export function LibraryScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // ---------------------------------------------------------------------------
+  // Triage : comptes reels, entree active, regroupement par sujet, selection.
+  // ---------------------------------------------------------------------------
+
+  const counts = useMemo(() => countByTriage(entries), [entries]);
+
+  const activeBucket: LibraryTriage =
+    pickedBucket ?? TRIAGE_BUCKETS.find((bucket) => counts[bucket.id] > 0)?.id ?? "a-relire";
+
+  const bucketEntries = useMemo(
+    () => entries.filter((entry) => entry.triage === activeBucket),
+    [entries, activeBucket]
+  );
+
+  const groups = useMemo(() => groupBySubject(bucketEntries), [bucketEntries]);
+  const orderedEntries = useMemo(() => flattenGroups(groups), [groups]);
+
+  // La selection est DERIVEE, jamais synchronisee par un effet : supprimer le
+  // brouillon lu, changer d'entree de triage ou lancer une recherche ferait
+  // sinon pointer la selection sur une ligne qui n'existe plus. Le repli est le
+  // premier de la liste, c'est-a-dire le plus abouti du sujet le plus prolifique.
+  const selectedEntry =
+    orderedEntries.find((entry) => entry.draftId === selectedDraftId) ?? orderedEntries[0] ?? null;
+
+  const isEditing = editingDraftId !== null && editingDraftId === selectedEntry?.draftId;
+  const isScheduling = schedulingDraftId !== null && schedulingDraftId === selectedEntry?.draftId;
+
+  function selectDraft(draftId: string) {
+    setSelectedDraftId(draftId);
+    setActionsOpen(false);
+    setConfirmingVariant(false);
+  }
+
+  /**
+   * Depuis le planning, ouvre les brouillons SUR le brouillon vise.
+   *
+   * Le bouton ne faisait que changer d onglet. Un post planifie est par
+   * construction dans l entree de triage « Planifiés », alors que l ecran ouvre
+   * la premiere entree non vide, en general « À relire » : le brouillon promis
+   * n apparaissait donc nulle part, et le libelle du bouton devenait faux. On
+   * pose l entree de triage AVANT la selection, sinon la selection derivee
+   * retombe sur la premiere ligne de l entree affichee.
+   */
+  function showDraft(draftId: string) {
+    const cible = entries.find((item) => item.draftId === draftId);
+    if (cible) {
+      setPickedBucket(cible.triage);
+      selectDraft(draftId);
+    }
+    switchTab("drafts");
+  }
+
+  function toggleGroup(key: string) {
+    setExpandedKeys((previous) => {
+      const next = new Set(previous);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function closeActions() {
+    setActionsOpen(false);
+    setConfirmingVariant(false);
+  }
+
+  /**
+   * Echap referme le panneau d actions secondaires et rend le focus a son
+   * declencheur. Sans ce rappel, refermer depuis le panneau demonte l element
+   * focalise et renvoie le focus sur `body` : la navigation au clavier repart du
+   * haut de la page.
+   */
+  function handleReaderKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    const disclosure = event.currentTarget.querySelector<HTMLButtonElement>(
+      "button[aria-expanded]"
+    );
+    if (disclosure?.getAttribute("aria-expanded") !== "true") {
+      return;
+    }
+
+    event.stopPropagation();
+    closeActions();
+    disclosure.focus();
+  }
+
+  /**
+   * Relit les entrees EN RESPECTANT la recherche en cours.
+   *
+   * Les quatre mutations de l ecran rappelaient `listEntries()`, qui rend le jeu
+   * complet : enregistrer une modification pendant une recherche a trois
+   * resultats ramenait les trente brouillons, sous un champ qui affichait
+   * toujours le mot cherche et un compteur qui annoncait « 30 résultats ». Trois
+   * elements a l ecran se contredisaient, et c est la liste qui avait tort.
+   */
+  async function refreshEntries(): Promise<LibraryEntry[]> {
+    const terme = query.trim();
+    return terme
+      ? window.linkedinPoster.library.searchEntries({ query: terme })
+      : window.linkedinPoster.library.listEntries();
+  }
+
+  /**
+   * Jeton de requete : seule la reponse de la DERNIERE frappe est appliquee.
+   *
+   * La recherche part a chaque touche. Sans ce compteur, la reponse de « d »
+   * pouvait arriver apres celle de « devis » et repeindre la liste avec un
+   * resultat perime, sous un champ affichant autre chose. Un compteur suffit
+   * ici : on n annule pas la requete, on refuse simplement d appliquer ce qui
+   * n est plus la question posee.
+   */
+  const searchToken = useRef(0);
+
   async function handleSearch(nextQuery: string) {
     setQuery(nextQuery);
+    const jeton = ++searchToken.current;
     try {
       const result = await window.linkedinPoster.library.searchEntries({ query: nextQuery });
+      if (jeton !== searchToken.current) return;
       setEntries(result);
     } catch (err) {
+      if (jeton !== searchToken.current) return;
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       toast.show({ kind: "error", message: `Erreur de recherche : ${message}` });
     }
@@ -166,7 +337,7 @@ export function LibraryScreen() {
     setBusyDraftId(draftId);
     try {
       await window.linkedinPoster.library.createDivergentVariant(draftId);
-      const refreshed = await window.linkedinPoster.library.listEntries();
+      const refreshed = await refreshEntries();
       setEntries(refreshed);
       toast.show({
         kind: "success",
@@ -181,20 +352,17 @@ export function LibraryScreen() {
   }
 
   function handleStartEditing(entry: LibraryEntry) {
+    closeActions();
     setEditingDraftId(entry.draftId);
     setEditHeadline(entry.headline);
     setEditBody(entry.bodyMarkdown);
-  }
-
-  function handleCancelEditing() {
-    setEditingDraftId(null);
   }
 
   async function handleSaveEditing(draftId: string) {
     setBusyDraftId(draftId);
     try {
       await window.linkedinPoster.library.updateEntryText(draftId, editHeadline, editBody);
-      const refreshed = await window.linkedinPoster.library.listEntries();
+      const refreshed = await refreshEntries();
       setEntries(refreshed);
       setEditingDraftId(null);
       toast.show({ kind: "success", message: "Texte enregistré." });
@@ -216,9 +384,10 @@ export function LibraryScreen() {
     setBusyDraftId(draftId);
     try {
       await window.linkedinPoster.library.deleteEntry(draftId);
-      const refreshed = await window.linkedinPoster.library.listEntries();
+      const refreshed = await refreshEntries();
       setEntries(refreshed);
       setDeletingDraftId(null);
+      closeActions();
       toast.show({ kind: "success", message: "Brouillon supprimé." });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erreur inconnue";
@@ -237,9 +406,8 @@ export function LibraryScreen() {
         plannedDate: schedulingDate,
         status: "planned"
       });
-      // Refresh entries and scheduled dates
       const [refreshedEntries, refreshedItems] = await Promise.all([
-        window.linkedinPoster.library.listEntries(),
+        refreshEntries(),
         window.linkedinPoster.calendar.listItems()
       ]);
       setEntries(refreshedEntries);
@@ -299,15 +467,6 @@ export function LibraryScreen() {
     }
   }
 
-  const visibleEntries = useMemo(
-    () =>
-      entries.filter((entry) => {
-        const matchesStatus = statusFilter === "all" || entry.status === statusFilter;
-        return matchesStatus;
-      }),
-    [entries, statusFilter]
-  );
-
   const visibleCalendarItems = useMemo(
     () =>
       calendarItems.filter(
@@ -323,340 +482,346 @@ export function LibraryScreen() {
   const upcomingCount = visibleCalendarItems.filter((i) => i.status !== "published").length;
   const publishedCount = visibleCalendarItems.filter((i) => i.status === "published").length;
 
+  /**
+   * Effectif de la colonne, aligne a droite des entrees de triage. Une recherche
+   * active REMPLACE le jeu d entrees : ecrire « 30 au total » alors que la
+   * recherche n en a ramene trois serait faux, le libelle dit donc laquelle des
+   * deux portees il decrit.
+   */
+  const totalLabel = query.trim()
+    ? `${entries.length} résultat${entries.length > 1 ? "s" : ""}`
+    : `${entries.length} au total`;
+
+  const activeBucketDescriptor =
+    TRIAGE_BUCKETS.find((bucket) => bucket.id === activeBucket) ?? TRIAGE_BUCKETS[0]!;
+
+  /** Premiere entree non vide autre que celle qui est affichee, pour l etat vide. */
+  const fallbackBucket = TRIAGE_BUCKETS.find(
+    (bucket) => bucket.id !== activeBucket && counts[bucket.id] > 0
+  );
+
+  const actionsPanelId = "library-reader-actions";
+  const actionsLabel = selectedEntry
+    ? `Autres actions pour « ${selectedEntry.headline} »`
+    : "Autres actions";
+
+  // Filtres et bascule de vue : de portee ecran, donc dans la barre de page.
+  const pageActions = (
+    <div className="library-bar">
+      <div className="library-tabs">
+        <Tabs
+          aria-label="Vues de la bibliothèque"
+          value={activeTab}
+          onChange={(value) => switchTab(value as TabView)}
+          items={[
+            { value: "drafts", label: "Brouillons" },
+            { value: "planning", label: "Planning" }
+          ]}
+        />
+      </div>
+
+      {activeTab === "drafts" ? (
+        <input
+          className="library-bar__search"
+          aria-label="Recherche"
+          value={query}
+          onChange={(event) => void handleSearch(event.target.value)}
+          placeholder="Titre, pilier, tag…"
+        />
+      ) : (
+        <select
+          className="library-bar__select"
+          aria-label="Filtrer par statut"
+          value={calendarStatusFilter}
+          onChange={(event) =>
+            setCalendarStatusFilter(event.target.value as CalendarItem["status"] | "all")
+          }
+        >
+          <option value="all">Tous les statuts</option>
+          <option value="planned">Planifié</option>
+          <option value="ready">Prêt</option>
+          <option value="published">Publié</option>
+          <option value="missed">Manqué</option>
+        </select>
+      )}
+    </div>
+  );
+
   return (
-    <section className="panel page-panel">
-      <h1>Bibliothèque</h1>
-
-      <Tabs
-        aria-label="Vues de la bibliothèque"
-        value={activeTab}
-        onChange={(value) => switchTab(value as TabView)}
-        items={[
-          { value: "drafts", label: "Brouillons" },
-          { value: "planning", label: "Planning" }
-        ]}
-      />
-
-      {activeTab === "drafts" && (
-        <>
-          <div className="insight-strip">
-            <article className="insight-card">
-              <span className="status-label">
-                Brouillons visibles <InfoHint term="draft" />
-              </span>
-              <strong>
-                {loading
-                  ? "…"
-                  : `${visibleEntries.length} brouillon${visibleEntries.length > 1 ? "s" : ""}`}
-              </strong>
-            </article>
-            <article className="insight-card">
-              <span className="status-label">
-                Qualité moyenne <InfoHint term="score-qualite" />
-              </span>
-              <strong>
-                {loading || visibleEntries.length === 0
-                  ? "…"
-                  : `${Math.round(
-                      (visibleEntries.reduce((sum, entry) => sum + entry.qualityScore, 0) /
-                        visibleEntries.length) *
-                        100
-                    )}%`}
-              </strong>
-            </article>
-          </div>
-
-          <div className="filter-bar">
-            <label className="field compact-field">
-              <span>Recherche</span>
-              <input
-                aria-label="Recherche"
-                value={query}
-                onChange={(event) => void handleSearch(event.target.value)}
-                placeholder="Titre, pilier, tag…"
+    <PageFrame eyebrow="Bibliothèque" actions={pageActions}>
+      {activeTab === "drafts" &&
+        (loading ? (
+          <LoadingList label="Chargement de la bibliothèque" />
+        ) : entries.length === 0 ? (
+          <div className="library-empty">
+            {query.trim() ? (
+              <EmptyState
+                title="Aucun résultat"
+                description="Aucun brouillon ne correspond à votre recherche. Essayez un autre mot, ou effacez la recherche pour retrouver toute la bibliothèque."
+                action={{ label: "Effacer la recherche", onClick: () => void handleSearch("") }}
               />
-            </label>
-            <label className="field compact-field">
-              <span>Statut</span>
-              <select
-                aria-label="Statut"
-                value={statusFilter}
-                onChange={(event) =>
-                  setStatusFilter(event.target.value as LibraryEntry["status"] | "all")
-                }
-              >
-                <option value="all">Tous</option>
-                <option value="draft">Brouillon</option>
-                <option value="variant">Variante</option>
-                <option value="scheduled">Planifié</option>
-              </select>
-            </label>
+            ) : (
+              <EmptyState
+                title="Aucun brouillon pour le moment"
+                description="Vos brouillons capitalisés apparaîtront ici. Commencez par créer une idée pour lancer la rédaction d'un premier post."
+                action={{ label: "Créer une idée", onClick: () => navigate("/creer") }}
+              />
+            )}
           </div>
+        ) : (
+          <div className="library-triage">
+            {/* Volet de gauche : ce qu'il reste a faire, puis les sujets. */}
+            <div className="library-triage__side">
+              <div className="library-buckets" role="group" aria-label="Ce qu'il reste à faire">
+                {TRIAGE_BUCKETS.map((bucket) => (
+                  <button
+                    key={bucket.id}
+                    type="button"
+                    className="library-bucket"
+                    aria-pressed={bucket.id === activeBucket}
+                    onClick={() => {
+                      setPickedBucket(bucket.id);
+                      closeActions();
+                    }}
+                  >
+                    {bucket.label} <span className="library-bucket__count">{counts[bucket.id]}</span>
+                  </button>
+                ))}
+                <span className="library-buckets__total">{totalLabel}</span>
+              </div>
 
-          {loading ? (
-            <div className="list-grid" aria-label="Chargement de la bibliothèque">
-              <Skeleton variant="card" />
-              <Skeleton variant="card" />
+              <div className="library-triage__scroll">
+                {orderedEntries.length === 0 ? (
+                  <div className="library-triage__empty">
+                    <EmptyState
+                      title={activeBucketDescriptor.emptyTitle}
+                      description={activeBucketDescriptor.emptyDescription}
+                      action={
+                        fallbackBucket
+                          ? {
+                              label: `Voir ${counts[fallbackBucket.id]} « ${fallbackBucket.label.toLowerCase()} »`,
+                              onClick: () => setPickedBucket(fallbackBucket.id)
+                            }
+                          : undefined
+                      }
+                    />
+                  </div>
+                ) : (
+                  <motion.div variants={listReveal} initial="hidden" animate="visible">
+                    <TriageList
+                      groups={groups}
+                      selectedDraftId={selectedEntry?.draftId ?? null}
+                      onSelect={selectDraft}
+                      expandedKeys={expandedKeys}
+                      onToggleGroup={toggleGroup}
+                    />
+                  </motion.div>
+                )}
+              </div>
             </div>
-          ) : visibleEntries.length === 0 ? (
-            <Card elevation={1} className="library-empty-card">
-              {entries.length === 0 ? (
-                <EmptyState
-                  title="Aucun brouillon pour le moment"
-                  description="Vos brouillons capitalisés apparaîtront ici. Commencez par créer une idée pour lancer la rédaction d'un premier post."
-                  action={{ label: "Créer une idée", onClick: () => navigate("/creer") }}
-                />
+
+            {/* Volet de droite : le post, lisible, et ses actions. */}
+            <div className="library-reader" onKeyDown={handleReaderKeyDown}>
+              {selectedEntry === null ? (
+                <p className="library-reader__blank">
+                  Choisissez une entrée qui contient des brouillons pour en lire un ici.
+                </p>
+              ) : isEditing ? (
+                <>
+                  <div className="library-reader__edit">
+                    <input
+                      className="library-input"
+                      value={editHeadline}
+                      onChange={(event) => setEditHeadline(event.target.value)}
+                      aria-label="Titre du post"
+                    />
+                    <textarea
+                      className="library-textarea library-reader__textarea"
+                      value={editBody}
+                      onChange={(event) => setEditBody(event.target.value)}
+                      aria-label="Corps du post"
+                    />
+                  </div>
+                  <footer className="library-reader__bar">
+                    <div className="library-reader__buttons">
+                      <Button
+                        variant="primary"
+                        loading={busyDraftId === selectedEntry.draftId}
+                        disabled={busyDraftId !== null || !editHeadline.trim() || !editBody.trim()}
+                        onClick={() => void handleSaveEditing(selectedEntry.draftId)}
+                      >
+                        Enregistrer
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        disabled={busyDraftId !== null}
+                        onClick={() => setEditingDraftId(null)}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </footer>
+                </>
               ) : (
-                <EmptyState
-                  title="Aucun résultat"
-                  description="Aucun brouillon ne correspond à votre recherche ou au filtre de statut. Essayez d'élargir les critères."
-                  action={{
-                    label: "Réinitialiser les filtres",
-                    onClick: () => {
-                      setStatusFilter("all");
-                      void handleSearch("");
-                    }
-                  }}
-                />
-              )}
-            </Card>
-          ) : (
-            <motion.div
-              className="list-grid"
-              variants={container}
-              initial="hidden"
-              animate="visible"
-            >
-              {visibleEntries.map((entry) => (
-                <motion.div key={entry.draftId} variants={item}>
-                  <Card elevation={2} interactive={false} className="lib-card">
-                    {editingDraftId === entry.draftId ? (
-                      <>
-                        <input
-                          className="draft-edit-headline"
-                          value={editHeadline}
-                          onChange={(e) => setEditHeadline(e.target.value)}
-                          aria-label="Titre du post"
-                        />
-                        <textarea
-                          className="draft-edit-body"
-                          value={editBody}
-                          onChange={(e) => setEditBody(e.target.value)}
-                          rows={12}
-                          aria-label="Corps du post"
-                        />
-                        <div className="lib-card-toolbar lib-card-toolbar--edit">
+                <>
+                  <PostReader
+                    entry={selectedEntry}
+                    plannedDate={scheduledDates.get(selectedEntry.draftId)}
+                  />
+
+                  <footer className="library-reader__bar">
+                    {actionsOpen ? (
+                      <div
+                        className="library-actions"
+                        id={actionsPanelId}
+                        role="group"
+                        aria-label={actionsLabel}
+                      >
+                        {confirmingVariant ? (
                           <Button
                             variant="primary"
                             size="sm"
-                            loading={busyDraftId === entry.draftId}
-                            disabled={
-                              busyDraftId !== null || !editHeadline.trim() || !editBody.trim()
-                            }
-                            onClick={() => void handleSaveEditing(entry.draftId)}
+                            loading={busyDraftId === selectedEntry.draftId}
+                            disabled={busyDraftId !== null}
+                            onClick={() => {
+                              setConfirmingVariant(false);
+                              void handleCreateDivergentVariant(selectedEntry.draftId);
+                            }}
                           >
-                            Enregistrer
+                            Confirmer ?
                           </Button>
+                        ) : (
                           <Button
                             variant="ghost"
                             size="sm"
                             disabled={busyDraftId !== null}
-                            onClick={handleCancelEditing}
+                            onClick={() => setConfirmingVariant(true)}
                           >
-                            Annuler
+                            Variante
                           </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <strong className="lib-card-headline">{entry.headline}</strong>
-                        <p className="lib-card-preview">{entry.bodyPreview}</p>
-                        <div className="lib-card-meta">
-                          <span className="lib-card-tag">{entry.pillarLabel}</span>
-                          <span className="lib-card-tag">{formatLibraryStatus(entry.status)}</span>
-                          {scheduledDates.has(entry.draftId) && (
-                            <span className="lib-card-tag lib-card-tag--scheduled">
-                              {scheduledDates.get(entry.draftId)}
-                            </span>
-                          )}
-                          {entry.tags.map((tag) => (
-                            <span key={tag} className="lib-card-tag lib-card-tag--muted">
-                              {tag}
-                            </span>
-                          ))}
-                          <span className="lib-card-quality">
-                            <span
-                              className="lib-card-quality-dot"
-                              style={{
-                                background:
-                                  entry.qualityScore >= 0.8
-                                    ? "var(--color-accent-sky)"
-                                    : entry.qualityScore >= 0.6
-                                      ? "var(--color-accent)"
-                                      : "var(--color-warning-text)"
-                              }}
-                            />
-                            {Math.round(entry.qualityScore * 100)}%
-                          </span>
-                        </div>
-                        <div className="lib-card-toolbar">
-                          <div className="lib-card-toolbar-primary">
-                            {confirmingVariantId === entry.draftId ? (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                loading={busyDraftId === entry.draftId}
-                                disabled={busyDraftId !== null}
-                                onClick={() => {
-                                  setConfirmingVariantId(null);
-                                  void handleCreateDivergentVariant(entry.draftId);
-                                }}
-                              >
-                                Confirmer ?
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                disabled={busyDraftId !== null}
-                                onClick={() => setConfirmingVariantId(entry.draftId)}
-                              >
-                                Variante
-                              </Button>
-                            )}
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              disabled={busyDraftId !== null}
-                              onClick={() => {
-                                if (schedulingDraftId === entry.draftId) {
-                                  setSchedulingDraftId(null);
-                                  setSchedulingDate("");
-                                } else {
-                                  setSchedulingDraftId(entry.draftId);
-                                  setSchedulingDate("");
-                                }
-                              }}
-                            >
-                              Planifier
-                            </Button>
-                          </div>
-                          <div className="lib-card-toolbar-secondary">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busyDraftId !== null}
-                              onClick={() => handleStartEditing(entry)}
-                            >
-                              Modifier
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/creer?ideaId=${entry.ideaId}`)}
-                            >
-                              Retravailler
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="lib-card-action-danger"
-                              disabled={busyDraftId !== null}
-                              onClick={() => setDeletingDraftId(entry.draftId)}
-                            >
-                              Supprimer
-                            </Button>
-                          </div>
-                        </div>
-                        {schedulingDraftId === entry.draftId && (
-                          <div className="lib-card-schedule">
-                            <input
-                              type="date"
-                              aria-label="Date de publication"
-                              value={schedulingDate}
-                              onChange={(e) => setSchedulingDate(e.target.value)}
-                              className="lib-card-schedule-input"
-                            />
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              loading={busyDraftId === entry.draftId}
-                              disabled={!schedulingDate || busyDraftId !== null}
-                              onClick={() => void handleConfirmSchedule(entry.draftId)}
-                            >
-                              Planifier à cette date
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busyDraftId !== null}
-                              onClick={() => {
-                                setSchedulingDraftId(null);
-                                setSchedulingDate("");
-                              }}
-                            >
-                              Annuler
-                            </Button>
-                          </div>
                         )}
-                      </>
-                    )}
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </>
-      )}
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={busyDraftId !== null}
+                          onClick={() => setDeletingDraftId(selectedEntry.draftId)}
+                        >
+                          Supprimer
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    {isScheduling ? (
+                      <div className="library-schedule">
+                        <input
+                          type="date"
+                          aria-label="Date de publication"
+                          value={schedulingDate}
+                          onChange={(event) => setSchedulingDate(event.target.value)}
+                          className="library-input library-schedule__input"
+                        />
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          loading={busyDraftId === selectedEntry.draftId}
+                          disabled={!schedulingDate || busyDraftId !== null}
+                          onClick={() => void handleConfirmSchedule(selectedEntry.draftId)}
+                        >
+                          Planifier à cette date
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyDraftId !== null}
+                          onClick={() => {
+                            setSchedulingDraftId(null);
+                            setSchedulingDate("");
+                          }}
+                        >
+                          Annuler
+                        </Button>
+                      </div>
+                    ) : null}
+
+                    <div className="library-reader__buttons">
+                      <Button
+                        variant="primary"
+                        onClick={() =>
+                          void copyDraftToClipboard(
+                            `${selectedEntry.headline}\n\n${selectedEntry.bodyMarkdown}`,
+                            "Post copié dans le presse-papier : collez-le sur LinkedIn."
+                          )
+                        }
+                      >
+                        Copier le post
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={busyDraftId !== null}
+                        onClick={() => {
+                          setSchedulingDraftId(isScheduling ? null : selectedEntry.draftId);
+                          setSchedulingDate("");
+                          closeActions();
+                        }}
+                      >
+                        Planifier
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        disabled={busyDraftId !== null}
+                        onClick={() => handleStartEditing(selectedEntry)}
+                      >
+                        Modifier
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => navigate(`/creer?ideaId=${selectedEntry.ideaId}`)}
+                      >
+                        Retravailler
+                      </Button>
+                      <Button
+                        className="library-reader__disclosure"
+                        variant="secondary"
+                        aria-expanded={actionsOpen}
+                        aria-controls={actionsOpen ? actionsPanelId : undefined}
+                        aria-label={actionsLabel}
+                        title="Autres actions"
+                        onClick={() => {
+                          if (actionsOpen) {
+                            closeActions();
+                          } else {
+                            setActionsOpen(true);
+                          }
+                        }}
+                      >
+                        <MoreHorizontalIcon />
+                      </Button>
+                    </div>
+                  </footer>
+                </>
+              )}
+            </div>
+          </div>
+        ))}
 
       {activeTab === "planning" && (
         <>
-          <p className="library-planning-intro">
+          <p className="library-note">
             Le planning est votre calendrier éditorial personnel. Il ne publie rien automatiquement :
             quand la date arrive, ouvrez le post, copiez-le et collez-le sur LinkedIn.
           </p>
 
-          <div className="insight-strip">
-            <article className="insight-card">
-              <span className="status-label">À venir</span>
-              <strong>
-                {planningLoading
-                  ? "…"
-                  : `${upcomingCount} post${upcomingCount > 1 ? "s" : ""}`}
-              </strong>
-            </article>
-            <article className="insight-card">
-              <span className="status-label">Publiés</span>
-              <strong>{planningLoading ? "…" : `${publishedCount}`}</strong>
-            </article>
-          </div>
-
-          <div className="filter-bar" style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
-            <label className="field compact-field">
-              <span>Statut</span>
-              <select
-                aria-label="Filtrer par statut"
-                value={calendarStatusFilter}
-                onChange={(event) =>
-                  setCalendarStatusFilter(event.target.value as CalendarItem["status"] | "all")
-                }
-              >
-                <option value="all">Tous les statuts</option>
-                <option value="planned">Planifié</option>
-                <option value="ready">Prêt</option>
-                <option value="published">Publié</option>
-                <option value="missed">Manqué</option>
-              </select>
-            </label>
+          <div className="library-head">
+            <span className="eyebrow library-head__title">Planning</span>
+            <span className="library-head__count">
+              {planningLoading ? "…" : `${upcomingCount} à venir · ${publishedCount} publiés`}
+            </span>
           </div>
 
           {planningLoading ? (
-            <div className="list-grid" aria-label="Chargement du planning">
-              <Skeleton variant="card" />
-              <Skeleton variant="card" />
-            </div>
+            <LoadingList label="Chargement du planning" />
           ) : visibleCalendarItems.length === 0 ? (
-            <Card elevation={1} className="library-empty-card">
+            <div className="library-empty">
               {calendarItems.length === 0 ? (
                 <EmptyState
                   title="Aucune publication planifiée"
@@ -673,64 +838,73 @@ export function LibraryScreen() {
                   }}
                 />
               )}
-            </Card>
+            </div>
           ) : (
             <motion.div
-              className="list-grid"
-              variants={container}
+              className="library-list"
+              variants={listReveal}
               initial="hidden"
               animate="visible"
             >
               {visibleCalendarItems.map((calItem) => {
                 const draft = entries.find((e) => e.draftId === calItem.draftId);
                 return (
-                  <motion.div key={calItem.id} variants={item}>
-                    <Card elevation={2} interactive={false} className="lib-card">
-                      <div className="lib-card-meta">
-                        <span className="lib-card-tag">{calItem.pillarLabel}</span>
-                        <span className="lib-card-tag">{formatCalendarStatus(calItem.status)}</span>
-                        <span className="lib-card-planned-date">{calItem.plannedDate}</span>
+                  <div className="library-entry" key={calItem.id}>
+                    <article className="library-row">
+                      <div className="library-row__main">
+                        <span className="library-row__title">{calItem.draftHeadline}</span>
+                        <MetaLine
+                          parts={[
+                            <span className="library-row__num" key="date">
+                              {calItem.plannedDate}
+                            </span>,
+                            <span className="library-row__status" key="status">
+                              {formatCalendarStatus(calItem.status)}
+                            </span>,
+                            <span className="library-row__pillar" key="pillar">
+                              <PillarDot />
+                              <span className="library-row__pillar-name">
+                                {calItem.pillarLabel}
+                              </span>
+                            </span>
+                          ]}
+                        />
                       </div>
-                      <strong className="lib-card-headline">{calItem.draftHeadline}</strong>
-                      {draft && (
-                        <p className="lib-card-preview lib-card-preview--planning">
-                          {draft.bodyPreview}
-                        </p>
-                      )}
-                      <div className="lib-card-toolbar">
-                        <div className="lib-card-toolbar-primary">
-                          {draft && (
-                            <>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => void handleCopyAndMarkPublished(calItem, draft)}
-                              >
-                                Copier et marquer publié
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() =>
-                                  void copyDraftToClipboard(
-                                    `${draft.headline}\n\n${draft.bodyMarkdown}`,
-                                    "Post copié."
-                                  )
-                                }
-                              >
-                                Copier
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                        <div className="lib-card-toolbar-secondary">
-                          <Button variant="ghost" size="sm" onClick={() => switchTab("drafts")}>
-                            Voir dans les brouillons
-                          </Button>
-                        </div>
+
+                      <div className="library-row__actions">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => showDraft(calItem.draftId)}
+                        >
+                          Voir dans les brouillons
+                        </Button>
+                        {draft && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                void copyDraftToClipboard(
+                                  `${draft.headline}\n\n${draft.bodyMarkdown}`,
+                                  "Post copié."
+                                )
+                              }
+                            >
+                              Copier
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => void handleCopyAndMarkPublished(calItem, draft)}
+                            >
+                              Copier et marquer publié
+                            </Button>
+                          </>
+                        )}
                       </div>
-                    </Card>
-                  </motion.div>
+                    </article>
+                  </div>
                 );
               })}
             </motion.div>
@@ -757,6 +931,6 @@ export function LibraryScreen() {
         }}
         onCancel={() => setDeletingDraftId(null)}
       />
-    </section>
+    </PageFrame>
   );
 }

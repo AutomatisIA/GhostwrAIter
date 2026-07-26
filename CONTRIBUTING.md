@@ -36,7 +36,7 @@ npm run typecheck
 npm run lint
 npm run build
 npm audit --audit-level=high --omit=dev
-npm run real-app-audit        # 14-step end-to-end audit against a packaged app (macOS only)
+node scripts/real-app-audit.mjs  # 14-step end-to-end audit against a packaged app (macOS only)
 npm run verify-hardening      # 6 security-hardening checks (macOS only)
 ```
 
@@ -87,6 +87,8 @@ For non-trivial changes (new screen, new IPC handler, new schema migration), ple
 Please use the issue templates under `.github/ISSUE_TEMPLATE/`. Blank issues are disabled — pick either "Bug report" or "Feature request" and fill out the template.
 
 For security issues, do not open a public issue. Follow the private disclosure process in [`SECURITY.md`](SECURITY.md).
+
+All participation in this project is governed by the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ## Questions
 

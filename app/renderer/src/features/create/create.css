@@ -1,0 +1,1390 @@
+/*
+ * Feuille des ecrans Creer, Atelier et Attente.
+ *
+ * Les trois vivent dans la meme feuille parce qu ils partagent une route et un
+ * composant d entree : `CreateScreen` bascule de l un a l autre selon qu une
+ * idee est choisie et qu une generation tourne.
+ *
+ * Principe de mise en page commun aux trois : le seul conteneur qui defile est
+ * `.page__body`, pose par la primitive `PageFrame`. Chaque ecran occupe donc
+ * exactement la hauteur de ce corps, et ce qui doit rester visible en
+ * permanence, la barre d action de Creer, celle de l Atelier, vit hors du flux
+ * qui defile a l interieur de l ecran. C est la seule construction qui garantit
+ * qu une action primaire ne passe jamais sous le pli, quelle que soit la
+ * hauteur de la fenetre ou la longueur du texte.
+ */
+
+/* Utilitaire. Les chiffres qui varient dans le temps ou s alignent en colonne
+   doivent garder une largeur constante, sinon la ligne vibre a chaque
+   rafraichissement. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* =====================================================================
+   Ecran CREER
+
+   Trois portes d entree occupaient trois colonnes egales, dont la troisieme
+   ne portait qu un bouton, pendant que la liste des idees, seule raison de
+   revenir sur cet ecran, se trouvait sous le pli. Les trois modes sont
+   devenus trois onglets d une carte de 700 px et la colonne liberee sert la
+   liste.
+   ===================================================================== */
+
+/* `height: 100%` se resout ici parce que `.page__body` est un element flex de
+   hauteur definie (`flex: 1; min-height: 0`) dans une colonne bornee a la
+   fenetre. L ecran occupe donc exactement la zone visible : `.page__body` n a
+   plus rien a faire defiler, et le defilement se produit la ou il a du sens,
+   dans le formulaire et dans la liste. */
+.create-screen {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  gap: var(--space-5);
+}
+
+/* `align-self: flex-start` et non l etirement par defaut d un element flex.
+   La carte s etirait sur toute la hauteur du corps de page, ce qui plaquait sa
+   barre d action tout en bas et laissait environ quatre cents pixels de vide
+   entre le dernier champ et les boutons : le plan de saisie flottait au-dessus
+   d un trou. La carte prend maintenant la hauteur de son contenu.
+   `max-height: 100%` la borne a la fenetre, faute de quoi un formulaire plus
+   haut que le corps de page ferait defiler `.page__body` et emporterait la
+   barre d action sous le pli. Le pourcentage se resout parce que
+   `.create-screen` a une hauteur definie. */
+.create-card {
+  width: 700px;
+  flex: none;
+  align-self: flex-start;
+  max-height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* Les onglets de mode sont la primitive `Tabs` : elle porte deja la geometrie
+   exacte de la maquette (40px, 13px, trait primaire de 2px sous l onglet actif)
+   et surtout la navigation clavier attendue d un jeu d onglets, fleches et
+   Home/Fin comprises. Seule la repartition sur la largeur de la carte est
+   ajoutee ici, et sous `.create-card` pour ne rien changer ailleurs. */
+.create-card .ds-tabs {
+  flex: none;
+}
+
+.create-card .ds-tab {
+  flex: 1;
+}
+
+.create-card__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Colonne de libelles de 150 px. A 176 px, le champ commencait a 767 px du bord
+   de la fenetre : entre le libelle et sa saisie s ouvrait une bande vide assez
+   large pour casser l association oeil, libelle, champ. */
+.create-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.create-row--top {
+  align-items: start;
+}
+
+.create-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink);
+}
+
+/* Le bouton d aide vaut 20 px sur cet ecran, contre 16 px ailleurs : pose a
+   cote d un champ de 36 px il doit rester une cible atteignable, la ou il
+   n accompagne qu un titre de section dans les autres ecrans. La marge de la
+   primitive est reprise par la gouttiere du libelle, sinon les deux s ajoutent. */
+.create-label .ds-info-hint {
+  width: 20px;
+  height: 20px;
+  margin-inline-start: 0;
+}
+
+/* La bulle d aide est posee en absolu, et elle vit ici dans deux conteneurs qui
+   decoupent leur debordement : `.create-card` en `overflow: hidden` et son corps
+   en `overflow-y: auto`, qui calcule `overflow-x: auto` par consequence. Une
+   bulle qui sort de la carte n est donc pas seulement mal placee, elle est
+   tranchee.
+
+   Horizontalement, la primitive centre la bulle sur son declencheur. Le
+   declencheur suit un libelle court, a une centaine de pixels du bord gauche,
+   et une bulle de 288 px centree la debordait de plusieurs dizaines de pixels
+   par la gauche. Elle est donc alignee sur le bord gauche du declencheur et
+   s etend vers la droite, ou la colonne de saisie laisse pres de 500 px.
+
+   Verticalement, la primitive ouvre vers le haut. Cela convient a toutes les
+   rangees sauf la premiere, dont le declencheur est a une trentaine de pixels du
+   haut du corps : la bulle y perdait la majeure partie de sa hauteur. Seule
+   cette rangee ouvre vers le bas, ou les rangees suivantes lui laissent la
+   place. */
+.create-label .ds-tooltip__bubble {
+  left: 0;
+  transform: none;
+}
+
+.create-row:first-child .create-label .ds-tooltip__bubble {
+  bottom: auto;
+  top: calc(100% + var(--space-2));
+}
+
+.create-row--top .create-label {
+  padding-top: 8px;
+}
+
+.create-control {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-input,
+.create-textarea,
+.create-backlog__search {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.create-input {
+  height: 36px;
+  padding: 0 12px;
+}
+
+.create-textarea {
+  padding: 9px 12px;
+  line-height: var(--line-height-normal);
+  resize: vertical;
+}
+
+.create-input:focus,
+.create-textarea:focus,
+.create-backlog__search:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+/* Le pilier se choisit parmi une liste courte et connue : des etiquettes
+   montrent les options disponibles d un coup d oeil, la ou une liste deroulante
+   les cache derriere un clic.
+   Rangee a retour automatique et non colonne : a 32 px de haut dans une colonne
+   de saisie trop etroite, cinq piliers se posaient un par ligne et la taxonomie
+   devenait le plus gros bloc de l ecran, plus haute que le champ d angle. */
+.create-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.create-chip {
+  height: 30px;
+  padding: 0 11px;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.create-chip:not([aria-pressed="true"]):hover {
+  background: var(--surface-sunken);
+}
+
+.create-chip[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--primary-tint);
+  border-color: var(--primary-line);
+}
+
+.create-chip:focus-visible {
+  outline: none;
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+/* Liste deroulante de la cible visee. Meme surface, meme bordure et meme
+   hauteur que `.create-input`, pour que les deux champs se lisent comme un
+   seul plan de saisie. La fleche native est conservee : elle est le seul
+   signe qui distingue un menu d un champ de texte. */
+.create-select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.create-select:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+/* Mention posee sous un champ : la contrainte qui le regit, ou l endroit ou
+   creer ce qui manque quand la strategie ne fournit aucune option. Un menu vide
+   se lirait comme un chargement qui n aboutit pas. */
+.create-field-note {
+  display: block;
+  margin: 6px 0 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+.create-strategy-note {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+/* Barre d action posee sous le dernier champ, hors du flux qui defile. */
+.create-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+
+/* La barre est creusee, et l action secondaire du design system est
+   transparente : « Ajouter au backlog » se lisait donc en gris sur gris, soit
+   l apparence exacte d un bouton desactive, alors que l action est disponible.
+   Elle reprend la surface haute pour se detacher de la barre : surface, trait
+   de un pixel, encre secondaire. Un vrai desactive reste distinct, la primitive
+   lui appliquant son opacite reduite. */
+.create-actions .ds-button[data-variant="secondary"]:not(:disabled) {
+  background: var(--surface-raised);
+}
+
+/* Le survol de la primitive ramenerait la surface creusee, donc le gris sur
+   gris que l on vient de corriger. Il descend d un cran au lieu de monter. */
+.create-actions .ds-button[data-variant="secondary"]:not(:disabled):hover {
+  background: var(--surface-app);
+}
+
+.create-backlog {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.create-backlog__head {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.create-backlog__count {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+}
+
+.create-backlog__search {
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  font-size: var(--font-size-sm);
+}
+
+.create-backlog__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.create-backlog__row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 13px 16px;
+  text-align: left;
+  font: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.create-backlog__list > li:last-child .create-backlog__row {
+  border-bottom: none;
+}
+
+.create-backlog__row:hover {
+  background: var(--surface-sunken);
+}
+
+.create-backlog__row:focus-visible {
+  outline: 2px solid var(--primary-fill);
+  outline-offset: -2px;
+}
+
+.create-backlog__title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-height-tight);
+  color: var(--ink);
+}
+
+/* Une idee sans titre garde une etiquette explicite plutot qu une ligne vide.
+   L italique et l encre tertiaire disent que le texte n est pas de l utilisateur
+   mais un repli de l application : la graisse de titre affirmerait un titre. */
+.create-backlog__title--untitled {
+  font-weight: var(--font-weight-medium);
+  font-style: italic;
+  color: var(--ink-subtle);
+}
+
+.create-backlog__pillar {
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+}
+
+/* =====================================================================
+   Ecran ATELIER
+   ===================================================================== */
+
+/* La bande de contexte et la colonne d apercu touchent les bords, comme dans
+   la maquette. `.page__body` porte un remplissage de 24px 28px que l on
+   compense ici, et une seule fois : les valeurs sont couplees a celles de la
+   feuille commune, ce qui est assume et signale plutot que reparti dans dix
+   regles. */
+.workshop-screen {
+  margin: -24px -28px;
+  height: calc(100% + 48px);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bande de contexte : la position dans le parcours et les decisions prises.
+   Elle remplace un guide lateral de 340 px qui portait la meme information sur
+   trois cartes empilees.
+
+   Elle a d abord porte cinq elements de largeur libre, dont l etat courant et
+   une accroche de plus de soixante caracteres. Ils se recouvraient : la
+   derniere etiquette etait tranchee, l etat se collait a elle et le retour au
+   cadrage se faisait ecraser. Rendre la rangee defilante ne reglait rien, un
+   bord tranche un mot aussi bien dans une rangee qui defile. La correction est
+   d avoir SORTI de la bande ce qui n avait pas a y etre : l etat va a l en-tete
+   de page, les deux mesures du brouillon vont a droite de son titre. Ce qui
+   reste tient sur trois elements, chacun borne. */
+.workshop-context {
+  height: 48px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 28px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.workshop-context__step {
+  flex: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Le defilement horizontal reste en dernier recours : les etiquettes sont
+   desormais bornees a 26 caracteres chacune, mais rien n interdit une session
+   a cinq decisions longues. La barre de defilement est masquee, le geste reste
+   possible, et aucune decision ne devient inatteignable. */
+.workshop-context__chips {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.workshop-context__chips::-webkit-scrollbar {
+  display: none;
+}
+
+/* Le retour au cadrage ne se comprime jamais. Sans cette regle il herite du
+   `flex: 0 1 auto` des boutons et se fait ecraser par la rangee d etiquettes,
+   au point de n etre plus lisible : c est pourtant la seule sortie vers
+   l arriere de cet ecran. */
+.workshop-context > .ds-button {
+  flex: none;
+}
+
+/* Etiquette bornee a 26 caracteres, texte entier en infobulle. La coupe est
+   faite par le navigateur avec un vrai point de suspension typographique, et
+   non par le composant : une coupe calculee en JavaScript tombait au milieu
+   d un mot et laissait croire a un texte incomplet.
+   `inline-block` et non `inline-flex` : `text-overflow` ne s applique qu au
+   contenu en ligne d un bloc, sur un conteneur flexible l ellipse ne se dessine
+   pas. Le `line-height` remplace donc le centrage vertical, 24 px pour 26 px de
+   haut moins un pixel de bordure de chaque cote. */
+.workshop-context__chip {
+  height: 26px;
+  max-width: 26ch;
+  flex: none;
+  display: inline-block;
+  padding: 0 10px;
+  line-height: 24px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workshop-error {
+  flex: none;
+  padding: 0 28px;
+}
+
+.workshop-stage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-5) 28px;
+}
+
+.workshop-empty {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.draft-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.draft-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.draft-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.draft-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.draft-title {
+  margin: 0;
+  max-width: 44ch;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-title);
+  color: var(--ink);
+}
+
+/* Les deux mesures du brouillon, en colonne a droite de son titre. Elles
+   etaient dans la bande de contexte, ou elles disputaient la largeur aux
+   decisions prises ; adossees au titre, elles mesurent ce qui est juste en
+   dessous et ne recouvrent plus rien. */
+.draft-metrics {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* Caracteres RESTANTS, jamais un pourcentage de qualite : le score affiche
+   auparavant etait une auto-evaluation du modele, donc un chiffre invente sur
+   un produit dont la premiere regle editoriale interdit les chiffres inventes.
+   La limite est rappelee dans la meme phrase : un nombre de restants sans
+   reference ne se compare a rien. */
+.draft-remaining {
+  flex: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.draft-remaining[data-over="true"] {
+  color: var(--state-ko);
+}
+
+/* Compte de marqueurs d ecriture IA. La mise en garde sur la detection tient
+   dans l infobulle du point d interrogation : elle ne se lit qu une fois, elle
+   n a pas a occuper deux lignes sous le brouillon a chaque affichage. */
+.draft-tells {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* L ambre porte l attention, jamais la validation : il n apparait que quand un
+   marqueur a ete trouve. « Aucun marqueur repere » reste en encre tertiaire,
+   c est un constat, pas un succes. */
+.draft-tells[data-found="true"] {
+  color: var(--amber-ink);
+}
+
+.draft-tells__help {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font: inherit;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+  /* --line-field, seule bordure conforme AA pour un composant interactif. */
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-circle);
+  cursor: help;
+}
+
+.draft-tells__help:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.draft-text {
+  max-width: 68ch;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-relaxed);
+  color: var(--ink);
+}
+
+.draft-text p {
+  margin: 0;
+}
+
+/* Le marqueur est souligne a sa place dans le texte, et non recopie dans une
+   liste a part : la liste obligeait a chercher a l oeil ou se trouvait la
+   formule citee. Le soulignement est un vrai bouton, il ouvre la reecriture
+   manuelle, seul moyen dont dispose le produit pour remplacer une formule. */
+.draft-tell {
+  /* `display: inline` et non la valeur par defaut du navigateur : un bouton
+     est un bloc en ligne, donc insecable. Un extrait de quatre-vingt-dix
+     caracteres deborderait alors de la colonne au lieu de passer a la ligne. */
+  display: inline;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  user-select: text;
+  text-decoration: underline;
+  text-decoration-color: var(--amber-fill);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.draft-tell:hover {
+  background: var(--amber-tint);
+}
+
+.draft-tell:focus-visible {
+  outline: 2px solid var(--amber-fill);
+  outline-offset: 2px;
+}
+
+.draft-edit {
+  max-width: 68ch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.draft-edit-headline,
+.draft-edit-body {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.draft-edit-headline {
+  height: 36px;
+  padding: 0 12px;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-title);
+}
+
+.draft-edit-body {
+  padding: 12px 14px;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
+  resize: vertical;
+  min-height: 280px;
+}
+
+.draft-edit-headline:focus,
+.draft-edit-body:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+/* Barre d action de la colonne de texte. Hauteur fixe et `flex: none` sous le
+   seul conteneur defilant de l ecran : « Copier le post » est le geste qui
+   TERMINE le parcours, il ne peut pas dependre du defilement pour etre atteint.
+   Le retour a la ligne est interdit : il ferait grandir la barre au detriment
+   du texte, alors que la rangee doit rester a 60 px quoi qu elle porte. */
+.draft-actions {
+  height: 60px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  padding: 0 28px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-raised);
+  /* La rangee porte cinq actions, soit environ 815 px de boutons, et la fenetre
+     descend jusqu a 1120 px de large (app/main/index.ts), ce qui ne laisse que
+     664 px a la colonne de texte. Elle deborde donc a la fenetre la plus
+     etroite. Le debordement DEFILE, il ne se coupe pas : couper rendrait la
+     derniere action inatteignable sans le moindre indice. La barre de
+     defilement est masquee, elle mangerait la hauteur de 60 px. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.draft-actions::-webkit-scrollbar {
+  display: none;
+}
+
+/* Aucun bouton ne se comprime : un bouton retreci garde son remplissage et son
+   libelle deborde de son propre cadre, sur le voisin. La rangee est un train de
+   largeurs fixes, et son ordre decide de ce qui sort du champ en premier :
+   « Copier le post » est en tete, il est visible sans le moindre geste. */
+.draft-actions > .ds-button {
+  flex: none;
+}
+
+/* Apercu du fil. La seule mesure qui vaille avant publication : ce qui passe
+   au-dessus du repli decide si le reste sera lu. */
+.post-preview {
+  width: 400px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.post-preview__head {
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.post-preview__fold-note {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+
+.post-preview__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.post-preview__author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.post-preview__avatar {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: var(--radius-circle);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+}
+
+.post-preview__identity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.post-preview__name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-title);
+  color: var(--ink);
+}
+
+.post-preview__meta {
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+}
+
+/* L apercu se lit un cran plus petit et un cran plus serre que le brouillon,
+   15 px sur 1,55 contre 16 px sur 1,65 : sans cet ecart, rien ne dit laquelle
+   des deux colonnes est la source et laquelle en est le rendu. */
+.post-preview__text {
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Trait de repli : pointille ambre, etiquette a droite posee sur la surface
+   pour interrompre le trait. */
+.post-preview__fold {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 0;
+  border-top: 1px dashed var(--amber-fill);
+}
+
+.post-preview__fold-label {
+  margin-top: -9px;
+  padding: 0 6px;
+  background: var(--surface-raised);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--amber-ink);
+  white-space: nowrap;
+}
+
+.post-preview__after {
+  color: var(--ink-subtle);
+}
+
+.post-preview__note {
+  margin: 0;
+  padding: 11px 14px;
+  background: var(--surface-app);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-muted);
+}
+
+.post-preview__context {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.post-preview__context-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.post-preview__context-row dt {
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+}
+
+.post-preview__context-row dd {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--ink-muted);
+}
+
+/* =====================================================================
+   Ecran ATTENTE
+
+   Une generation dure de vingt a cent secondes. Pendant tout ce temps,
+   l application paraissait plantee. L attente devient donc un ecran a part
+   entiere : temps ecoule, signe de vie du moteur, durees reelles des phases,
+   et rappel des decisions prises. Aucun voile modal, aucune desactivation de
+   la navigation : la barre laterale reste utilisable.
+   ===================================================================== */
+
+.wait-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.wait-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.gen-pulse {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px;
+  background: var(--amber-tint);
+  border: 1px solid var(--amber-line);
+  border-radius: var(--radius-sm);
+}
+
+.gen-pulse__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.gen-pulse__phase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.gen-pulse__eyebrow {
+  color: var(--amber-ink);
+}
+
+/* Temps ECOULE, jamais un pourcentage. Sur une duree non predictible, un
+   pourcentage mentirait quatre fois sur cinq ; une duree observee est vraie.
+   Graisse fine parce que le glyphe est grand, chiffres tabulaires parce que la
+   valeur change deux fois par seconde. */
+.gen-pulse__chrono {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-thin);
+  line-height: 1.08;
+  letter-spacing: var(--tracking-display);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-pulse__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  text-align: right;
+}
+
+.gen-pulse__signal {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--amber-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-pulse__average {
+  font-size: var(--font-size-sm);
+  color: var(--ink-muted);
+}
+
+/* Reglette animee par translation continue, sans valeur : elle dit « ca
+   tourne », elle ne pretend pas dire « on en est la ». */
+/* La piste est claire et non ambre pale : la barre en --amber-fill sur une
+   piste en --amber-line ne donne que 2,46:1 en theme clair, sous le seuil de
+   3:1 exige pour un element graphique porteur d information. Sur la surface
+   claire elle monte a 3,43:1, et a 8,14:1 en sombre. */
+.gen-pulse__track {
+  height: 3px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.gen-pulse__bar {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--amber-fill);
+  animation: gw-flux 1400ms linear infinite;
+}
+
+@keyframes gw-flux {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Sous mouvement reduit, la reglette disparait au lieu de se figer. Une barre
+   immobile est lue comme une valeur : pleine, elle annonce « termine » ; a
+   quarante pour cent, elle annonce une progression que rien ne mesure. Le
+   chronometre et la phase surlignee portent seuls la preuve que ca tourne, et
+   eux ne mentent pas. */
+@media (prefers-reduced-motion: reduce) {
+  .gen-pulse__track {
+    display: none;
+  }
+}
+
+.wait-phases {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.wait-phases__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.wait-phases__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wait-phases__row:last-child {
+  border-bottom: none;
+}
+
+.wait-phases__label {
+  font-size: var(--font-size-base);
+  color: var(--ink-muted);
+}
+
+.wait-phases__value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wait-phases__row[data-state="active"] {
+  background: var(--amber-tint);
+}
+
+.wait-phases__row[data-state="active"] .wait-phases__label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--ink);
+}
+
+.wait-phases__row[data-state="active"] .wait-phases__value {
+  color: var(--amber-ink);
+}
+
+.wait-phases__row[data-state="pending"] .wait-phases__label {
+  color: var(--ink-subtle);
+}
+
+.wait-phases__caveat {
+  margin: 0;
+  max-width: 70ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+/* L attente est le seul moment ou relire ses choix ne coute rien : c est le
+   rappel du guide, deplace la ou il sert. */
+.wait-recap {
+  width: 400px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.wait-recap__head {
+  height: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wait-recap__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.wait-recap__list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wait-recap__row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.wait-recap__row:last-child {
+  border-bottom: none;
+}
+
+.wait-recap__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+}
+
+.wait-recap__value {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-snug);
+  color: var(--ink);
+}
+
+.wait-recap__note {
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--surface-app);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-muted);
+}
+
+/* =====================================================================
+   Etapes 1 a 3 de l atelier (cadrage, structure, accroche).
+
+   Conservees telles qu elles fonctionnent, retokenisees sur la palette de la
+   direction : la maquette ne redessine que l etape 4.
+   ===================================================================== */
+
+.workshop-step {
+  display: grid;
+  gap: 18px;
+  padding: var(--space-5);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+}
+
+/* Le titre d etape est un `h2` : `PageFrame` occupe le rang un, et un `h3`
+   sauterait un niveau. Sa taille est posee ici plutot que laissee au navigateur,
+   dont les valeurs par defaut sont en `em` et hors de l echelle typographique. */
+.workshop-step h2 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-height-tight);
+  color: var(--ink);
+}
+
+.step-description {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+/* La feuille commune donne a `.grid-selection` ses colonnes mais pas son mode
+   de disposition : sans `display: grid`, les cartes de choix s empilent en flux
+   normal et la regle de colonnes reste inerte. Corrige ici, sous
+   `.workshop-step` : ces deux classes ne servent qu aux etapes de l atelier, et
+   la portee evite d empieter sur la feuille commune. */
+.workshop-step .grid-selection,
+.workshop-step .list-selection {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Specificite doublee volontairement : la primitive `Card` pose ses propres
+   surface, bordure et remplissage sous le meme poids de selecteur, et l ordre
+   d import departagerait sinon les deux regles. */
+.ds-card.selection-card {
+  padding: 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-field);
+  background: var(--surface-raised);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard);
+}
+
+.ds-card.selection-card:hover {
+  border-color: var(--primary-line);
+  background: var(--surface-sunken);
+}
+
+.ds-card.selection-card.selected {
+  border-color: var(--primary-fill);
+  background: var(--primary-tint);
+}
+
+.selection-card strong,
+.selection-card p {
+  margin: 0;
+}
+
+.selection-card p {
+  margin-top: 8px;
+  color: var(--ink-muted);
+}
+
+.workshop-structure-arrow {
+  color: var(--primary-ink);
+  margin: 0 6px;
+}
+
+/* Comparaison avant/apres de la correction premium. Le contraste entre les deux
+   etats doit se lire sans effort : c est tout l interet de la vue. */
+.correction-diff {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 68ch;
+}
+
+.correction-diff-title {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+.correction-diff-summary {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.correction-diff-empty {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.correction-diff-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.correction-diff-item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.correction-diff-position {
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+}
+
+.correction-diff-before,
+.correction-diff-after {
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid transparent;
+}
+
+.correction-diff-before {
+  color: var(--ink-subtle);
+  background: var(--surface-sunken);
+  border-left-color: var(--line-strong);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-subtle);
+}
+
+.correction-diff-after {
+  background: var(--primary-tint);
+  border-left-color: var(--primary-fill);
+}
+
+/* =====================================================================
+   Fenetres etroites : les colonnes s empilent et le corps de page reprend son
+   role de conteneur defilant. Les hauteurs bornees n ont plus de sens quand la
+   largeur ne permet plus de tenir deux colonnes cote a cote.
+   ===================================================================== */
+
+@media (max-width: 1100px) {
+  .create-screen,
+  .draft-screen,
+  .wait-screen {
+    height: auto;
+    flex-direction: column;
+  }
+
+  .workshop-screen {
+    height: auto;
+  }
+
+  /* En colonne, `align-self` pilote la largeur et non plus la hauteur : sans
+     `stretch`, la carte cesserait de suivre la largeur de la fenetre malgre
+     `width: auto`. La borne de hauteur tombe avec le defilement interne. */
+  .create-card {
+    width: auto;
+    align-self: stretch;
+    max-height: none;
+  }
+
+  .create-card__body,
+  .create-backlog__list,
+  .draft-scroll,
+  .wait-main,
+  .post-preview__body,
+  .wait-recap__body,
+  .workshop-stage {
+    overflow: visible;
+  }
+
+  .post-preview,
+  .wait-recap {
+    width: auto;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .create-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+
+  .create-row--top .create-label {
+    padding-top: 0;
+  }
+}

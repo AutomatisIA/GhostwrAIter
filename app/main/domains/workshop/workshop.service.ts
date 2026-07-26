@@ -13,6 +13,7 @@ import {
   emitPhaseStarted
 } from "../execution/execution-progress-emitter";
 import type { ExecutionPhase } from "../../../shared/types/execution-progress";
+import type { IdeaRecord } from "../../../shared/types/ideas";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import type {
   HookOption,
@@ -22,7 +23,15 @@ import type {
   WorkshopSession
 } from "../../../shared/types/workshop";
 import { createId } from "../../shared/create-id";
+import { tokenizeTags } from "./tokenize-tags";
+import { SkillRunError, skillRunError } from "../execution/skill-run-error";
+import {
+  buildStrategyContext,
+  summarizeIcps,
+  summarizeOffers
+} from "../strategy/strategy-context";
 import { insertExecutionRun, recordExecutionRun } from "../execution/execution-runs.repository";
+import { resolveAnnouncedEngine } from "../execution/announced-engine";
 
 type WorkshopColumnSpec = {
   readonly table: "drafts" | "execution_runs";
@@ -112,6 +121,11 @@ export const WORKSHOP_COLUMN_ALLOWLIST = {
     table: "execution_runs",
     column: "finished_at",
     ddl: "finished_at TEXT"
+  },
+  "execution_runs.engine": {
+    table: "execution_runs",
+    column: "engine",
+    ddl: "engine TEXT"
   }
 } as const satisfies Record<string, WorkshopColumnSpec>;
 
@@ -155,17 +169,6 @@ export function ensureColumn(db: Database.Database, key: WorkshopColumnKey): voi
 
   const alterStatement = `ALTER TABLE ${spec.table} ADD COLUMN ${spec.ddl}`;
   db.prepare(alterStatement).run();
-}
-
-function tokenizeTags(input: string) {
-  return Array.from(
-    new Set(
-      input
-        .toLowerCase()
-        .split(/[^a-z0-9à-ÿ]+/i)
-        .filter((token) => token.length >= 5)
-    )
-  ).slice(0, 6);
 }
 
 export function createWorkshopTables(db: Database.Database) {
@@ -233,6 +236,7 @@ export function createWorkshopTables(db: Database.Database) {
   ensureColumn(db, "execution_runs.log_path");
   ensureColumn(db, "execution_runs.started_at");
   ensureColumn(db, "execution_runs.finished_at");
+  ensureColumn(db, "execution_runs.engine");
 }
 
 export class WorkshopService {
@@ -245,16 +249,16 @@ export class WorkshopService {
     private readonly getFoundationSummary?: () => string | null
   ) {}
 
-  generateDraftFromIdea(ideaId: string, sender?: WebContents): WorkshopSession {
+  async generateDraftFromIdea(ideaId: string, sender?: WebContents): Promise<WorkshopSession> {
     // Appel composite : chaque sous-etape reelle emet sa propre paire de bornes
     // (structure -> hook -> redaction) via le `sender` propage. Pas de paire
     // composite additionnelle par-dessus (cf. contrat).
-    const structures = this.getSuggestedStructures(ideaId, "expertise", "awareness", sender);
+    const structures = await this.getSuggestedStructures(ideaId, "expertise", "awareness", sender);
     const topStructure = structures[0];
     if (!topStructure) {
       throw new Error("Aucune structure suggeree disponible pour generer le brouillon.");
     }
-    const hooks = this.generateHooks(ideaId, "expertise", topStructure.key, sender);
+    const hooks = await this.generateHooks(ideaId, "expertise", topStructure.key, sender);
     const topHook = hooks[0];
     if (!topHook) {
       throw new Error("Aucune accroche generee pour finaliser le brouillon.");
@@ -272,18 +276,18 @@ export class WorkshopService {
     );
   }
 
-  getSuggestedStructures(
+  async getSuggestedStructures(
     ideaId: string,
     typology: PostTypology,
     objective: PostObjective,
     sender?: WebContents
-  ): StructureOption[] {
+  ): Promise<StructureOption[]> {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const invocation: SkillRunnerInvocation = {
       runId: createId("run"),
       skillName: "linkedin-structure-selector",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         ideaId: idea.id,
         title: idea.title,
@@ -293,10 +297,10 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const result = this.runPhase("structure", invocation, sender);
+    const result = await this.runPhase("structure", invocation, sender);
 
     if (result.status !== "succeeded") {
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     this.persistExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
@@ -322,18 +326,18 @@ export class WorkshopService {
     throw new Error(result.summary);
   }
 
-  generateHooks(
+  async generateHooks(
     ideaId: string,
     typology: PostTypology,
     structureKey: string,
     sender?: WebContents
-  ): HookOption[] {
+  ): Promise<HookOption[]> {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const invocation: SkillRunnerInvocation = {
       runId: createId("run"),
       skillName: "linkedin-hook-engine",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         ideaId: idea.id,
         title: idea.title,
@@ -343,10 +347,10 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const result = this.runPhase("hook", invocation, sender);
+    const result = await this.runPhase("hook", invocation, sender);
 
     if (result.status !== "succeeded" || !result.data?.hooks) {
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     this.persistExecutionRun(invocation, result, idea.id, "pending_draft", new Date().toISOString());
@@ -359,7 +363,7 @@ export class WorkshopService {
     }));
   }
 
-  generateFinalDraft(
+  async generateFinalDraft(
     ideaId: string,
     typology: PostTypology,
     objective: PostObjective,
@@ -369,7 +373,7 @@ export class WorkshopService {
     selectedHookText: string,
     hooks: HookOption[],
     sender?: WebContents
-  ): WorkshopSession {
+  ): Promise<WorkshopSession> {
     const idea = this.ideasRepository.getIdeaById(ideaId);
     const draftId = createId("draft");
     const createdAt = new Date().toISOString();
@@ -393,7 +397,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-post-writer",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         ideaId: idea.id,
         title: idea.title,
@@ -407,10 +411,10 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const writerResult = this.runPhase("redaction", writerInvocation, sender);
+    const writerResult = await this.runPhase("redaction", writerInvocation, sender);
 
     if (writerResult.status !== "succeeded" || !writerResult.data?.draft) {
-      throw new Error(writerResult.error?.message ?? writerResult.summary);
+      throw skillRunError(writerResult);
     }
 
     const headline = writerResult.data.draft.headline;
@@ -456,7 +460,7 @@ export class WorkshopService {
     return this.getSessionByDraftId(draftId);
   }
 
-  createVariant(draftId: string, variantType: string, sender?: WebContents): WorkshopSession {
+  async createVariant(draftId: string, variantType: string, sender?: WebContents): Promise<WorkshopSession> {
     const draft = this.db
       .prepare(
         `SELECT
@@ -498,7 +502,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-repurpose",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         headline: draft.headline,
         bodyMarkdown: draft.bodyMarkdown,
@@ -513,9 +517,9 @@ export class WorkshopService {
       attachments: []
     };
 
-    const result = this.runPhase("variante", invocation, sender);
+    const result = await this.runPhase("variante", invocation, sender);
     if (result.status !== "succeeded" || !result.data?.draft) {
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     const variantBody = result.data.draft.bodyMarkdown;
@@ -620,13 +624,15 @@ export class WorkshopService {
       logPath: null,
       startedAt: createdAt,
       finishedAt: createdAt,
-      createdAt
+      createdAt,
+      // Import manuel : aucun moteur n a produit ce texte, c est l utilisateur.
+      engine: null
     });
 
     return this.getSessionByDraftId(draftId);
   }
 
-  correctDraft(draftId: string, sender?: WebContents): WorkshopSession {
+  async correctDraft(draftId: string, sender?: WebContents): Promise<WorkshopSession> {
     const draft = this.db
       .prepare(`
         SELECT id, idea_id AS ideaId, headline, body_markdown AS bodyMarkdown,
@@ -652,7 +658,7 @@ export class WorkshopService {
       runId: createId("run"),
       skillName: "linkedin-post-editor",
       skillVersion: "1.0.0",
-      context: this.buildRunnerContext(idea.pillarLabel),
+      context: this.buildRunnerContext(idea),
       payload: {
         draftId,
         headline: draft.headline ?? idea.title,
@@ -668,10 +674,10 @@ export class WorkshopService {
       },
       attachments: []
     };
-    const editorResult = this.runPhase("correction", editorInvocation, sender);
+    const editorResult = await this.runPhase("correction", editorInvocation, sender);
 
     if (editorResult.status !== "succeeded" || !editorResult.data?.draft) {
-      throw new Error(editorResult.error?.message ?? editorResult.summary);
+      throw skillRunError(editorResult);
     }
 
     const correctedBody = editorResult.data.draft.bodyMarkdown;
@@ -684,9 +690,23 @@ export class WorkshopService {
 
     this.persistExecutionRun(editorInvocation, editorResult, draft.ideaId, draftId, correctedAt);
 
-    if (correctedQualityScore <= draft.qualityScore) {
-      this.recordDraftVersion(draftId, draft.bodyMarkdown, draft.qualityScore, "correction", correctedAt);
-      return this.getSessionByDraftId(draftId);
+    // La correction etait auparavant conditionnee a une hausse du score. Ce
+    // score est en grande partie auto-declare par le modele, et l editeur rend
+    // des signaux voisins de ceux du redacteur : la condition n etait donc
+    // quasiment jamais remplie, et la fonctionnalite n a jamais applique la
+    // moindre correction en usage reel. Refuser un travail sur la foi d un
+    // chiffre invente est exactement le defaut releve par l audit editorial.
+    //
+    // La decision revient desormais a la skill, a qui son contrat demande
+    // explicitement de rendre le texte inchange si elle ne peut pas l ameliorer.
+    // Le seul cas ou l on ne touche a rien est celui ou elle a effectivement
+    // rendu le meme texte.
+    const unchanged =
+      correctedBody.trim() === draft.bodyMarkdown.trim() &&
+      correctedHeadline.trim() === (draft.headline ?? "").trim();
+
+    if (unchanged) {
+      return { ...this.getSessionByDraftId(draftId), correctionApplied: false };
     }
 
     this.db
@@ -805,12 +825,13 @@ export class WorkshopService {
       hooks,
       run,
       versions,
-      contextUsed: this.buildContextUsed(idea.pillarLabel)
+      contextUsed: this.buildContextUsed(idea)
     };
   }
 
-  private buildContextUsed(pillarLabel: string): WorkshopSession["contextUsed"] {
+  private buildContextUsed(idea: IdeaRecord): WorkshopSession["contextUsed"] {
     const strategy = this.requireActiveStrategy();
+    const pillarLabel = idea.pillarLabel;
 
     return {
       pillarLabel,
@@ -818,8 +839,8 @@ export class WorkshopService {
       strategyPositioning: strategy.profile.positioning,
       strategyBio: strategy.profile.bio,
       strategyExpertiseSummary: strategy.profile.expertiseSummary,
-      strategyOffersSummary: this.summarizeOffers(strategy),
-      strategyIcpSummary: this.summarizeIcps(strategy),
+      strategyOffersSummary: summarizeOffers(strategy),
+      strategyIcpSummary: summarizeIcps(strategy, idea.targetIcpSegment),
       pillarDescription:
         strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
       voiceGuardrail: strategy.voiceRules.map((r) => `[${r.ruleType}] ${r.ruleText}`).join(" | "),
@@ -832,23 +853,52 @@ export class WorkshopService {
     };
   }
 
-  private executeSkill(invocation: SkillRunnerInvocation): SkillRunnerResult {
-    return this.skillRunnerService.execute(invocation);
+  private async executeSkill(invocation: SkillRunnerInvocation): Promise<SkillRunnerResult> {
+    return this.skillRunnerService.executeAsync(invocation);
   }
 
   /**
    * Execute une etape moteur en emettant les bornes de progression
    * (feature 010, T027) : `started` avant l'appel, puis `completed`/`failed`
    * apres. L'emission est best-effort (cf. emitter) et n'altere jamais le
-   * resultat metier. Le chemin sync utilise le runner codex (engine "codex").
+   * resultat metier.
+   *
+   * L'etiquette de moteur n'est plus codee en dur : `started` annonce le moteur
+   * qui SERA utilise (choix explicite, sinon selection active resolue), et la
+   * borne terminale reprend le moteur reellement utilise, tel que le runner
+   * l'a estampille. Voir `announced-engine.ts` pour le cout de cette
+   * resolution et la raison pour laquelle elle est memorisee.
    */
-  private runPhase(
+  private async runPhase(
     phase: ExecutionPhase,
     invocation: SkillRunnerInvocation,
     sender: WebContents | undefined
-  ): SkillRunnerResult {
-    emitPhaseStarted(sender, { runId: invocation.runId, phase, engine: "codex" });
-    const result = this.executeSkill(invocation);
+  ): Promise<SkillRunnerResult> {
+    const announced = await resolveAnnouncedEngine(this.skillRunnerService);
+    emitPhaseStarted(sender, { runId: invocation.runId, phase, engine: announced });
+
+    let result: SkillRunnerResult;
+    try {
+      result = await this.executeSkill(invocation);
+    } catch (error) {
+      // `started` vient d etre emis : si l appel moteur LEVE (quota, limite de
+      // debit, delai depasse), le throw remonte avant toute borne terminale et
+      // l atelier reste fige sur cette etape, sans message d erreur. La garde
+      // couvre le SEUL appel moteur : l elargir ferait emettre une deuxieme
+      // borne terminale sur le chemin d echec deja couvert plus bas.
+      emitPhaseSettled(sender, {
+        runId: invocation.runId,
+        phase,
+        engine: announced,
+        status: "failed",
+        // Un `errorCode` absent disparait de l evenement (l emetteur omet la
+        // cle), alors que le contrat le veut present sur tout `failed`.
+        errorCode: error instanceof SkillRunError ? error.code : "SKILL_RUN_FAILED"
+      });
+      throw error;
+    }
+
+    const usedEngine = result.engine ?? announced;
     // `completed` n'est emis QUE pour un succes franc : les appelants amont
     // throw des que `status !== "succeeded"` (y compris `partial`). Emettre
     // `completed` sur un `partial` produirait un faux signal de succes alors
@@ -858,14 +908,14 @@ export class WorkshopService {
       emitPhaseSettled(sender, {
         runId: invocation.runId,
         phase,
-        engine: "codex",
+        engine: usedEngine,
         status: "completed"
       });
     } else {
       emitPhaseSettled(sender, {
         runId: invocation.runId,
         phase,
-        engine: "codex",
+        engine: usedEngine,
         status: "failed",
         errorCode: result.error?.code
       });
@@ -873,37 +923,19 @@ export class WorkshopService {
     return result;
   }
 
-  private buildRunnerContext(pillarLabel: string) {
-    const strategy = this.requireActiveStrategy();
-
-    if (!strategy.profile.id) {
-      throw new Error("Strategy profile is missing an id.");
-    }
-
-    if (strategy.voiceRules.length === 0) {
-      throw new Error("Strategy is missing voice rules.");
-    }
-
-    const foundation = this.getFoundationSummary?.() ?? null;
-
-    return {
-      profileId: strategy.profile.id,
-      foundationSummary: foundation,
-      strategyProfileName: strategy.profile.name,
-      strategyPositioning: strategy.profile.positioning,
-      strategyBio: strategy.profile.bio,
-      strategyExpertiseSummary: strategy.profile.expertiseSummary,
-      strategyOffersSummary: this.summarizeOffers(strategy),
-      strategyIcpSummary: this.summarizeIcps(strategy),
-      pillarLabel,
-      pillarDescription:
-        strategy.pillars.find((pillar) => pillar.label === pillarLabel)?.description ?? "",
-      voiceRules: strategy.voiceRules.map((rule) => ({
-        category: rule.category,
-        ruleType: rule.ruleType,
-        ruleText: rule.ruleText
-      }))
-    };
+  /**
+   * Le contexte est construit a partir de l idee entiere, et non de son seul
+   * pilier : la cible visee voyage avec elle. Les cinq etapes du pipeline
+   * (structure, accroche, redaction, variante, correction) passent par ici,
+   * donc elles ecrivent toutes pour la meme personne.
+   */
+  private buildRunnerContext(idea: IdeaRecord) {
+    return buildStrategyContext(
+      this.requireActiveStrategy(),
+      idea.pillarLabel,
+      this.getFoundationSummary?.() ?? null,
+      { requireVoiceRules: true, targetIcpSegment: idea.targetIcpSegment }
+    );
   }
 
   private requireActiveStrategy() {
@@ -914,18 +946,6 @@ export class WorkshopService {
     }
 
     return strategy;
-  }
-
-  private summarizeOffers(strategy: StrategyBundle) {
-    return strategy.offers
-      .map((offer) => `${offer.name}: ${offer.promise}. Problemes: ${offer.problems}`)
-      .join(" | ");
-  }
-
-  private summarizeIcps(strategy: StrategyBundle) {
-    return strategy.icps
-      .map((icp) => `${icp.segment}: douleurs=${icp.pains}. objections=${icp.objections ?? ""}`)
-      .join(" | ");
   }
 
   private persistExecutionRun(

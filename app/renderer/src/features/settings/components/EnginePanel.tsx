@@ -1,35 +1,84 @@
-import { useEffect, useState, useCallback } from "react";
-import { motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CliEngineStatus, CliEngineName } from "@shared/types/settings";
-import { Button, Card, Skeleton, useToast } from "../../../design-system/primitives";
-import { InfoHint } from "../../../help";
-import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
+import { Button, Skeleton, useToast, CheckCircleIcon } from "../../../design-system/primitives";
+import { annoncerChangementDeMoteur } from "../active-engine-events";
 
-function statusBadge(installState: CliEngineStatus["installState"]) {
-  switch (installState) {
-    case "authenticated":
-      return <span className="engine-badge engine-badge--ok">{"✅"} Connecté</span>;
-    case "installed":
-      return <span className="engine-badge engine-badge--warn">{"⚠️"} Installé</span>;
-    case "not-installed":
-      return <span className="engine-badge engine-badge--off">{"❌"} Non installé</span>;
-  }
+/**
+ * Etat d un moteur, en clair et sans couleur.
+ *
+ * Trois pastilles vertes « Connecte » alignees sur trois lignes disaient la
+ * meme chose trois fois et ne repondaient pas a la seule question de l ecran :
+ * lequel travaille. La marque coloree est desormais unique, elle est bleue et
+ * elle revient au moteur actif. Les autres enoncent leur etat en texte.
+ */
+function stateLabel(engine: CliEngineStatus) {
+  const state =
+    engine.installState === "authenticated"
+      ? "Connecté"
+      : engine.installState === "installed"
+        ? "Installé, non connecté"
+        : "Non installé";
+
+  return engine.subscriptionLabel ? `${state} · ${engine.subscriptionLabel}` : state;
 }
 
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
+  /** Retour du libelle a l etat de repos, annule au demontage. */
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [text]);
+  useEffect(
+    () => () => {
+      if (timer.current !== null) clearTimeout(timer.current);
+    },
+    []
+  );
+
+  /**
+   * Un refus du presse-papier ne changeait rien a l ecran : ni « Copié », ni
+   * message. L utilisateur colle alors dans son terminal ce qui s y trouvait
+   * avant, et conclut que la commande de connexion affichee ne marche pas.
+   */
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      toast.show({
+        kind: "error",
+        message: "Impossible de copier dans le presse-papier. Vérifiez les autorisations."
+      });
+      return;
+    }
+    setCopied(true);
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 1500);
+  }, [text, toast]);
 
   return (
-    <button type="button" className="btn-copy" onClick={handleCopy} title="Copier">
-      {copied ? "Copié !" : "Copier"}
-    </button>
+    <Button variant="ghost" size="sm" onClick={handleCopy} aria-label={label}>
+      {copied ? "Copié" : "Copier"}
+    </Button>
+  );
+}
+
+/**
+ * Ligne de commande a executer dans un terminal, avec son bouton de copie. Rendu
+ * conditionnel a la presence de la commande : `getActiveEngine` renvoie des
+ * chaines vides sur son chemin degrade, et une etiquette monospace vide se lit
+ * comme un defaut d affichage.
+ */
+function CommandRow({ label, command }: { label: string; command: string }) {
+  if (!command) {
+    return null;
+  }
+
+  return (
+    <div className="settings-engine__command">
+      <span className="settings-engine__command-label">{label}</span>
+      <code className="engine-command">{command}</code>
+      <CopyButton text={command} label={`Copier la commande : ${command}`} />
+    </div>
   );
 }
 
@@ -39,9 +88,6 @@ export function EnginePanel() {
   const [activeEngine, setActiveEngine] = useState<CliEngineName | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const container = useMotionVariants(staggerContainer);
-  const item = useMotionVariants(fadeInUp);
 
   const refresh = useCallback(() => {
     Promise.all([
@@ -53,6 +99,13 @@ export function EnginePanel() {
         setActiveEngine(active.engine);
         setError(null);
         setLoading(false);
+        // Cette detection peut avoir vu un etat neuf : l utilisateur s est
+        // authentifie, ou deconnecte, dans un terminal pendant que
+        // l application tournait. Le pied de la barre laterale lit le meme fait
+        // par un appel independant et ne relit que sur annonce : sans celle-ci
+        // il garde « connecté » ou « non authentifié » jusqu au redemarrage,
+        // pendant que ce panneau affiche le contraire juste au-dessus.
+        annoncerChangementDeMoteur();
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Impossible de charger les moteurs IA.");
@@ -70,6 +123,11 @@ export function EnginePanel() {
         .setActiveEngine(name)
         .then((selection) => {
           setActiveEngine(selection.engine);
+          // Le pied de la barre laterale lit le meme fait par un appel IPC
+          // independant et n est jamais remonte : sans cette annonce, il
+          // continue d afficher l ancien moteur jusqu a la fermeture de
+          // l application, a cote du toast qui dit le contraire.
+          annoncerChangementDeMoteur();
           toast.show({ kind: "success", message: `${displayName} est maintenant votre moteur IA actif.` });
           refresh();
         })
@@ -83,89 +141,85 @@ export function EnginePanel() {
 
   if (error) {
     return (
-      <Card elevation={1} className="settings-engine-error" role="alert">
+      <div className="settings-engine-error" role="alert">
         <strong>Moteurs IA indisponibles</strong>
         <p>{error}</p>
-        <Button variant="secondary" onClick={refresh}>
+        <Button variant="secondary" size="sm" onClick={refresh}>
           Réessayer
         </Button>
-      </Card>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="settings-engine-grid">
-        <Skeleton variant="card" />
-        <Skeleton variant="card" />
-        <Skeleton variant="card" />
+      <div className="settings-engines" aria-busy="true" aria-label="Détection des moteurs">
+        {[0, 1, 2].map((index) => (
+          <div className="settings-engine" key={index}>
+            <Skeleton variant="text" />
+          </div>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="settings-engine">
-      <p className="settings-engine-intro">
-        GhostwrAIter utilise un <strong>moteur IA</strong>
-        <InfoHint term="moteur-ia" /> local (Claude, GPT ou Gemini) pour générer vos contenus.
-        Chaque moteur fonctionne via son outil officiel : installez-le, connectez votre compte
-        <InfoHint term="oauth" />, puis sélectionnez-le ci-dessous.
-      </p>
+    <div className="settings-engines">
+      {engines.map((engine) => {
+        const isActive = engine.name === activeEngine;
+        const isAuthenticated = engine.installState === "authenticated";
+        const isInstalled = engine.installState !== "not-installed";
 
-      <motion.div
-        className="settings-engine-grid"
-        variants={container}
-        initial="hidden"
-        animate="visible"
-      >
-        {engines.map((engine) => {
-          const isActive = engine.name === activeEngine;
-          const canSelect = engine.installState === "authenticated";
-          const isAuthenticated = engine.installState === "authenticated";
-
-          return (
-            <motion.div key={engine.name} variants={item}>
-              <Card
-                elevation={isActive ? 3 : 2}
-                accent={isActive}
-                className={`settings-engine-card${isActive ? " settings-engine-card--active" : ""}`}
-                data-disabled={engine.installState === "not-installed" ? "true" : undefined}
-              >
-                <div className="settings-engine-card-head">
-                  <strong>{engine.displayName}</strong>
-                  {statusBadge(engine.installState)}
-                </div>
-
-                <span className="settings-engine-sub">{engine.subscriptionLabel}</span>
-
-                {!isAuthenticated ? (
-                  <div className="settings-engine-commands">
-                    <div className="settings-engine-command-row">
-                      <code className="engine-command">{engine.installCommand}</code>
-                      <CopyButton text={engine.installCommand} />
-                    </div>
-                    <div className="settings-engine-command-row">
-                      <code className="engine-command">{engine.loginCommand}</code>
-                      <CopyButton text={engine.loginCommand} />
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="settings-engine-card-action">
+        return (
+          <div
+            className={
+              isActive ? "settings-engine settings-engine--active" : "settings-engine"
+            }
+            key={engine.name}
+          >
+            <div className="settings-engine__head">
+              <span className="settings-engine__name">{engine.displayName}</span>
+              <span className="settings-engine__state">{stateLabel(engine)}</span>
+              <div className="settings-engine__action">
+                {isActive ? (
+                  <span className="settings-engine__active">
+                    <CheckCircleIcon size={13} aria-hidden="true" /> Moteur actif
+                  </span>
+                ) : (
                   <Button
-                    variant={isActive ? "secondary" : "primary"}
+                    variant="secondary"
                     size="sm"
-                    disabled={!canSelect || isActive}
+                    disabled={!isAuthenticated}
                     onClick={() => handleSelect(engine.name, engine.displayName)}
                   >
-                    {isActive ? "Actif" : "Sélectionner"}
+                    Sélectionner
                   </Button>
-                </div>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* Diagnostic : on n affiche que la commande qui reste a passer. Proposer
+                l installation a quelqu un qui a deja l outil installe donne une
+                consigne inexacte, et noie celle qui compte. */}
+            {!isAuthenticated ? (
+              <div className="settings-engine__commands">
+                {!isInstalled ? (
+                  <CommandRow label="Installer" command={engine.installCommand} />
+                ) : null}
+                <CommandRow label="Se connecter" command={engine.loginCommand} />
+                {/* Certains moteurs n ont ni commande d installation ni
+                    commande de connexion : le binaire vient d une suite et
+                    l authentification se fait dans son interface. Sans cette
+                    phrase, le panneau resterait muet exactement au moment ou
+                    l utilisateur a besoin qu il parle. */}
+                {!engine.installCommand && !engine.loginCommand && engine.setupHint ? (
+                  <p className="settings-engine__hint">{engine.setupHint}</p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

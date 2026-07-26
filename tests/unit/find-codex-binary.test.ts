@@ -22,7 +22,7 @@ describe.skipIf(process.platform === "win32")("findCodexBinary — darwin", () =
         platform: "darwin",
         env: { PATH: "/custom/bin:/opt/homebrew/bin" },
         existsSync,
-        homedir: () => "/Users/philippe"
+        homedir: () => "/Users/testeur"
       })
     );
     expect(result).toBe("/custom/bin/codex");
@@ -35,7 +35,7 @@ describe.skipIf(process.platform === "win32")("findCodexBinary — darwin", () =
         platform: "darwin",
         env: { PATH: "/usr/bin" },
         existsSync,
-        homedir: () => "/Users/philippe"
+        homedir: () => "/Users/testeur"
       })
     );
     expect(result).toBe("/opt/homebrew/bin/codex");
@@ -48,7 +48,7 @@ describe.skipIf(process.platform === "win32")("findCodexBinary — darwin", () =
         platform: "darwin",
         env: {},
         existsSync,
-        homedir: () => "/Users/philippe"
+        homedir: () => "/Users/testeur"
       })
     );
     expect(result).toBe("/usr/local/bin/codex");
@@ -56,17 +56,17 @@ describe.skipIf(process.platform === "win32")("findCodexBinary — darwin", () =
 
   it("falls back to the user local bin as the last resort on darwin", () => {
     const existsSync = vi.fn(
-      (path: string) => path === "/Users/philippe/.local/bin/codex"
+      (path: string) => path === "/Users/testeur/.local/bin/codex"
     );
     const result = findCodexBinary(
       makeDeps({
         platform: "darwin",
         env: {},
         existsSync,
-        homedir: () => "/Users/philippe"
+        homedir: () => "/Users/testeur"
       })
     );
-    expect(result).toBe("/Users/philippe/.local/bin/codex");
+    expect(result).toBe("/Users/testeur/.local/bin/codex");
   });
 });
 

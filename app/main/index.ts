@@ -13,9 +13,15 @@ import { createAppDatabase } from "./db/database";
 import { CodexCliRunner } from "./domains/execution/codex-cli-runner";
 import { CodexEngine } from "./domains/execution/codex-engine";
 import { ClaudeEngine } from "./domains/execution/claude-engine";
-import { GeminiEngine } from "./domains/execution/gemini-engine";
+import { AntigravityEngine } from "./domains/execution/antigravity-engine";
 import { EngineRegistry } from "./domains/execution/engine-registry";
 import { SkillRunnerService } from "./domains/execution/skill-runner.service";
+import {
+  AI_TELL_PREFERENCE_KEY,
+  ALL_TELL_FAMILIES,
+  buildTellConstraints,
+  type TellFamilyId
+} from "../shared/ai-tells";
 import { ExecutionRuntimeService, registerExecutionIpcHandlers } from "./ipc/execution-ipc";
 import { SkillRegistryService } from "./domains/execution/skill-registry.service";
 import { IdeasService, registerIdeasIpcHandlers } from "./ipc/ideas-ipc";
@@ -92,11 +98,34 @@ app.whenReady().then(() => {
   const engineRegistry = new EngineRegistry(appSettingsService, [
     new CodexEngine(),
     new ClaudeEngine(),
-    new GeminiEngine()
+    new AntigravityEngine()
   ]);
+  /**
+   * Familles de marqueurs d ecriture IA que l utilisateur interdit, reglees dans
+   * l onglet Voix. Relues a chaque generation : un changement de reglage prend
+   * effet sans redemarrer l application. Une preference absente vaut « toutes
+   * interdites », qui est le comportement attendu d une installation neuve.
+   */
+  const getUserConstraints = () => {
+    const stored = appSettingsService.getPreference(AI_TELL_PREFERENCE_KEY).value;
+    if (stored === null) return buildTellConstraints(ALL_TELL_FAMILIES);
+
+    try {
+      const parsed: unknown = JSON.parse(stored);
+      if (!Array.isArray(parsed)) return buildTellConstraints(ALL_TELL_FAMILIES);
+      const known = parsed.filter((id): id is TellFamilyId =>
+        (ALL_TELL_FAMILIES as readonly string[]).includes(id as string)
+      );
+      return buildTellConstraints(known);
+    } catch {
+      return buildTellConstraints(ALL_TELL_FAMILIES);
+    }
+  };
+
   const skillRunnerService = new SkillRunnerService({
     codexCliRunner: new CodexCliRunner(),
-    engineRegistry
+    engineRegistry,
+    getUserConstraints
   });
   const strategyService = new StrategyService(db, skillRunnerService);
   const getActiveStrategyBundle = () => {

@@ -73,8 +73,11 @@ const ideas: IdeasApi = {
   createIdea: (idea) => unwrap("ideas:create", ipcRenderer.invoke("ideas:create", idea)),
   createFromNewsSource: (input) =>
     unwrap("ideas:create-from-news-source", ipcRenderer.invoke("ideas:create-from-news-source", input)),
-  generateFromStrategy: () =>
-    unwrap("ideas:generate-from-strategy", ipcRenderer.invoke("ideas:generate-from-strategy"))
+  generateFromStrategy: (input) =>
+    unwrap(
+      "ideas:generate-from-strategy",
+      ipcRenderer.invoke("ideas:generate-from-strategy", input)
+    )
 };
 
 const workshop: WorkshopApi = {

@@ -3,16 +3,24 @@ import Database from "better-sqlite3";
 import { IdeasRepository } from "../ideas/ideas.repository";
 import {
   SkillRunnerService,
-  type SkillRunnerInvocation
+  type SkillRunnerInvocation,
+  type SkillRunnerResult
 } from "../execution/skill-runner.service";
 import {
   emitPhaseSettled,
   emitPhaseStarted
 } from "../execution/execution-progress-emitter";
+// Le type vient du schema zod qui valide deja cette entree a la frontiere IPC.
+// La forme etait recopiee a la main dans la signature : deux declarations pour
+// un seul contrat, dont une seule est verifiee a l execution.
+import type { NewsSourceInput } from "../../../shared/schemas/ideas";
 import type { WorkshopSession } from "../../../shared/types/workshop";
 import type { StrategyBundle } from "../../../shared/types/strategy";
 import { createId } from "../../shared/create-id";
 import { recordExecutionRun } from "../execution/execution-runs.repository";
+import { SkillRunError, skillRunError } from "../execution/skill-run-error";
+import { buildStrategyContext } from "../strategy/strategy-context";
+import { resolveAnnouncedEngine } from "../execution/announced-engine";
 
 export class NewsToPostService {
   constructor(
@@ -23,44 +31,86 @@ export class NewsToPostService {
     private readonly getFoundationSummary?: () => string | null
   ) {}
 
-  createDraftFromSource(
-    input: {
-      sourceTitle: string;
-      sourceSummary: string;
-    },
+  async createDraftFromSource(
+    input: NewsSourceInput,
     sender?: WebContents
-  ): WorkshopSession {
+  ): Promise<WorkshopSession> {
+    const { targetIcpSegment, ...source } = input;
+    // Le pilier est resolu UNE fois, AVANT la creation de l idee, et la meme
+    // valeur part vers l idee et vers le contexte de generation. Le libelle
+    // "Veille" etait code en dur ici alors que le contexte retenait le pilier
+    // reellement declare : l idee etait donc enregistree sous un pilier qui
+    // n existe pas dans la strategie de l utilisateur. La passe de correction
+    // ulterieure repartait de ce libelle introuvable et perdait la description
+    // du pilier, et le filtre par pilier de la Bibliotheque ne rattachait le
+    // post a aucun pilier reel.
+    const strategy = this.requireActiveStrategy();
+    const pillarLabel = this.resolveNewsPillarLabel(strategy);
     const idea = this.ideasRepository.createIdea({
-      title: input.sourceTitle,
-      angle: input.sourceSummary,
-      pillarLabel: "Veille"
+      title: source.sourceTitle,
+      angle: source.sourceSummary,
+      pillarLabel,
+      targetIcpSegment
     });
     const draftId = createId("draft");
     const runId = createId("run");
     const createdAt = new Date().toISOString();
-    const runnerContext = this.buildRunnerContext();
+    const runnerContext = this.buildRunnerContext(
+      strategy,
+      pillarLabel,
+      idea.targetIcpSegment
+    );
 
     const invocation: SkillRunnerInvocation = {
       runId,
       skillName: "linkedin-news-to-post",
       skillVersion: "1.0.0",
       context: runnerContext,
-      payload: input,
+      // La cible ne descend PAS dans la charge utile : elle appartient au
+      // contexte de strategie, ou le resume des cibles la porte deja. L y
+      // remettre la ferait arriver deux fois au modele, sous deux formes.
+      payload: source,
       attachments: []
     };
 
-    emitPhaseStarted(sender, { runId, phase: "news", engine: "codex" });
-    const result = this.skillRunnerService.execute(invocation);
+    // Le moteur annonce est celui qui SERA utilise, pas le seul choix explicite :
+    // sans preference enregistree, ce parcours annoncait « Codex » alors que la
+    // resolution active pouvait retenir Claude ou Antigravity. Cf.
+    // announced-engine.ts pour le cout de cette resolution.
+    const announced = await resolveAnnouncedEngine(this.skillRunnerService);
+    emitPhaseStarted(sender, { runId, phase: "news", engine: announced });
+
+    let result: SkillRunnerResult;
+    try {
+      result = await this.skillRunnerService.executeAsync(invocation);
+    } catch (error) {
+      // Meme defaut que dans l atelier : `started` est emis juste au-dessus, et
+      // un moteur qui LEVE laissait ce parcours sans borne terminale. La garde
+      // couvre le SEUL appel moteur, sinon le chemin d echec traite plus bas
+      // (qui emet `failed` puis throw) produirait deux bornes terminales.
+      emitPhaseSettled(sender, {
+        runId,
+        phase: "news",
+        engine: announced,
+        status: "failed",
+        // Toujours renseigne : l emetteur omet la cle quand la valeur est
+        // absente, ce que le contrat interdit sur un `failed`.
+        errorCode: error instanceof SkillRunError ? error.code : "SKILL_RUN_FAILED"
+      });
+      throw error;
+    }
+
+    const usedEngine = result.engine ?? announced;
 
     if (result.status !== "succeeded" || !result.data?.draft) {
       emitPhaseSettled(sender, {
         runId,
         phase: "news",
-        engine: "codex",
+        engine: usedEngine,
         status: "failed",
         errorCode: result.error?.code
       });
-      throw new Error(result.error?.message ?? result.summary);
+      throw skillRunError(result);
     }
 
     // Le skill linkedin-news-to-post ne renvoie PAS de hooks (contrat
@@ -115,7 +165,7 @@ export class NewsToPostService {
     emitPhaseSettled(sender, {
       runId,
       phase: "news",
-      engine: "codex",
+      engine: usedEngine,
       status: "completed"
     });
 
@@ -147,39 +197,69 @@ export class NewsToPostService {
         }
       ],
       contextUsed: {
-        pillarLabel: "Veille",
-        voiceGuardrail: runnerContext.voiceGuardrail,
+        pillarLabel: runnerContext.pillarLabel,
+        voiceGuardrail: runnerContext.voiceRules
+          .map((rule) => `[${rule.ruleType}] ${rule.ruleText}`)
+          .join(" | "),
         activeSkills: [invocation.skillName]
       }
     };
   }
 
-  private buildRunnerContext() {
+  private requireActiveStrategy(): StrategyBundle {
     const strategy = this.getActiveStrategy?.();
 
     if (!strategy) {
       throw new Error("No active strategy bundle is available.");
     }
 
-    const antiStyleRule = strategy.voiceRules.find((rule) => rule.ruleType === "anti_style")?.ruleText;
-
-    if (!strategy.profile.id) {
-      throw new Error("Strategy profile is missing an id.");
-    }
-
-    if (!antiStyleRule) {
-      throw new Error("Strategy is missing an anti-style rule.");
-    }
-
-    const foundation = this.getFoundationSummary?.() ?? null;
-
-    return {
-      profileId: strategy.profile.id,
-      foundationSummary: foundation,
-      strategyProfileName: strategy.profile.name,
-      strategyPositioning: strategy.profile.positioning,
-      pillarLabel: "Veille",
-      voiceGuardrail: antiStyleRule
-    };
+    return strategy;
   }
+
+  /**
+   * Pilier du parcours veille, resolu en un seul endroit.
+   *
+   * Le libelle "Veille" reste la valeur par defaut, mais on prefere le pilier
+   * reellement declare par l utilisateur s il existe, pour que sa description
+   * parte dans le contexte ET que l idee soit rangee sous un pilier qui existe.
+   * Le repli est intentionnel : une strategie sans pilier de veille produit des
+   * idees sous "Veille", ce qui reste correct puisqu aucun pilier declare ne
+   * peut les accueillir.
+   */
+  private resolveNewsPillarLabel(strategy: StrategyBundle): string {
+    return (
+      strategy.pillars.find((pillar) => /veille|actualit/i.test(pillar.label))?.label ?? "Veille"
+    );
+  }
+
+  /**
+   * Contexte du parcours veille.
+   *
+   * Il divergeait des deux autres services : une seule regle de voix sur dix
+   * (la premiere de type anti_style), un pilier code en dur, et ni offres ni
+   * cibles ni bio. Cette porte d entree produisait donc structurellement des
+   * posts moins alignes que les autres, sans que rien ne le signale
+   * (cf. docs/audit-2026-07-editorial.md section 8). Elle utilise desormais le
+   * meme contexte que l atelier et la bibliotheque.
+   *
+   * La strategie et le pilier arrivent en parametres : ils sont resolus par
+   * l appelant, qui les emploie aussi pour creer l idee. Les resoudre ici une
+   * seconde fois reintroduirait les deux valeurs divergentes pour un seul fait.
+   *
+   * `targetIcpSegment` suit la meme regle que partout ailleurs : une cible
+   * choisie restreint le resume a celle-la, aucune cible le laisse entier.
+   */
+  private buildRunnerContext(
+    strategy: StrategyBundle,
+    pillarLabel: string,
+    targetIcpSegment?: string | null
+  ) {
+    return buildStrategyContext(
+      strategy,
+      pillarLabel,
+      this.getFoundationSummary?.() ?? null,
+      { requireVoiceRules: true, targetIcpSegment }
+    );
+  }
+
 }

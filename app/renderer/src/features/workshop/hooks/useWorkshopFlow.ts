@@ -21,6 +21,12 @@ const KNOWN_ERROR_MESSAGES: Record<string, string> = {
     "Codex CLI a renvoyé une réponse invalide. Réessaie ou consulte le log.",
   SKILL_PROMPT_NOT_FOUND:
     "Le prompt d'une compétence est manquant. Vérifie le fichier `skills/<name>/SKILL.md`.",
+  // ENGINE_NOT_AUTHENTICATED, ENGINE_NOT_REGISTERED et ENGINE_RESOLUTION_FAILED
+  // ne sont volontairement PAS mappés ici : le message du backend nomme déjà le
+  // moteur concerné et la commande de connexion à lancer. Le laisser passer est
+  // plus actionnable que n'importe quel texte générique écrit ici.
+  ENGINE_UNAVAILABLE:
+    "Aucun moteur IA n'est disponible. Ouvre les Paramètres pour en installer et en connecter un.",
   IPC_HANDLER_ERROR: "Une erreur interne s'est produite côté application."
 };
 
@@ -74,38 +80,51 @@ export function useWorkshopFlow(ideaId: string | null) {
   useEffect(() => {
     if (!ideaId) return;
 
-    window.linkedinPoster.workshop.getSessionByIdeaId(ideaId).then((result) => {
-      if (!result) return;
-      const restoredTypology = result.draft.typology ?? "expertise";
-      const restoredObjective = result.draft.objective ?? "awareness";
-      const restoredStructureKey = result.draft.structureKey ?? "";
-      const restoredStructureLabel = result.draft.structureLabel ?? restoredStructureKey;
-      const restoredHooks = toStoredHookOptions(result);
-      const restoredHookId =
-        restoredHooks.find((hook) => hook.text === result.draft.selectedHookText)?.id ??
-        restoredHooks[0]?.id ??
-        "";
+    window.linkedinPoster.workshop
+      .getSessionByIdeaId(ideaId)
+      .then((result) => {
+        // `null` n est pas une panne : c est une idee du backlog jamais passee a
+        // l atelier. Elle ouvre le cadrage, ce qui est le parcours nominal.
+        if (!result) return;
+        const restoredTypology = result.draft.typology ?? "expertise";
+        const restoredObjective = result.draft.objective ?? "awareness";
+        const restoredStructureKey = result.draft.structureKey ?? "";
+        const restoredStructureLabel = result.draft.structureLabel ?? restoredStructureKey;
+        const restoredHooks = toStoredHookOptions(result);
+        const restoredHookId =
+          restoredHooks.find((hook) => hook.text === result.draft.selectedHookText)?.id ??
+          restoredHooks[0]?.id ??
+          "";
 
-      setTypology(restoredTypology);
-      setObjective(restoredObjective);
-      setStructures(
-        restoredStructureKey
-          ? [
-              {
-                key: restoredStructureKey,
-                label: restoredStructureLabel,
-                rationale: "Structure déjà utilisée dans le draft courant."
-              }
-            ]
-          : []
-      );
-      setSelectedStructureKey(restoredStructureKey);
-      setHooks(restoredHooks);
-      setSelectedHookId(restoredHookId);
-      setSession(result);
-      setStep(4);
-      setStatus("Draft prêt.");
-    });
+        setTypology(restoredTypology);
+        setObjective(restoredObjective);
+        setStructures(
+          restoredStructureKey
+            ? [
+                {
+                  key: restoredStructureKey,
+                  label: restoredStructureLabel,
+                  rationale: "Structure déjà utilisée dans le draft courant."
+                }
+              ]
+            : []
+        );
+        setSelectedStructureKey(restoredStructureKey);
+        setHooks(restoredHooks);
+        setSelectedHookId(restoredHookId);
+        setSession(result);
+        setStep(4);
+        setStatus("Brouillon prêt");
+      })
+      // Sans cette branche, une lecture en echec laissait l atelier a l etape 1
+      // avec un cadrage vierge, c est-a-dire l ecran EXACT d une idee neuve.
+      // L utilisateur refaisait son parcours et ecrasait, a la generation
+      // suivante, le brouillon qu il croyait perdu. Une session illisible doit
+      // se dire ; c est la seule information qui empeche la perte de travail.
+      .catch((err: unknown) => {
+        setError(extractError(err));
+        setStatus("Impossible de relire ce brouillon.");
+      });
   }, [ideaId]);
 
   function clearError() {
@@ -276,7 +295,16 @@ export function useWorkshopFlow(ideaId: string | null) {
     try {
       const result = await window.linkedinPoster.workshop.correctDraft(session.draft.id);
       setSession(result);
-      setStatus("Draft corrigé.");
+      // Le drapeau est lu dans RESULT, jamais dans `session` : cette derniere est
+      // la valeur capturee par la closure au rendu, donc la session d AVANT
+      // l appel. Le verdict etait ainsi decale d un tour, et il decrivait la
+      // correction precedente. Le cas n a rien de rare : le drapeau vaut `false`
+      // sur 37 % des corrections reellement mesurees en base.
+      setStatus(
+        result.correctionApplied === false
+          ? "La correction n'a pas amélioré le brouillon. Texte d'origine conservé."
+          : "Draft corrigé."
+      );
     } catch (err) {
       setError(extractError(err));
       setStatus("Échec de la correction.");

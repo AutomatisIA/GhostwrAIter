@@ -26,7 +26,8 @@ const SCHEMA = `
     log_path TEXT,
     started_at TEXT NOT NULL,
     finished_at TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    engine TEXT
   );
 `;
 
@@ -47,6 +48,7 @@ function makePayload(overrides: Partial<ExecutionRunPayload> = {}): ExecutionRun
     startedAt: "2026-04-12T01:00:00.000Z",
     finishedAt: "2026-04-12T01:00:01.000Z",
     createdAt: "2026-04-12T01:00:00.000Z",
+    engine: null,
     ...overrides
   };
 }

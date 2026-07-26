@@ -1,0 +1,965 @@
+/*
+ * Feuille de l ecran Bibliotheque.
+ *
+ * Transposition de la direction visuelle du 25 juillet 2026. L ecran n est pas
+ * dessine dans la maquette : les regles ci-dessous transposent le modele de
+ * liste de la maquette (surface bordee unique, lignes separees par un trait,
+ * titre 17px/620, metadonnees 13px separees par des points medians) sur les
+ * brouillons et sur le planning.
+ *
+ * DETTE CONNUE, a domicilier ailleurs. Le bloc marque « heritage partage » en
+ * fin de fichier habille des ecrans qui ne sont pas la Bibliotheque :
+ * `.editor-section` et `.editor-card` servent a Strategie, `.list-card`,
+ * `.grid-selection` et `.list-selection` a l Atelier, `.filter-bar` et
+ * `.list-grid` a Creer. Elles ont atterri ici lors du decoupage de la feuille
+ * monolithique. Les retoucher depuis ce chantier casserait trois ecrans dont un
+ * autre chantier est proprietaire : elles sont laissees telles quelles.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Barre de page : bascule de vue et filtres de portee ecran.
+ * ------------------------------------------------------------------------- */
+
+/* `min-width: 0` : sans lui, la barre refuse de descendre sous la largeur de son
+   contenu et chasse le surtitre hors de l ecran au lieu de comprimer la
+   recherche. La chaine doit etre continue de `.page__actions` jusqu au champ. */
+.library-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+/*
+ * Rehabillage LOCAL de la primitive Tabs.
+ *
+ * `.ds-tabs` porte encore, dans la feuille partagee, le vocabulaire precedent :
+ * gouttiere pilulaire, indicateur en degrade d accent, ombre. Ce chantier n est
+ * pas proprietaire de cette feuille. Les regles sont donc scopees sous
+ * `.library-tabs`, ce qui les confine a cet ecran et laisse le chantier commun
+ * libre d aplatir la primitive sans conflit.
+ *
+ * La maquette souligne l onglet actif d un trait primaire courant sur toute la
+ * hauteur d une barre de 44px. Cette forme demanderait d etirer `.page__actions`
+ * sur la hauteur de la barre, propriete de la feuille partagee. Le controle
+ * segmente ci-dessous rend la meme information avec le meme vocabulaire plat :
+ * 4px, un trait, aucune ombre, aucun degrade.
+ */
+.library-tabs .ds-tabs {
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.library-tabs .ds-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 12px;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+}
+
+.library-tabs .ds-tab:hover {
+  color: var(--ink-muted);
+}
+
+.library-tabs .ds-tab[aria-selected="true"] {
+  background: var(--surface-raised);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink);
+  font-weight: var(--font-weight-semibold);
+}
+
+.library-bar__search,
+.library-bar__select {
+  height: 28px;
+  min-width: 0;
+  padding: 0 10px;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.library-bar__search {
+  flex: 0 1 220px;
+}
+
+.library-bar__select {
+  flex: none;
+}
+
+.library-bar__search:focus,
+.library-bar__select:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------------------------------------------------------------------------
+ * Corps : intitule de liste, puis la liste.
+ * ------------------------------------------------------------------------- */
+
+.library-note {
+  margin: 0 0 var(--space-4);
+  max-width: 74ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--ink-subtle);
+}
+
+.library-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 10px;
+}
+
+/* Le titre de section ne porte plus que son etiquette en capitales. L infobulle
+   qui l accompagnait n expliquait rien d ambigu : « Brouillons » se comprend
+   seul, et la barre d ecran dit deja ou l on est. */
+.library-head__count {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Surface bordee unique. `overflow: hidden` sert au rognage des angles, jamais
+   au defilement : le seul conteneur defilant reste `.page__body`. */
+.library-list {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.library-entry {
+  border-bottom: 1px solid var(--line);
+}
+
+.library-entry:last-child {
+  border-bottom: none;
+}
+
+.library-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 14px 16px;
+  transition: background var(--duration-fast) var(--ease-standard);
+}
+
+.library-row:hover {
+  background: var(--surface-sunken);
+}
+
+.library-row__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.library-row__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-title);
+  /* 1,3 : valeur de la maquette, entre --line-height-tight et snug. */
+  line-height: 1.3;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/*
+ * La rangee tient sur une ligne, mais elle ne rogne plus pour son propre compte.
+ * Un `overflow: hidden` pose sur le conteneur coupe le dernier fragment au pixel
+ * pres, sans marque : on lisait « entrep », « revoluti », « exen ». La contrainte
+ * de largeur est donc reportee sur les fragments elastiques, qui la resolvent en
+ * points de suspension. Le rognage reste en dernier recours, quand meme les
+ * largeurs minimales ne tiennent plus.
+ */
+.library-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-snug);
+  color: var(--ink-subtle);
+  overflow: hidden;
+}
+
+/* `white-space` est heritee : la poser sur les enfants directs suffit a couvrir
+   le nom du pilier, la liste de mots cles et le « +N », qui sont des
+   petits-enfants depuis leur regroupement. */
+.library-row__meta > * {
+  white-space: nowrap;
+}
+
+/* Point median separateur : il ponctue, il n informe pas. Un ton plus clair que
+   la metadonnee qu il separe. */
+.library-row__sep {
+  flex: none;
+  color: var(--line-strong);
+}
+
+/*
+ * Le pilier absorbe la contrainte de largeur en premier : c est le fragment le
+ * plus long et le plus previsible. `min-width` le protege de l ecrasement total,
+ * qui le reduisait a « P… », une seule lettre suivie de points de suspension.
+ *
+ * La pastille vit DANS ce fragment, pas en tete de rangee : elle annonce le
+ * pilier, elle ne flotte pas devant un separateur.
+ */
+.library-row__pillar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 1 auto;
+  min-width: 9ch;
+  max-width: 28ch;
+  overflow: hidden;
+}
+
+.library-row__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-circle);
+  background: currentColor;
+}
+
+/* C est le nom, pas le fragment, qui porte les points de suspension : un
+   `text-overflow` sur un conteneur flex ne s applique jamais. */
+.library-row__pillar-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Reste des etiquettes, replie en « +N », dans l encre de la rangee : il compte
+   ce qui n est pas montre, il n attire pas l oeil. Le detail est dans son
+   `title`, d ou le curseur d aide, sans lequel rien n indique qu il y a quelque
+   chose a lire. */
+.library-row__more {
+  flex: none;
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+.library-row__status {
+  flex: none;
+}
+
+.library-row__num {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ambre : porte l attention, jamais la validation. Deux emplois sur cet ecran,
+   et un seul sens : ce qui bloque la publication. Un brouillon plus long que la
+   limite LinkedIn, un brouillon jamais relu. */
+.library-row__num--over,
+.library-row__attention {
+  flex: none;
+  color: var(--amber-ink);
+  font-weight: var(--font-weight-medium);
+}
+
+.library-row__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+/*
+ * Panneau des actions secondaires, deploye sous le post lu et non par-dessus. Il
+ * partage la surface creusee de la bande de planification, meme vocabulaire pour
+ * un meme geste.
+ *
+ * Le panneau est monte et demonte, jamais rendu transparent : « Supprimer » ne
+ * peut pas etre atteint sur un element invisible.
+ */
+.library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 8px 16px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--line);
+}
+
+/*
+ * Suppression : la variante `danger` est conservee, c est elle qui porte le sens
+ * pour la lecture du code et pour la boite de confirmation. Son aplat rouge est
+ * reserve a la boite de confirmation ; en liste, l action la moins souhaitable
+ * ne peut pas etre la plus coloree de l ecran. Elle se reduit donc a une encre
+ * d erreur, sans surface ni trait, soulignee au survol.
+ */
+.library-row__actions .ds-button[data-variant="danger"],
+.library-actions .ds-button[data-variant="danger"] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--state-ko);
+  font-weight: var(--font-weight-medium);
+}
+
+.library-row__actions .ds-button[data-variant="danger"]:not(:disabled):hover,
+.library-actions .ds-button[data-variant="danger"]:not(:disabled):hover {
+  filter: none;
+  background: transparent;
+  text-decoration: underline;
+}
+
+/* ---------------------------------------------------------------------------
+ * Champs d edition et bande de planification.
+ * ------------------------------------------------------------------------- */
+
+.library-input,
+.library-textarea {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--ink);
+  background: var(--surface-app);
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.library-input {
+  height: 36px;
+  padding: 0 12px;
+}
+
+.library-textarea {
+  padding: 9px 12px;
+  line-height: var(--line-height-normal);
+  min-height: 240px;
+  resize: vertical;
+}
+
+.library-input:focus,
+.library-textarea:focus {
+  border-color: var(--primary-fill);
+  box-shadow: var(--focus-ring);
+}
+
+.library-schedule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 16px;
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--line);
+}
+
+.library-schedule__input {
+  width: auto;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Etat vide.
+ * ------------------------------------------------------------------------- */
+
+.library-empty {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------------------------------------------------------------------------
+ * Ecran de triage : le tri a gauche, le post lisible a droite.
+ *
+ * Une liste bien rangee reste une liste de fichiers. Elle ne dit pas lequel des
+ * trente brouillons est le plus pres d etre publie, et elle ne montrera jamais
+ * un texte. Les deux volets ci-dessous repondent chacun a une moitie de la
+ * question : a gauche ce qu il reste a faire, a droite le texte, parce qu on
+ * juge un brouillon en le lisant.
+ * ------------------------------------------------------------------------- */
+
+/*
+ * Les deux volets touchent les bords, comme la maquette. `.page__body` porte un
+ * remplissage de 24px 28px que l on compense ici, et une seule fois : les
+ * valeurs sont couplees a celles de la feuille commune, ce qui est assume et
+ * signale plutot que reparti dans dix regles. Meme construction que
+ * `.workshop-screen`.
+ *
+ * `height: 100%` et non une hauteur en `vh` : le pourcentage se resout parce que
+ * `.page__body` est un element flex de hauteur definie dans une colonne bornee a
+ * la fenetre. Le corps de page n a donc rien a faire defiler, et le defilement
+ * se produit la ou il a du sens, dans chacun des deux volets. Cette enveloppe
+ * est posee sur la SEULE branche de triage : l onglet Planning ecrit dans le
+ * corps rembourre et defilant, une racine bornee le rognerait des qu il
+ * depasserait la fenetre.
+ */
+.library-triage {
+  margin: -24px -28px;
+  height: calc(100% + 48px);
+  min-height: 0;
+  display: flex;
+}
+
+.library-triage__side {
+  width: 440px;
+  flex: none;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+/* Les trois entrees de triage, et l effectif de la colonne a droite. C est le
+   tri par ce qui reste a faire : le classement par date ne dit pas lequel des
+   trente est le plus pres d etre publie. */
+.library-buckets {
+  height: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.library-bucket {
+  flex: none;
+  height: 24px;
+  padding: 0 9px;
+  font: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--line-field);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.library-bucket:hover {
+  background: var(--surface-sunken);
+}
+
+/* Entree active : surface pleine primaire, encre posee dessus. `--primary-fill`
+   est la SURFACE et `--on-fill` le texte : l inverse casserait un des deux
+   themes. */
+.library-bucket[aria-pressed="true"] {
+  font-weight: var(--font-weight-semibold);
+  color: var(--on-fill);
+  background: var(--primary-fill);
+  border-color: transparent;
+}
+
+.library-bucket[aria-pressed="true"]:hover {
+  background: var(--primary-fill);
+}
+
+.library-bucket__count {
+  font-variant-numeric: tabular-nums;
+}
+
+.library-buckets__total {
+  margin-left: auto;
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Chaque volet gere son propre debordement A L INTERIEUR. Aucun ancetre n en
+   recoit, c est ce qui laisse le corps de page seul conteneur defilant de
+   l application. */
+.library-triage__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.library-triage__empty {
+  padding: var(--space-5) var(--space-4);
+}
+
+/* ---- Regroupement par sujet ---------------------------------------------- */
+
+/*
+ * Dix idees produisent les trente brouillons, la plus prolifique en porte huit.
+ * Presentes a plat, ce sont trente objets independants dont huit racontent la
+ * meme chose. L en-tete nomme le sujet et dit combien de variantes il porte.
+ */
+.library-group__head {
+  margin: 0;
+  padding: 9px 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--line);
+}
+
+.library-group__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+}
+
+/* Ambre : plusieurs variantes du meme sujet demandent une decision, elles ne
+   valident rien. */
+.library-group__variants {
+  flex: none;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--amber-ink);
+  white-space: nowrap;
+}
+
+.library-group__rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * Ligne de triage. Elle ne porte aucune action, donc rien ne s y revele au
+ * survol : sa hauteur ne peut pas bouger quand la souris la traverse. C est la
+ * propriete que mesurait la porte de recette sur l ancien modele de ligne, et
+ * elle tient ici par construction plutot que par une reservation de place.
+ */
+.library-triage-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 11px 16px;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.library-triage-row:hover {
+  background: var(--surface-sunken);
+}
+
+/* Selection : fond teinte et trait primaire pose a l interieur du bord gauche.
+   Une bordure reelle decalerait le texte de deux pixels a chaque changement de
+   selection. */
+.library-triage-row[aria-current="true"] {
+  background: var(--primary-tint);
+  box-shadow: inset 2px 0 0 0 var(--primary-fill);
+}
+
+.library-triage-row[aria-current="true"]:hover {
+  background: var(--primary-tint);
+}
+
+.library-triage-row__title {
+  width: 100%;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.library-triage-row[aria-current="true"] .library-triage-row__title {
+  font-weight: var(--font-weight-title);
+  color: var(--ink);
+}
+
+/* La date de modification descend en meta de 12px : elle ne trie plus rien. */
+.library-triage-row__meta {
+  width: 100%;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Queue repliee du sujet. Au-dela de trois variantes, les suivantes tiennent
+   sous une ligne qui dit combien elles sont. */
+.library-group__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 16px;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-align: left;
+  color: var(--ink-subtle);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.library-group__toggle:hover {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+}
+
+.library-group__toggle-action {
+  margin-left: auto;
+  font-weight: var(--font-weight-regular);
+}
+
+/* Les trois commandes du volet sont des boutons nus : sans anneau explicite,
+   elles n auraient aucun etat de focus visible. */
+.library-bucket:focus-visible,
+.library-triage-row:focus-visible,
+.library-group__toggle:focus-visible {
+  outline: 2px solid var(--primary-fill);
+  outline-offset: -2px;
+}
+
+/* ---- Volet de lecture ---------------------------------------------------- */
+
+.library-reader {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-app);
+}
+
+/*
+ * Le texte d abord, le panneau de metadonnees ensuite.
+ *
+ * `flex-wrap` n est pas une precaution de mise en page, c est ce qui rend la
+ * mesure de lecture reelle. Mesure a la fenetre par defaut de l application,
+ * 1440 px : la barre laterale en prend 232, le volet de tri 440, les marges et
+ * le panneau de metadonnees 292. Il restait 476 px au texte, soit 47 caracteres
+ * et non les 68 annonces. Une mesure de 47 caracteres n est pas une mesure de
+ * lecture, et la lisibilite du post EST la raison d etre de ce volet.
+ *
+ * Le panneau passe donc sous le texte tant que les deux ne tiennent pas cote a
+ * cote, et remonte a sa droite des que la fenetre le permet. Le texte garde ses
+ * 68 caracteres dans les deux cas.
+ */
+.library-reader__read {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-5);
+  /* Voir `.library-reader__read` plus bas : fondu de bas de course. */
+  animation: library-reader-fondu linear both;
+  animation-timeline: scroll(self block);
+}
+
+/*
+ * Fondu de bas de course.
+ *
+ * MESURE, fenetre de 1400 px : le volet a 795 px de hauteur visible pour 906 px
+ * de contenu. Le panneau de metadonnees passe sous le texte des que les deux ne
+ * tiennent plus cote a cote, ce qui demande 1 565 px de fenetre alors que la
+ * fenetre par defaut en fait 1 440 et son minimum 1 120. Le repli est donc l etat
+ * NORMAL, pas un cas limite : « Versions » s affichait avec son libelle et rien
+ * dessous, ce qui se lit comme un defaut de rendu et non comme une invitation a
+ * faire defiler. A 1 120 px, les quatre rangees sont 403 px sous le pli.
+ *
+ * Pourquoi pas le panneau remonte AU-DESSUS du texte, l autre option : il mesure
+ * environ 300 px, et le poser avant le post repousserait le texte lui-meme sous
+ * le pli. On deplacerait le defaut sur l element principal du volet, dont la
+ * lecture est la raison d etre.
+ *
+ * Le fondu ne coute aucune place et ne ment pas : la timeline de defilement le
+ * fait disparaitre EXACTEMENT quand on touche le bas, et reste inactive quand il
+ * n y a rien a faire defiler. L etat de base, hors animation, est donc l absence
+ * de masque : un navigateur sans `animation-timeline` rend le volet exactement
+ * comme aujourd hui, sans marque parasite.
+ */
+@keyframes library-reader-fondu {
+  /* Toute la course sauf la toute fin : le bord bas s efface. */
+  0%,
+  92% {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent 100%);
+  }
+
+  100% {
+    mask-image: linear-gradient(to bottom, #000 100%, #000 100%);
+  }
+}
+
+.library-reader__col {
+  flex: 1 1 68ch;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.library-reader__title {
+  margin: 0;
+  max-width: 40ch;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-title);
+  color: var(--ink);
+}
+
+/* 68 caracteres de mesure : c est la largeur a laquelle un texte se lit, et la
+   raison d etre de ce volet. */
+.library-reader__text {
+  max-width: 68ch;
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-relaxed);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Trait de repli, trace DANS le texte a l endroit exact ou LinkedIn coupera.
+ * Meme trace que l apercu de l Atelier, a une valeur pres : le fond de
+ * l etiquette suit la surface qui la porte. L Atelier pose son apercu sur
+ * `--surface-raised`, ce volet est sur `--surface-app` ; reprendre la valeur
+ * sans la relire donnait un rectangle blanc sur fond gris en theme clair.
+ */
+.library-reader__fold {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 0;
+  border-top: 1px dashed var(--amber-fill);
+}
+
+.library-reader__fold-label {
+  margin-top: -9px;
+  padding: 0 6px;
+  background: var(--surface-app);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-eyebrow);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--amber-ink);
+  white-space: nowrap;
+}
+
+.library-reader__after {
+  color: var(--ink-subtle);
+}
+
+.library-reader__meta {
+  width: 212px;
+  flex: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-size-sm);
+}
+
+.library-reader__meta-row {
+  padding: 9px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.library-reader__meta-row:last-child {
+  border-bottom: none;
+}
+
+.library-reader__meta-row dt {
+  font-size: var(--font-size-xs);
+  color: var(--ink-subtle);
+}
+
+.library-reader__meta-row dd {
+  margin: 0;
+  font-weight: var(--font-weight-medium);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.library-reader__pillar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.library-reader__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.library-reader__tags {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.library-reader__tag-list {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.library-reader__blank {
+  margin: 0;
+  padding: var(--space-6) var(--space-5);
+  font-size: var(--font-size-sm);
+  color: var(--ink-subtle);
+}
+
+/* Barre d action du post lu. Les cinq actions ne sont plus repetees sur chaque
+   ligne : elles portent le seul post affiche, une seule fois. */
+.library-reader__bar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+.library-reader__buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px;
+}
+
+/* Le panneau et la bande de planification s alignent sur le remplissage de la
+   barre plutot que sur celui d une ligne de liste. */
+.library-reader__bar .library-actions,
+.library-reader__bar .library-schedule {
+  padding-left: 28px;
+  padding-right: 28px;
+  border-top: none;
+  border-bottom: 1px solid var(--line);
+}
+
+/*
+ * Revelateur : un carre, pas un libelle. Le nom reste porte par `aria-label`
+ * pour la lecture d ecran et par `title` pour le survol.
+ *
+ * La classe est accolee a `.ds-button` a dessein. Le remplissage lateral vient
+ * de `.ds-button[data-size="md"]`, dont le selecteur pese une classe ET un
+ * attribut : une classe seule ne le remet pas a zero, et le carre de 32px se
+ * retrouvait rempli de 28px de marge interne. Mesure : le trace tombait a 2px de
+ * large, soit un bouton d apparence vide.
+ */
+.ds-button.library-reader__disclosure {
+  margin-left: auto;
+  flex: none;
+  width: 32px;
+  padding: 0;
+  color: var(--ink-subtle);
+}
+
+.ds-button.library-reader__disclosure[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--surface-app);
+  border-color: var(--line-strong);
+}
+
+.library-reader__edit {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 22px 28px;
+}
+
+.library-reader__textarea {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Heritage partage : regles consommees par Strategie, Atelier et Creer.
+ * Voir la note d en-tete. Ne pas retoucher depuis ce chantier.
+ * ------------------------------------------------------------------------- */
+
+.editor-section {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-section);
+  border: 1px solid var(--color-border);
+}
+
+.editor-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+}
+
+.list-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.list-card {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-1);
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.grid-selection,
+.list-selection {
+  display: grid;
+  gap: 14px;
+}

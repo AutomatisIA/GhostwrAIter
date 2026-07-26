@@ -5,13 +5,18 @@ import {
   emitPhaseSettled,
   emitPhaseStarted
 } from "../domains/execution/execution-progress-emitter";
+import { SkillRunError } from "../domains/execution/skill-run-error";
+import { resolveAnnouncedEngine } from "../domains/execution/announced-engine";
 import { createStrategyTables, StrategyRepository } from "../domains/strategy/strategy.repository";
+import { selectIcps } from "../domains/strategy/strategy-context";
 import { createIdeasTables, IdeasRepository } from "../domains/ideas/ideas.repository";
 import { NewsToPostService } from "../domains/news/news-to-post.service";
 import {
   emptyInputSchema,
+  generateFromStrategySchema,
   ideaInputSchema,
   newsSourceInputSchema,
+  type GenerateFromStrategyInput,
   type IdeaInput,
   type NewsSourceInput
 } from "../../shared/schemas/ideas";
@@ -53,8 +58,24 @@ export class IdeasService {
     return this.newsToPostService.createDraftFromSource(input, sender);
   }
 
-  async generateFromStrategy(sender?: WebContents) {
+  /**
+   * Genere des sujets a partir de la strategie.
+   *
+   * `targetIcpSegment` agit a deux endroits, et les deux comptent. Le
+   * generateur ne recoit que la cible demandee, donc il propose des sujets qui
+   * parlent a quelqu un plutot que la moyenne de toutes les cibles ; et chaque
+   * idee creee la porte, donc le post redige plus tard depuis cette idee vise
+   * la meme personne. Sans le second, le choix serait perdu des la fin de la
+   * generation : cette porte d entree est la seule ou l utilisateur n a aucun
+   * moment ulterieur pour designer une cible.
+   */
+  async generateFromStrategy(input?: GenerateFromStrategyInput, sender?: WebContents) {
     const bundle = this.strategyRepository.getActiveStrategyBundle();
+    const targetIcpSegment = input?.targetIcpSegment;
+    // Meme regle que pour la redaction, et le MEME code : la selection vit dans
+    // `strategy-context.ts`. Elle y etait recopiee, ce qui aurait laisse le
+    // generateur de sujets en arriere a la premiere correction.
+    const icps = selectIcps(bundle, targetIcpSegment);
     // Validation fail-fast : on refuse de lancer l'IA (et donc d'émettre un
     // évènement `started` sur le canal de progression) si la stratégie n'a
     // aucun pilier. Placée AVANT toute émission, cette garde évite un faux
@@ -63,7 +84,13 @@ export class IdeasService {
       throw new Error("Strategy must define at least one pillar before generating ideas.");
     }
     const runId = `run_${Date.now()}`;
-    emitPhaseStarted(sender, { runId, phase: "idees", engine: "codex" });
+    // Meme correction que sur le socle editorial : le moteur annonce est celui
+    // qui SERA utilise, pas un litteral ni le seul choix explicite. Un
+    // utilisateur ayant choisi Antigravity voyait « Codex » pendant la
+    // generation de ses sujets ; un utilisateur n ayant jamais choisi le voyait
+    // aussi, alors que la resolution active pouvait retenir un autre moteur.
+    const announced = await resolveAnnouncedEngine(this.skillRunnerService);
+    emitPhaseStarted(sender, { runId, phase: "idees", engine: announced });
     let result;
     try {
       result = await this.skillRunnerService.executeAsync({
@@ -75,7 +102,7 @@ export class IdeasService {
           profileName: bundle.profile.name,
           positioning: bundle.profile.positioning,
           pillars: bundle.pillars,
-          icps: bundle.icps,
+          icps,
           offers: bundle.offers
         },
         attachments: []
@@ -84,18 +111,24 @@ export class IdeasService {
       emitPhaseSettled(sender, {
         runId,
         phase: "idees",
-        engine: "codex",
+        engine: announced,
         status: "failed",
-        errorCode: err instanceof Error ? err.name : undefined
+        // Un `errorCode` absent disparait de l evenement (l emetteur omet la
+        // cle) alors que le contrat le veut present sur tout `failed`, et
+        // `err.name` vaut « Error » sur une erreur nue, ce qui n appartient a
+        // aucune taxonomie. Meme repli que `runPhase`.
+        errorCode: err instanceof SkillRunError ? err.code : "SKILL_RUN_FAILED"
       });
       throw err;
     }
+
+    const usedEngine = result.engine ?? announced;
 
     if (result.status !== "succeeded" || !result.artifacts?.[0]?.content) {
       emitPhaseSettled(sender, {
         runId,
         phase: "idees",
-        engine: "codex",
+        engine: usedEngine,
         status: "failed",
         errorCode: result.error?.code
       });
@@ -105,7 +138,7 @@ export class IdeasService {
     emitPhaseSettled(sender, {
       runId,
       phase: "idees",
-      engine: "codex",
+      engine: usedEngine,
       status: "completed"
     });
 
@@ -124,7 +157,7 @@ export class IdeasService {
         const title = (angleMatch[0] ?? "").split(" - ")[0]?.trim() || (angleMatch[0] ?? "").trim();
         const angle = angleMatch[1].split("| score:")[0]?.trim() ?? "";
         if (title && angle) {
-          return this.repository.createIdea({ title, angle, pillarLabel });
+          return this.repository.createIdea({ title, angle, pillarLabel, targetIcpSegment });
         }
       }
 
@@ -132,7 +165,7 @@ export class IdeasService {
       const title = (dashParts[0] ?? cleaned).trim();
       const angle = dashParts.length > 1 ? dashParts.slice(1).join(" - ").trim() : "";
 
-      return this.repository.createIdea({ title, angle, pillarLabel });
+      return this.repository.createIdea({ title, angle, pillarLabel, targetIcpSegment });
     });
   }
 
@@ -163,7 +196,7 @@ export function registerIdeasIpcHandlers(
   registerValidatedHandler(
     ipcRegistrar,
     "ideas:generate-from-strategy",
-    emptyInputSchema,
-    (_input, sender) => ideasService.generateFromStrategy(sender)
+    generateFromStrategySchema,
+    (input, sender) => ideasService.generateFromStrategy(input, sender)
   );
 }

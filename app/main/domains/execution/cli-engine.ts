@@ -1,7 +1,7 @@
 import type { CliEngineStatus } from "../../../shared/types/settings";
 
 export interface CliEngine {
-  readonly name: "codex" | "gemini" | "claude";
+  readonly name: "codex" | "antigravity" | "claude";
   isInstalled(): Promise<boolean>;
   isAuthenticated(): Promise<boolean>;
   getStatus(): Promise<CliEngineStatus>;

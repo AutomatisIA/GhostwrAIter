@@ -36,7 +36,7 @@ Le point cle est simple:
 
 ## Demarrage de l'application
 
-Au lancement, [index.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/index.ts) fait les etapes suivantes:
+Au lancement, [index.ts](app/main/index.ts) fait les etapes suivantes:
 
 1. Resout le chemin du workspace.
 2. Cree les dossiers requis si besoin.
@@ -55,7 +55,7 @@ Au lancement, [index.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/index.ts) 
 
 ## Workspace local
 
-Le workspace est gere par [workspace.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/workspace/workspace.service.ts).
+Le workspace est gere par [workspace.service.ts](app/main/workspace/workspace.service.ts).
 
 Structure creee:
 
@@ -90,7 +90,7 @@ Responsabilites:
 
 ### Preload
 
-[index.ts](/Users/philippe/Dev/LinkedIn-Poster/app/preload/index.ts) expose un objet unique:
+[index.ts](app/preload/index.ts) expose un objet unique:
 
 - `window.linkedinPoster.strategy`
 - `window.linkedinPoster.ideas`
@@ -108,8 +108,8 @@ Le renderer React consomme ces APIs preload comme un client applicatif. Il ne co
 
 ### Strategie
 
-- repository: [strategy.repository.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/strategy/strategy.repository.ts)
-- service IPC: [strategy-ipc.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/ipc/strategy-ipc.ts)
+- repository: [strategy.repository.ts](app/main/domains/strategy/strategy.repository.ts)
+- service IPC: [strategy-ipc.ts](app/main/ipc/strategy-ipc.ts)
 
 Responsabilites:
 
@@ -119,8 +119,8 @@ Responsabilites:
 
 ### Idees
 
-- repository: [ideas.repository.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/ideas/ideas.repository.ts)
-- service IPC: [ideas-ipc.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/ipc/ideas-ipc.ts)
+- repository: [ideas.repository.ts](app/main/domains/ideas/ideas.repository.ts)
+- service IPC: [ideas-ipc.ts](app/main/ipc/ideas-ipc.ts)
 
 Responsabilites:
 
@@ -131,8 +131,8 @@ Responsabilites:
 
 ### Atelier
 
-- service: [workshop.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/workshop/workshop.service.ts)
-- service IPC: [workshop-ipc.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/ipc/workshop-ipc.ts)
+- service: [workshop.service.ts](app/main/domains/workshop/workshop.service.ts)
+- service IPC: [workshop-ipc.ts](app/main/ipc/workshop-ipc.ts)
 
 Responsabilites:
 
@@ -145,8 +145,8 @@ Responsabilites:
 
 ### Bibliotheque
 
-- service: [library.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/library/library.service.ts)
-- service IPC: [library-ipc.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/ipc/library-ipc.ts)
+- service: [library.service.ts](app/main/domains/library/library.service.ts)
+- service IPC: [library-ipc.ts](app/main/ipc/library-ipc.ts)
 
 Responsabilites:
 
@@ -156,8 +156,8 @@ Responsabilites:
 
 ### Calendrier
 
-- service: [calendar.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/calendar/calendar.service.ts)
-- service IPC: [calendar-ipc.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/ipc/calendar-ipc.ts)
+- service: [calendar.service.ts](app/main/domains/calendar/calendar.service.ts)
+- service IPC: [calendar-ipc.ts](app/main/ipc/calendar-ipc.ts)
 
 Responsabilites:
 
@@ -166,8 +166,8 @@ Responsabilites:
 
 ### Execution
 
-- services: [skill-runner.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/execution/skill-runner.service.ts), [codex-cli-runner.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/execution/codex-cli-runner.ts), [execution.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/execution/execution.service.ts)
-- service IPC: [execution-ipc.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/ipc/execution-ipc.ts)
+- services: [skill-runner.service.ts](app/main/domains/execution/skill-runner.service.ts), [codex-cli-runner.ts](app/main/domains/execution/codex-cli-runner.ts), [execution.service.ts](app/main/domains/execution/execution.service.ts)
+- service IPC: [execution-ipc.ts](app/main/ipc/execution-ipc.ts)
 
 Responsabilites:
 
@@ -179,9 +179,9 @@ Responsabilites:
 
 ### Parametres / exploitation locale
 
-- export: [export.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/export/export.service.ts)
-- privacy/log cleanup: [privacy.service.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/domains/privacy/privacy.service.ts)
-- service IPC: [settings-ipc.ts](/Users/philippe/Dev/LinkedIn-Poster/app/main/ipc/settings-ipc.ts)
+- export: [export.service.ts](app/main/domains/export/export.service.ts)
+- privacy/log cleanup: [privacy.service.ts](app/main/domains/privacy/privacy.service.ts)
+- service IPC: [settings-ipc.ts](app/main/ipc/settings-ipc.ts)
 
 ## Base de donnees
 

@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
 import type { ExecutionRunEntry } from "@shared/types/execution";
-import { Button, Card, useToast } from "../../../design-system/primitives";
-import { fadeInUp, staggerContainer, useMotionVariants } from "../../../design-system/motion/variants";
+import { Button, useToast } from "../../../design-system/primitives";
 
 function formatSkillLabel(skillName: string) {
   const labels: Record<string, string> = {
@@ -34,10 +32,35 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [runs, setRuns] = useState<ExecutionRunEntry[]>([]);
   const [loading, setLoading] = useState(defaultExpanded);
+  const [readFailed, setReadFailed] = useState(false);
 
-  const container = useMotionVariants(staggerContainer);
-  const item = useMotionVariants(fadeInUp);
+  /**
+   * Deplie et annonce qu une lecture commence.
+   *
+   * L etat de chargement est pose ICI, dans le geste qui le declenche, et non
+   * dans l effet : c est le clic qui ouvre le panneau et lance la lecture. Pose
+   * dans l effet, il aurait demande une derogation a
+   * `react-hooks/set-state-in-effect` alors qu il n a rien d une
+   * synchronisation avec un systeme externe. Le deep-link
+   * `?section=diagnostics` est couvert par la valeur initiale de `loading`, qui
+   * vaut `defaultExpanded`.
+   */
+  function toggle() {
+    setExpanded((ouvert) => {
+      if (!ouvert) {
+        setLoading(true);
+        setReadFailed(false);
+      }
+      return !ouvert;
+    });
+  }
 
+  // `loading` etait initialise a `defaultExpanded` et jamais remis a `true` :
+  // « Aucune génération enregistrée » sortait pendant tout l aller-retour IPC, et
+  // DEFINITIVEMENT si l appel echouait, le `.catch` vide avalant l erreur.
+  // Quelqu un venu diagnostiquer une generation ratee s entendait repondre qu il
+  // n en avait jamais lance. Un historique illisible et un historique vide ne se
+  // disent pas de la meme facon.
   useEffect(() => {
     if (!expanded) return;
     let mounted = true;
@@ -46,7 +69,9 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
       .then((data) => {
         if (mounted) setRuns(data);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (mounted) setReadFailed(true);
+      })
       .finally(() => {
         if (mounted) setLoading(false);
       });
@@ -70,7 +95,7 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
       <Button
         variant="secondary"
         size="sm"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={toggle}
         aria-expanded={expanded}
       >
         {expanded ? "Masquer l'historique" : "Afficher l'historique des générations"}
@@ -78,35 +103,47 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
 
       {expanded ? (
         <>
-          {loading ? <p className="settings-diagnostics-loading">Chargement…</p> : null}
+          {loading ? <p className="settings-diagnostics__note">Chargement…</p> : null}
 
-          {!loading && runs.length === 0 ? (
-            <p className="settings-diagnostics-empty">Aucune génération enregistrée pour l'instant.</p>
+          {!loading && readFailed ? (
+            <p className="settings-diagnostics__note" role="alert">
+              L'historique n'a pas pu être lu. Vos générations ne sont pas perdues :
+              c'est leur lecture qui a échoué.
+            </p>
           ) : null}
 
-          <motion.div
-            className="list-grid"
-            variants={container}
-            initial="hidden"
-            animate="visible"
-          >
-            {runs.map((run) => (
-              <motion.div key={run.id} variants={item}>
-                <Card elevation={1} className="settings-run-card">
-                  <span className={`status-label settings-run-status settings-run-status--${run.status}`}>
-                    {formatRunStatus(run.status)}
-                  </span>
-                  <strong>{formatSkillLabel(run.skillName)}</strong>
-                  <p>{run.summary}</p>
+          {!loading && !readFailed && runs.length === 0 ? (
+            <p className="settings-diagnostics__note">
+              Aucune génération enregistrée pour l'instant.
+            </p>
+          ) : null}
+
+          {runs.length > 0 ? (
+            <div className="settings-runs">
+              {runs.map((run) => (
+                <div className="settings-run" key={run.id}>
+                  <div className="settings-run__head">
+                    <span className="settings-run__title">{formatSkillLabel(run.skillName)}</span>
+                    <span className={`settings-run__status settings-run__status--${run.status}`}>
+                      {formatRunStatus(run.status)}
+                    </span>
+                  </div>
+
+                  <p className="settings-run__summary">{run.summary}</p>
+
                   {run.status === "failed" && (run.errorCode || run.errorMessage) ? (
-                    <div className="error-detail">
-                      <span className="status-label">Détail technique</span>
-                      {run.errorCode ? <code className="error-code">{run.errorCode}</code> : null}
-                      {run.errorMessage ? <p>{run.errorMessage}</p> : null}
+                    <div className="settings-run__error">
+                      {run.errorCode ? (
+                        <code className="settings-run__error-code">{run.errorCode}</code>
+                      ) : null}
+                      {run.errorMessage ? (
+                        <p className="settings-run__error-message">{run.errorMessage}</p>
+                      ) : null}
                     </div>
                   ) : null}
+
                   {run.status === "failed" ? (
-                    <div className="settings-run-action">
+                    <div className="settings-run__action">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -122,10 +159,10 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
                       </Button>
                     </div>
                   ) : null}
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

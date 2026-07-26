@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/AutomatisIA/LinkedIn-Poster/security/advisories/new
+    url: https://github.com/AutomatisIA/GhostwrAIter/security/advisories/new
     about: Please report security issues privately via GitHub Security Advisories or contact@AutomatisIA.fr — do not open a public issue.
   - name: Project documentation
-    url: https://github.com/AutomatisIA/LinkedIn-Poster/tree/main/docs
+    url: https://github.com/AutomatisIA/GhostwrAIter/tree/main/docs
     about: Browse the docs/ directory for architecture, operational, and user-facing guidance before opening an issue.

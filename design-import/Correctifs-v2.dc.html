@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>
+body{margin:0;background:#e6e8ec;-webkit-font-smoothing:antialiased}
+a{color:#0a5aab;text-decoration:none}
+a:hover{color:#08447f}
+</style></helmet>
+
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;padding:28px 24px 64px;color:#0f141b">
+<div style="max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap">
+<div style="display:flex;flex-direction:column;gap:2px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:#616a76">GhostwrAIter 1.4.1 — correctifs sur l’état implémenté</span>
+<span style="font-size:22px;font-weight:620;letter-spacing:-.012em">Cinq écrans corrigés, avec la liste des écarts à traiter</span>
+</div>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+<div style="display:flex;background:#ffffff;border:1px solid #cfd5dc;border-radius:4px;overflow:hidden">
+<button onClick="{{ voirStrategie }}" style="flex:none;white-space:nowrap;{{ ongletStrategie }}" style-hover="opacity:.85" type="button">Stratégie</button>
+<button onClick="{{ voirCreer }}" style="flex:none;white-space:nowrap;{{ ongletCreer }}" style-hover="opacity:.85" type="button">Créer</button>
+<button onClick="{{ voirAtelier }}" style="flex:none;white-space:nowrap;{{ ongletAtelier }}" style-hover="opacity:.85" type="button">Atelier</button>
+<button onClick="{{ voirBiblio }}" style="flex:none;white-space:nowrap;{{ ongletBiblio }}" style-hover="opacity:.85" type="button">Bibliothèque</button>
+<button onClick="{{ voirParam }}" style="flex:none;white-space:nowrap;{{ ongletParam }}" style-hover="opacity:.85" type="button">Paramètres</button>
+</div>
+<button onClick="{{ basculerTheme }}" aria-label="Basculer le thème" title="Basculer le thème" style="flex:none;white-space:nowrap;width:32px;height:32px;display:flex;align-items:center;justify-content:center;color:#414b57;background:#ffffff;border:1px solid #cfd5dc;border-radius:4px;cursor:pointer" style-hover="background:#f0f2f5;color:#0f141b" type="button">{{ iconeTheme }}</button>
+</div>
+</div>
+
+<div style="--bg:#f6f7f9;--sf:#ffffff;--sf2:#f0f2f5;--bd:#e3e6ea;--bd2:#cfd5dc;--ink:#0f141b;--ink2:#414b57;--ink3:#616a76;--pri:#0a66c2;--priT:#0a5aab;--priTint:#e9f1fb;--priBd:#c3daf5;--amb:#c07c07;--ambT:#7d5000;--ambTint:#fbf1de;--ambBd:#ecd9ab;--ok:#0f6b45;--ko:#b42318;{{ themeVars }};width:1400px;height:860px;display:flex;background:var(--bg);border:1px solid var(--bd2);border-radius:6px;overflow:hidden;box-shadow:0 6px 24px rgba(15,23,42,.14);color:var(--ink)">
+
+<div style="width:216px;flex:none;display:flex;flex-direction:column;background:var(--sf);border-right:1px solid var(--bd)">
+<div style="height:56px;display:flex;align-items:center;gap:8px;padding:0 18px;border-bottom:1px solid var(--bd)">
+<span style="font-size:15px;font-weight:800;letter-spacing:-.01em">Ghostwr<span style="color:var(--priT)">AI</span>ter</span>
+<span style="font-size:11px;font-weight:500;color:var(--ink3);font-variant-numeric:tabular-nums">1.4.1</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:1px;padding:10px 8px">
+<button style="flex:none;white-space:nowrap;{{ navCockpit }}" type="button">Cockpit</button>
+<button onClick="{{ voirStrategie }}" style="flex:none;white-space:nowrap;{{ navStrategie }}" type="button">Stratégie</button>
+<button onClick="{{ voirCreer }}" style="flex:none;white-space:nowrap;{{ navCreer }}" type="button">Créer</button>
+<button onClick="{{ voirBiblio }}" style="flex:none;white-space:nowrap;{{ navBiblio }}" type="button">Bibliothèque</button>
+<button onClick="{{ voirParam }}" style="flex:none;white-space:nowrap;{{ navParam }}" type="button">Paramètres</button>
+</div>
+<div style="margin-top:auto;padding:13px 18px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:3px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Moteur</span>
+<span style="font-size:13px;font-weight:500;color:var(--ink2)">Codex, connecté</span>
+</div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+<sc-if value="{{ estStrategie }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;height:860px">
+<div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--bd);background:var(--sf)">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Stratégie éditoriale</span>
+<div style="display:flex;gap:10px;align-items:center">
+<span style="font-size:13px;color:var(--ink3)">Enregistré il y a 2 min</span>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 14px;font-family:inherit;font-size:13px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;border-radius:4px;cursor:pointer" style-hover="filter:brightness(1.08)" type="button">Enregistrer</button>
+</div>
+</div>
+<div style="height:42px;flex:none;display:flex;align-items:stretch;padding:0 24px;border-bottom:1px solid var(--bd);background:var(--sf)">
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:13px;font-weight:600;line-height:1;color:var(--ink);background:transparent;border:none;border-bottom:2px solid var(--pri);cursor:pointer;display:flex;align-items:center;gap:6px" type="button">Profil<span style="font-size:12px;font-weight:500;color:var(--ink3);font-variant-numeric:tabular-nums">4</span></button>
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="color:var(--ink2)" type="button">Offres<span style="font-size:12px;font-variant-numeric:tabular-nums">3</span></button>
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="color:var(--ink2)" type="button">Cibles<span style="font-size:12px;font-variant-numeric:tabular-nums">2</span></button>
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="color:var(--ink2)" type="button">Piliers<span style="font-size:12px;font-variant-numeric:tabular-nums">5</span></button>
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="color:var(--ink2)" type="button">Voix<span style="font-size:12px;font-variant-numeric:tabular-nums">12</span></button>
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="color:var(--ink2)" type="button">Socle éditorial<span style="font-size:12px;color:var(--ink3)">à jour</span></button>
+<button onClick="{{ basculerAideGlobale }}" style="flex:none;white-space:nowrap;margin-left:auto;align-self:center;height:26px;padding:0 10px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;cursor:pointer" style-hover="color:var(--ink)" type="button">{{ libelleAide }}</button>
+</div>
+
+<div style="flex:1;min-height:0;padding:22px 24px;display:flex;gap:24px;overflow:hidden">
+<div style="width:760px;flex:none;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:baseline;gap:10px">
+<span style="font-size:17px;font-weight:620">Profil</span>
+<span style="font-size:13px;color:var(--ink3)">Ce que le modèle lit avant chaque génération.</span>
+</div>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden">
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:center">
+<span style="font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px">Nom affiché<button onClick="{{ aide1 }}" style="flex:none;white-space:nowrap;{{ boutonAide1 }}" type="button">?</button></span>
+<input value="Philippe Cohen" style="height:34px;padding:0 11px;font-family:inherit;font-size:14px;font-weight:400;line-height:1;color:var(--ink);background:var(--bg);border:1px solid var(--bd2);border-radius:4px;outline:none;min-width:0" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)" />
+<sc-if value="{{ aideOuverte1 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">Le nom sous lequel vous publiez. Il apparaît dans l’aperçu et sert au modèle à écrire à la première personne.</span></sc-if>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:start">
+<span style="font-size:14px;font-weight:500;padding-top:8px;display:flex;align-items:center;gap:6px">Positionnement<button onClick="{{ aide2 }}" style="flex:none;white-space:nowrap;{{ boutonAide2 }}" type="button">?</button></span>
+<textarea style="height:52px;padding:8px 11px;font-family:inherit;font-size:14px;font-weight:400;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--bd2);border-radius:4px;outline:none;resize:none;min-width:0" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)">Intégration IA en entreprise. Formation, agents IA et automatisation. Plus de 50 entreprises accompagnées.</textarea>
+<sc-if value="{{ aideOuverte2 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">À qui vous parlez et ce que vous changez pour eux. La ligne la plus utilisée par le modèle : plus elle est précise, moins les posts sont génériques.</span></sc-if>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:start">
+<span style="font-size:14px;font-weight:500;padding-top:8px;display:flex;align-items:center;gap:6px">Biographie<button onClick="{{ aide3 }}" style="flex:none;white-space:nowrap;{{ boutonAide3 }}" type="button">?</button></span>
+<textarea style="height:76px;padding:8px 11px;font-family:inherit;font-size:14px;font-weight:400;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--bd2);border-radius:4px;outline:none;resize:none;min-width:0" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)">En deux ans, j’ai accompagné plus de 50 entreprises, TPE, PME et ETI, dans l’intégration opérationnelle de l’intelligence artificielle. 200 collaborateurs formés en présentiel depuis début 2026.</textarea>
+<sc-if value="{{ aideOuverte3 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">Le récit court, pas le curriculum. Il situe votre légitimité dans les posts qui la mobilisent.</span></sc-if>
+</div>
+<div style="padding:11px 16px;display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:start">
+<span style="font-size:14px;font-weight:500;padding-top:8px;display:flex;align-items:center;gap:6px">Résumé d’expertise<button onClick="{{ aide4 }}" style="flex:none;white-space:nowrap;{{ boutonAide4 }}" type="button">?</button></span>
+<textarea style="height:76px;padding:8px 11px;font-family:inherit;font-size:14px;font-weight:400;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--bd2);border-radius:4px;outline:none;resize:none;min-width:0" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)">Je forme les organisations à l’IA générative, quel que soit le niveau : acculturation et usages avancés. J’accompagne les développeurs sur l’IA agentique comme outil de développement.</textarea>
+<sc-if value="{{ aideOuverte4 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">Les domaines où vous pouvez citer un cas réel. Le modèle s’en sert pour choisir des exemples que vous assumerez.</span></sc-if>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding-top:2px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Complétude</span>
+<div style="display:flex;gap:3px">
+<span style="width:40px;height:4px;border-radius:2px;background:var(--ink2)"></span>
+<span style="width:40px;height:4px;border-radius:2px;background:var(--ink2)"></span>
+<span style="width:40px;height:4px;border-radius:2px;background:var(--ink2)"></span>
+<span style="width:40px;height:4px;border-radius:2px;background:var(--ink2)"></span>
+</div>
+<span style="font-size:13px;font-weight:500;color:var(--ink2);font-variant-numeric:tabular-nums">4 champs sur 4</span>
+</div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Effet sur les générations</span>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<span style="font-size:14px;line-height:1.6;color:var(--ink2)">Profil complet. Les posts citeront vos chiffres et votre positionnement au lieu de rester génériques.</span>
+<div style="height:1px;background:var(--bd)"></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:13px;color:var(--ink3)">Socle éditorial</span><span style="font-size:13px;font-weight:500">Régénéré il y a 3 j</span></div>
+<button style="flex:none;white-space:nowrap;height:32px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Régénérer le socle</button>
+<span style="font-size:13px;line-height:1.5;color:var(--ink3)">La régénération n’est pas l’action principale de cet écran : elle relit tout le reste, elle ne s’enregistre pas.</span>
+</div>
+<div style="background:var(--sf2);border:1px solid var(--bd);border-radius:4px;padding:13px 15px;display:flex;flex-direction:column;gap:5px">
+<span style="font-size:13px;font-weight:600">Contrôle de recette</span>
+<span style="font-size:13px;line-height:1.55;color:var(--ink2)">Onglet Profil, aides repliées : hauteur inférieure à 340 px, sans défilement. Aucune coche verte hors publication.</span>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ estCreer }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;height:860px">
+<div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--bd);background:var(--sf)">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Créer</span>
+<span style="font-size:13px;color:var(--ink3)">10 idées en attente</span>
+</div>
+<div style="flex:1;min-height:0;padding:22px 24px;display:flex;gap:22px">
+
+<div style="width:700px;flex:none;display:flex;flex-direction:column;background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden">
+<div style="display:flex;border-bottom:1px solid var(--bd)">
+<button style="flex:none;white-space:nowrap;flex:1;height:38px;font-family:inherit;font-size:13px;font-weight:600;line-height:1;color:var(--ink);background:var(--sf);border:none;border-bottom:2px solid var(--pri);cursor:pointer" type="button">Saisir une idée</button>
+<button style="flex:none;white-space:nowrap;flex:1;height:38px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer" style-hover="color:var(--ink2)" type="button">Transformer une veille</button>
+<button style="flex:none;white-space:nowrap;flex:1;height:38px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer" style-hover="color:var(--ink2)" type="button">Depuis la stratégie</button>
+</div>
+<div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0">
+<div style="display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center">
+<span style="font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px">Titre du sujet<button onClick="{{ aide1 }}" style="flex:none;white-space:nowrap;{{ boutonAide1 }}" type="button">?</button></span>
+<input placeholder="Pourquoi déléguer trop tôt freine la croissance d’une PME" style="height:34px;padding:0 11px;font-family:inherit;font-size:14px;font-weight:400;line-height:1;color:var(--ink);background:var(--bg);border:1px solid var(--bd2);border-radius:4px;outline:none;min-width:0" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)" />
+<sc-if value="{{ aideOuverte1 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">Le sujet en une phrase, tel que vous le présenteriez à voix haute.</span></sc-if>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start">
+<span style="font-size:14px;font-weight:500;padding-top:8px;display:flex;align-items:center;gap:6px">Angle<button onClick="{{ aide2 }}" style="flex:none;white-space:nowrap;{{ boutonAide2 }}" type="button">?</button></span>
+<textarea placeholder="Un retour d’expérience chiffré plutôt qu’un conseil générique" style="height:68px;padding:8px 11px;font-family:inherit;font-size:14px;font-weight:400;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--bd2);border-radius:4px;outline:none;resize:none;min-width:0" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)"></textarea>
+<sc-if value="{{ aideOuverte2 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">Le point de vue ou la promesse : ce qui rend le post différent d’un autre sur le même sujet.</span></sc-if>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start">
+<span style="font-size:14px;font-weight:500;padding-top:6px;display:flex;align-items:center;gap:6px">Pilier éditorial<button onClick="{{ aide3 }}" style="flex:none;white-space:nowrap;{{ boutonAide3 }}" type="button">?</button></span>
+<div style="display:flex;gap:6px;flex-wrap:wrap">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink);background:var(--priTint);border:1px solid var(--priBd);border-radius:4px;cursor:pointer" type="button">Cas d’usage concrets métier</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Productivité et ROI</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Adoption et changement</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Pédagogie et montée en compétences</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Cadre, risques et bon usage</button>
+</div>
+<sc-if value="{{ aideOuverte3 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">Un seul pilier, pour garder une ligne lisible sur plusieurs semaines.</span></sc-if>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:start">
+<span style="font-size:14px;font-weight:500;padding-top:6px;display:flex;align-items:center;gap:6px">Cible visée<button onClick="{{ aide4 }}" style="flex:none;white-space:nowrap;{{ boutonAide4 }}" type="button">?</button></span>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink);background:var(--priTint);border:1px solid var(--priBd);border-radius:4px;cursor:pointer" type="button">Dirigeant de PME, 20 à 100 salariés</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Responsable des opérations</button>
+<span style="font-size:13px;color:var(--ink3)">Une seule, jamais toutes</span>
+</div>
+<sc-if value="{{ aideOuverte4 }}" hint-placeholder-val="{{ false }}"><span></span><span style="font-size:14px;line-height:1.55;color:var(--ink2);max-width:46ch">La doctrine éditoriale exige une cible unique par post. Sans ce choix, le modèle reçoit toutes vos cibles et écrit pour personne.</span></sc-if>
+</div>
+</div>
+<div style="padding:12px 20px;border-top:1px solid var(--bd);background:var(--sf2);display:flex;align-items:center;gap:10px">
+<button onClick="{{ voirAtelier }}" style="flex:none;white-space:nowrap;height:36px;padding:0 16px;font-family:inherit;font-size:14px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;border-radius:4px;cursor:pointer" style-hover="filter:brightness(1.08)" type="button">Ouvrir dans l’atelier</button>
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 14px;font-family:inherit;font-size:14px;font-weight:500;line-height:1;color:var(--ink2);background:var(--sf);border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--bg)" type="button">Ajouter au backlog</button>
+</div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Idées en attente</span>
+<input placeholder="Filtrer" style="margin-left:auto;height:30px;width:150px;padding:0 10px;font-family:inherit;font-size:13px;font-weight:400;line-height:1;color:var(--ink);background:var(--sf);border:1px solid var(--bd2);border-radius:4px;outline:none" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)" />
+</div>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden">
+<div onClick="{{ voirAtelier }}" style="padding:12px 15px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)"><span style="font-size:15px;font-weight:620;line-height:1.35">Les agents IA ne sont pas prêts à devenir un outil de l’entreprise française</span><span style="font-size:13px;color:var(--ink3)">Adoption et changement</span></div>
+<div style="padding:12px 15px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)"><span style="font-size:15px;font-weight:620;line-height:1.35">Les entreprises françaises n’utilisent pas, ou très peu, d’agents IA</span><span style="font-size:13px;color:var(--ink3)">Adoption et changement</span></div>
+<div style="padding:12px 15px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)"><span style="font-size:15px;font-weight:620;line-height:1.35">Développer en spécifications d’abord</span><span style="font-size:13px;color:var(--ink3)">Pédagogie et montée en compétences</span></div>
+<div style="padding:12px 15px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)"><span style="font-size:15px;font-weight:620;line-height:1.35">Prendre en main Claude Cowork</span><span style="font-size:13px;color:var(--ink3)">Pédagogie et montée en compétences</span></div>
+<div style="padding:12px 15px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)"><span style="font-size:15px;font-weight:620;line-height:1.35">Faire faire à l’IA ce qu’on ne fait pas</span><span style="font-size:13px;color:var(--ink3)">Cas d’usage concrets métier</span></div>
+<div style="padding:12px 15px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)"><span style="font-size:15px;font-weight:620;line-height:1.35">Automatisation ou agent IA autonome</span><span style="font-size:13px;color:var(--ink3)">Cas d’usage concrets métier</span></div>
+<div style="padding:12px 15px;display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)"><span style="font-size:15px;font-weight:500;line-height:1.35;font-style:italic;color:var(--ink3)">Idée sans titre</span><span style="font-size:13px;color:var(--ink3)">Veille du 22 juillet, à nommer</span></div>
+</div>
+<span style="font-size:13px;line-height:1.5;color:var(--ink3);max-width:44ch">Une idée sans titre garde une étiquette explicite plutôt qu’une ligne vide.</span>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ estAtelier }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;height:860px">
+<div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--bd);background:var(--sf)">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Atelier · brouillon</span>
+<span style="font-size:13px;color:var(--ink3)">Enregistré automatiquement</span>
+</div>
+<div style="height:48px;flex:none;display:flex;align-items:center;padding:0 24px;gap:16px;border-bottom:1px solid var(--bd);background:var(--sf)">
+<span style="font-size:13px;font-weight:500;color:var(--ink3);font-variant-numeric:tabular-nums;flex:none">Étape 4 sur 4</span>
+<div style="display:flex;gap:6px;align-items:center;min-width:0;flex:1">
+<span style="height:26px;flex:none;display:inline-flex;align-items:center;padding:0 9px;font-size:12px;font-weight:500;color:var(--ink2);background:var(--sf2);border:1px solid var(--bd);border-radius:3px">Tutoriel</span>
+<span style="height:26px;flex:none;display:inline-flex;align-items:center;padding:0 9px;font-size:12px;font-weight:500;color:var(--ink2);background:var(--sf2);border:1px solid var(--bd);border-radius:3px">Visibilité</span>
+<span style="height:26px;flex:none;display:inline-flex;align-items:center;padding:0 9px;font-size:12px;font-weight:500;color:var(--ink2);background:var(--sf2);border:1px solid var(--bd);border-radius:3px">Avant, après</span>
+<span title="Si vos équipes bloquent dès qu’un outil IA demande un réglage" style="height:26px;min-width:0;display:inline-flex;align-items:center;padding:0 9px;font-size:12px;font-weight:500;color:var(--ink2);background:var(--sf2);border:1px solid var(--bd);border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:26ch">Accroche : si vos équipes bloquent dès qu’un outil IA demande un réglage</span>
+<span style="height:26px;flex:none;display:inline-flex;align-items:center;padding:0 9px;font-size:12px;font-weight:500;color:var(--ink2);background:var(--sf2);border:1px solid var(--bd);border-radius:3px">Pédagogie</span>
+</div>
+<button style="flex:none;white-space:nowrap;flex:none;height:28px;padding:0 10px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;cursor:pointer" style-hover="color:var(--ink)" type="button">Revenir au cadrage</button>
+</div>
+
+<div style="flex:1;min-height:0;display:flex">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+<div style="flex:1;min-height:0;overflow:hidden;padding:24px 28px;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;gap:20px">
+<span style="font-size:22px;font-weight:620;line-height:1.25;letter-spacing:-.012em;max-width:44ch">Claude Cowork en PME : commencez par une tâche connue, sinon l’adoption cale</span>
+<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex:none">
+<span style="font-size:13px;font-weight:500;color:var(--ink3);white-space:nowrap;font-variant-numeric:tabular-nums">1 914 restants sur 3 000</span>
+<span style="font-size:12px;color:var(--ink3);display:flex;align-items:center;gap:5px">Aucun marqueur repéré<button style="flex:none;white-space:nowrap;width:18px;height:18px;font-family:inherit;font-size:10px;font-weight:600;line-height:1;color:var(--ink3);background:var(--sf2);border:1px solid var(--bd);border-radius:50%;cursor:pointer" title="La détection sous-compte : elle montre ce qu’elle trouve, elle ne certifie jamais qu’un texte est propre." type="button">?</button></span>
+</div>
+</div>
+<div style="font-size:16px;line-height:1.65;color:var(--ink);max-width:68ch;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+<p style="margin:0">Si vos équipes bloquent dès qu’un outil IA demande un réglage, Claude Cowork doit commencer par une tâche qu’elles connaissent déjà.</p>
+<p style="margin:0">Chaque minute passée à expliquer l’interface avant d’obtenir un résultat renforce l’impression que l’outil sera compliqué au quotidien.</p>
+<p style="margin:0">Choisissez une tâche récurrente dont la personne maîtrise déjà le déroulement. Elle connaît la matière de départ, le résultat attendu, les critères de qualité et les erreurs à éviter.</p>
+<p style="margin:0">La prise en main peut alors suivre quatre étapes simples : décrire le résultat attendu avec ses propres mots, transmettre uniquement les informations nécessaires, examiner le résultat selon les critères habituels du métier, corriger l’instruction puis refaire un essai sur la même tâche.</p>
+<p style="margin:0">Avant, la personne découvre un outil et cherche quoi en faire. Après, elle sait lui confier une tâche précise, contrôler la réponse et améliorer sa demande.</p>
+</div>
+</div>
+<div style="flex:none;padding:12px 28px;border-top:1px solid var(--bd);background:var(--sf);display:flex;align-items:center;gap:10px">
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 16px;font-family:inherit;font-size:14px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;border-radius:4px;cursor:pointer" style-hover="filter:brightness(1.08)" type="button">Copier le post</button>
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 14px;font-family:inherit;font-size:14px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Modifier le texte</button>
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 14px;font-family:inherit;font-size:14px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Correction premium</button>
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 12px;font-family:inherit;font-size:14px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;cursor:pointer" style-hover="color:var(--ink)" type="button">Changer l’accroche</button>
+<span style="margin-left:auto;font-size:13px;color:var(--ink3)">Barre d’action toujours visible, jamais sous le pli</span>
+</div>
+</div>
+
+<div style="width:380px;flex:none;border-left:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column">
+<div style="height:38px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--bd)"><span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Aperçu réel</span><span style="font-size:12px;font-weight:500;color:var(--ink3)">Repli à 210</span></div>
+<div style="padding:18px;display:flex;flex-direction:column;gap:11px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:9px">
+<div style="width:38px;height:38px;border-radius:50%;background:var(--sf2);border:1px solid var(--bd);flex:none"></div>
+<div style="display:flex;flex-direction:column;gap:1px;min-width:0"><span style="font-size:14px;font-weight:620">Philippe Cohen</span><span style="font-size:12px;color:var(--ink3)">Intégration IA en entreprise · maintenant</span></div>
+</div>
+<div style="font-size:15px;line-height:1.5;color:var(--ink)">
+<span>Si vos équipes bloquent dès qu’un outil IA demande un réglage, Claude Cowork doit commencer par une tâche qu’elles connaissent déjà.</span>
+<span> Chaque minute passée à expliquer l’interface avant d’obtenir un résultat ren</span>
+<div style="margin:9px 0;border-top:1px dashed var(--amb);display:flex;justify-content:flex-end"><span style="margin-top:-9px;padding:0 6px;background:var(--sf);font-size:11px;font-weight:680;letter-spacing:.06em;text-transform:uppercase;color:var(--ambT)">Repli, 210</span></div>
+<span style="color:var(--ink3)">force l’impression que l’outil sera compliqué au quotidien. Choisissez une tâche récurrente dont la personne maîtrise déjà le déroulement…</span>
+</div>
+<div style="padding:11px 13px;background:var(--bg);border:1px solid var(--bd);border-radius:4px;font-size:13px;line-height:1.55;color:var(--ink2)">Ce qui est au dessus du trait décide de la lecture. Ici la coupe tombe au milieu d’un mot : l’accroche gagnerait à finir avant 210 caractères.</div>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ estBiblio }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;height:860px">
+<div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--bd);background:var(--sf);gap:14px">
+<div style="display:flex;align-items:center;gap:12px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Bibliothèque</span>
+<button onClick="{{ basculerBiblio }}" style="flex:none;white-space:nowrap;height:26px;padding:0 10px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);border-color:var(--bd2)" type="button">Option {{ biblioVar }}, cliquer pour comparer</button>
+</div>
+<div style="display:flex;gap:8px;align-items:center">
+<div style="display:flex;border:1px solid var(--bd2);border-radius:4px;overflow:hidden;height:28px">
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:12px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;cursor:pointer" type="button">Brouillons</button>
+<button style="flex:none;white-space:nowrap;padding:0 12px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:none;cursor:pointer" style-hover="background:var(--sf2)" type="button">Planning</button>
+</div>
+<input placeholder="Titre, pilier, mot clé" style="height:28px;width:190px;padding:0 10px;font-family:inherit;font-size:13px;font-weight:400;line-height:1;color:var(--ink);background:var(--bg);border:1px solid var(--bd2);border-radius:4px;outline:none" style-focus="border-color:var(--pri);box-shadow:0 0 0 3px var(--priTint)" />
+<button style="flex:none;white-space:nowrap;height:28px;padding:0 10px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Tous les statuts</button>
+</div>
+</div>
+<sc-if value="{{ biblioListe }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-height:0;padding:18px 24px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+<div style="display:flex;align-items:baseline;justify-content:space-between">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Brouillons</span>
+<span style="font-size:13px;font-weight:500;color:var(--ink3);font-variant-numeric:tabular-nums">30, longueur moyenne 1 030 caractères</span>
+</div>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden">
+<div style="padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:16px" style-hover="background:var(--sf2)">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:17px;font-weight:620;line-height:1.3">Quel processus confier à un agent IA quand personne ne l’a défini ?</span>
+<span style="font-size:13px;line-height:1.4;color:var(--ink3);display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none"></span>Adoption et changement<span style="color:var(--bd2)">·</span><span style="font-variant-numeric:tabular-nums">1 048 caractères</span><span style="color:var(--bd2)">·</span>agents, entreprises, apprentissage<span style="color:var(--ink3)">+6</span></span>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Modifier</button>
+<button aria-label="Autres actions" style="flex:none;white-space:nowrap;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);background:var(--sf2)" type="button">···</button>
+</div>
+</div>
+<div style="padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:16px" style-hover="background:var(--sf2)">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:17px;font-weight:620;line-height:1.3">Avant d’acheter un agent IA, nommez le processus qu’il doit exécuter</span>
+<span style="font-size:13px;line-height:1.4;color:var(--ink3);display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none"></span>Adoption et changement<span style="color:var(--bd2)">·</span><span style="font-variant-numeric:tabular-nums">1 001 caractères</span><span style="color:var(--bd2)">·</span>agents, entreprises, générative<span style="color:var(--ink3)">+6</span></span>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Modifier</button>
+<button aria-label="Autres actions" style="flex:none;white-space:nowrap;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);background:var(--sf2)" type="button">···</button>
+</div>
+</div>
+<div style="padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:16px;background:var(--sf2)">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:17px;font-weight:620;line-height:1.3">Claude Cowork en PME : commencez par une tâche connue, sinon l’adoption cale</span>
+<span style="font-size:13px;line-height:1.4;color:var(--ink3);display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none"></span>Pédagogie<span style="color:var(--bd2)">·</span><span style="font-variant-numeric:tabular-nums">1 086 caractères</span><span style="color:var(--bd2)">·</span>cowork, compétences, adoption<span style="color:var(--ink3)">+4</span></span>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:var(--sf);border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--bg)" type="button">Variante</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:var(--sf);border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--bg)" type="button">Planifier</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:var(--sf);border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--bg)" type="button">Retravailler</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;border-radius:4px;cursor:pointer" style-hover="filter:brightness(1.08)" type="button">Modifier</button>
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 10px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ko);background:transparent;border:none;cursor:pointer" style-hover="text-decoration:underline" type="button">Supprimer</button>
+</div>
+</div>
+<div style="padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:16px" style-hover="background:var(--sf2)">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:17px;font-weight:620;line-height:1.3">Votre devis part seul : le client doit reconstruire sa valeur ligne par ligne</span>
+<span style="font-size:13px;line-height:1.4;color:var(--ink3);display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none"></span>Cas d’usage métier<span style="color:var(--bd2)">·</span><span style="font-variant-numeric:tabular-nums">1 264 caractères</span><span style="color:var(--bd2)">·</span>assistant, commercial, usage<span style="color:var(--ink3)">+3</span></span>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Modifier</button>
+<button aria-label="Autres actions" style="flex:none;white-space:nowrap;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);background:var(--sf2)" type="button">···</button>
+</div>
+</div>
+<div style="padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:16px" style-hover="background:var(--sf2)">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:17px;font-weight:620;line-height:1.3">Votre devis est prêt. Le client doit encore comprendre pourquoi il devrait signer</span>
+<span style="font-size:13px;line-height:1.4;color:var(--ink3);display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none"></span>Cas d’usage métier<span style="color:var(--bd2)">·</span><span style="font-variant-numeric:tabular-nums">1 003 caractères</span><span style="color:var(--bd2)">·</span>usages, quotidiens, générer<span style="color:var(--ink3)">+3</span><span style="color:var(--bd2)">·</span><span style="color:var(--ambT);text-decoration:underline;text-decoration-color:var(--amb);text-underline-offset:2px">jamais relu</span></span>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Modifier</button>
+<button aria-label="Autres actions" style="flex:none;white-space:nowrap;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);background:var(--sf2)" type="button">···</button>
+</div>
+</div>
+<div style="padding:13px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:16px" style-hover="background:var(--sf2)">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:17px;font-weight:620;line-height:1.3">Avec Claude, chaque ambiguïté de spécification finit en code à reprendre</span>
+<span style="font-size:13px;line-height:1.4;color:var(--ink3);display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none"></span>Pédagogie<span style="color:var(--bd2)">·</span><span style="font-variant-numeric:tabular-nums">1 111 caractères</span><span style="color:var(--bd2)">·</span>claude, spécifications, méthode<span style="color:var(--ink3)">+4</span></span>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Modifier</button>
+<button aria-label="Autres actions" style="flex:none;white-space:nowrap;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);background:var(--sf2)" type="button">···</button>
+</div>
+</div>
+<div style="padding:13px 16px;display:flex;align-items:center;gap:16px" style-hover="background:var(--sf2)">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:17px;font-weight:620;line-height:1.3">Votre commercial vend la valeur, votre devis n’affiche que des lignes de prix</span>
+<span style="font-size:13px;line-height:1.4;color:var(--ink3);display:flex;align-items:center;gap:7px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ink3);flex:none"></span>Cas d’usage métier<span style="color:var(--bd2)">·</span><span style="font-variant-numeric:tabular-nums">1 247 caractères</span><span style="color:var(--bd2)">·</span>assistant, commercial, valeur<span style="color:var(--ink3)">+3</span></span>
+</div>
+<div style="flex:none;display:flex;align-items:center;gap:8px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Modifier</button>
+<button aria-label="Autres actions" style="flex:none;white-space:nowrap;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);background:var(--sf2)" type="button">···</button>
+</div>
+</div>
+</div>
+<span style="font-size:13px;line-height:1.5;color:var(--ink3)">Ligne survolée : les cinq actions apparaissent. Au repos, deux seulement. Trente lignes portent donc 60 boutons au lieu de 150.</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ biblioTriage }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;overflow:hidden">
+
+<div style="width:440px;flex:none;border-right:1px solid var(--bd);background:var(--sf);display:flex;flex-direction:column;overflow:hidden">
+<div style="height:38px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--bd)">
+<button style="flex:none;white-space:nowrap;height:24px;padding:0 9px;font-family:inherit;font-size:12px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;border-radius:3px;cursor:pointer" type="button">À relire 12</button>
+<button style="flex:none;white-space:nowrap;height:24px;padding:0 9px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Prêts 5</button>
+<button style="flex:none;white-space:nowrap;height:24px;padding:0 9px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:3px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Planifiés 1</button>
+<span style="margin-left:auto;font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">30 au total</span>
+</div>
+<div style="flex:1;min-height:0;overflow:hidden">
+
+<div style="padding:9px 16px;background:var(--sf2);border-bottom:1px solid var(--bd);display:flex;align-items:baseline;justify-content:space-between">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Devis et valeur perçue</span>
+<span style="font-size:12px;font-weight:500;color:var(--ambT)">5 variantes du même sujet</span>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);background:var(--priTint);display:flex;flex-direction:column;gap:3px;cursor:pointer;box-shadow:inset 2px 0 0 0 var(--pri)">
+<span style="font-size:15px;font-weight:620;line-height:1.35">Votre devis part seul : le client doit reconstruire sa valeur ligne par ligne</span>
+<span style="font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">1 264 caractères · 3 versions · modifié hier</span>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:15px;font-weight:500;line-height:1.35;color:var(--ink2)">Votre devis est prêt. Le client doit encore comprendre pourquoi il devrait signer</span>
+<span style="font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">1 003 caractères · <span style="color:var(--ambT)">jamais relu</span></span>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:15px;font-weight:500;line-height:1.35;color:var(--ink2)">Votre commercial vend la valeur, votre devis n’affiche que des lignes de prix</span>
+<span style="font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">1 247 caractères · <span style="color:var(--ambT)">jamais relu</span></span>
+</div>
+<div style="padding:9px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:13px;font-weight:500;color:var(--ink3)">Deux variantes de plus, repliées</span>
+<span style="font-size:13px;color:var(--ink3);margin-left:auto">Déplier</span>
+</div>
+
+<div style="padding:9px 16px;background:var(--sf2);border-bottom:1px solid var(--bd);display:flex;align-items:baseline;justify-content:space-between">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Agents IA et processus</span>
+<span style="font-size:12px;font-weight:500;color:var(--ambT)">3 variantes du même sujet</span>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:15px;font-weight:500;line-height:1.35;color:var(--ink2)">Quel processus confier à un agent IA quand personne ne l’a défini ?</span>
+<span style="font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">1 048 caractères · modifié il y a 4 j</span>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:15px;font-weight:500;line-height:1.35;color:var(--ink2)">Avant d’acheter un agent IA, nommez le processus qu’il doit exécuter</span>
+<span style="font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">1 001 caractères · modifié il y a 4 j</span>
+</div>
+<div style="padding:9px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:13px;font-weight:500;color:var(--ink3)">Une variante de plus, repliée</span>
+<span style="font-size:13px;color:var(--ink3);margin-left:auto">Déplier</span>
+</div>
+
+<div style="padding:9px 16px;background:var(--sf2);border-bottom:1px solid var(--bd);display:flex;align-items:baseline;justify-content:space-between">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Prise en main des outils</span>
+<span style="font-size:12px;color:var(--ink3)">2 sujets</span>
+</div>
+<div style="padding:11px 16px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:15px;font-weight:500;line-height:1.35;color:var(--ink2)">Claude Cowork en PME : commencez par une tâche connue</span>
+<span style="font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">1 086 caractères · modifié aujourd’hui</span>
+</div>
+<div style="padding:11px 16px;display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="background:var(--sf2)">
+<span style="font-size:15px;font-weight:500;line-height:1.35;color:var(--ink2)">Avec Claude, chaque ambiguïté de spécification finit en code à reprendre</span>
+<span style="font-size:12px;color:var(--ink3);font-variant-numeric:tabular-nums">1 111 caractères · modifié il y a 2 j</span>
+</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden">
+<div style="flex:1;min-height:0;padding:22px 28px;display:flex;gap:24px;overflow:hidden">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+<span style="font-size:22px;font-weight:620;line-height:1.25;letter-spacing:-.012em;max-width:40ch">Votre devis part seul : le client doit reconstruire sa valeur ligne par ligne</span>
+<div style="font-size:16px;line-height:1.65;color:var(--ink);max-width:68ch;display:flex;flex-direction:column;gap:13px;overflow:hidden">
+<p style="margin:0">Un devis correct part chez le client, et il n’en revient rien. Ce n’est pas toujours le prix : c’est que personne n’explique ce que le prix achète.</p>
+<div style="margin:1px 0;border-top:1px dashed var(--amb);display:flex;justify-content:flex-end"><span style="margin-top:-9px;padding:0 6px;background:var(--bg);font-size:11px;font-weight:680;letter-spacing:.06em;text-transform:uppercase;color:var(--ambT)">Repli, 210</span></div>
+<p style="margin:0">Le document liste des lignes, des quantités, un total. Le client, lui, doit reconstruire seul la valeur derrière chaque ligne, souvent plusieurs jours après votre rendez vous.</p>
+<p style="margin:0">Un assistant peut produire, à partir du même devis, une note d’une page qui dit pourquoi chaque poste existe et ce qu’il évite comme coût. Vous la relisez en cinq minutes.</p>
+<p style="margin:0">Quel est le dernier devis que vous avez envoyé sans un mot d’explication ?</p>
+</div>
+</div>
+<div style="width:212px;flex:none;display:flex;flex-direction:column;gap:0;font-size:13px">
+<div style="padding:9px 0;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:2px"><span style="color:var(--ink3);font-size:12px">Pilier</span><span style="font-weight:500">Cas d’usage métier</span></div>
+<div style="padding:9px 0;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:2px"><span style="color:var(--ink3);font-size:12px">Longueur</span><span style="font-weight:500;font-variant-numeric:tabular-nums">1 264 sur 3 000</span></div>
+<div style="padding:9px 0;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:2px"><span style="color:var(--ink3);font-size:12px">Marqueurs IA</span><span style="font-weight:500;color:var(--ambT)">1 repéré, souligné</span></div>
+<div style="padding:9px 0;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:2px"><span style="color:var(--ink3);font-size:12px">Versions</span><span style="font-weight:500">3, la dernière hier</span></div>
+<div style="padding:9px 0;display:flex;flex-direction:column;gap:2px"><span style="color:var(--ink3);font-size:12px">Cible</span><span style="font-weight:500">Dirigeant de PME</span></div>
+<span style="margin-top:12px;font-size:13px;line-height:1.5;color:var(--ink3)">L’historique des versions existe en base et n’était affiché nulle part.</span>
+</div>
+</div>
+<div style="flex:none;padding:12px 28px;border-top:1px solid var(--bd);background:var(--sf);display:flex;align-items:center;gap:10px">
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 16px;font-family:inherit;font-size:14px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;border-radius:4px;cursor:pointer" style-hover="filter:brightness(1.08)" type="button">Copier le post</button>
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 14px;font-family:inherit;font-size:14px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Planifier</button>
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 14px;font-family:inherit;font-size:14px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Retravailler</button>
+<button style="flex:none;white-space:nowrap;height:36px;padding:0 12px;font-family:inherit;font-size:14px;font-weight:500;line-height:1;color:var(--ink3);background:transparent;border:none;cursor:pointer" style-hover="color:var(--ink)" type="button">Fusionner les 5 variantes</button>
+<button aria-label="Autres actions" style="flex:none;white-space:nowrap;margin-left:auto;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:var(--ink3);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="color:var(--ink);background:var(--sf2)" type="button">···</button>
+</div>
+</div>
+
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ estParam }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;height:860px">
+<div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--bd);background:var(--sf)">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Paramètres</span>
+<span style="font-size:13px;color:var(--ink3)">Tout reste sur cet ordinateur</span>
+</div>
+<div style="flex:1;min-height:0;padding:22px 24px;display:flex;gap:24px;overflow:hidden">
+<div style="width:760px;flex:none;display:flex;flex-direction:column;gap:20px">
+
+<div style="display:flex;flex-direction:column;gap:9px">
+<span style="font-size:17px;font-weight:620">Application</span>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden">
+<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:center">
+<span style="font-size:14px;font-weight:500">Thème</span>
+<div style="display:flex;border:1px solid var(--bd2);border-radius:4px;overflow:hidden;width:fit-content;height:30px">
+<button style="flex:none;white-space:nowrap;padding:0 13px;font-family:inherit;font-size:13px;font-weight:600;line-height:1;color:#ffffff;background:var(--pri);border:none;cursor:pointer" type="button">Système</button>
+<button style="flex:none;white-space:nowrap;padding:0 13px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:none;cursor:pointer" style-hover="background:var(--sf2)" type="button">Clair</button>
+<button style="flex:none;white-space:nowrap;padding:0 13px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:none;cursor:pointer" style-hover="background:var(--sf2)" type="button">Sombre</button>
+</div>
+</div>
+<div style="padding:12px 16px;display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:center">
+<span style="font-size:14px;font-weight:500">Visite guidée</span>
+<div style="display:flex;align-items:center;gap:12px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 13px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Revoir la visite guidée</button>
+<span style="font-size:13px;color:var(--ink3)">Sept étapes, deux minutes</span>
+</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:9px">
+<div style="display:flex;align-items:baseline;gap:10px">
+<span style="font-size:17px;font-weight:620">Moteur d’exécution</span>
+<span style="font-size:13px;color:var(--ink3)">Le moteur retenu est contraignant : s’il n’est pas connecté, la génération échoue en le nommant.</span>
+</div>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden">
+<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;background:var(--priTint)">
+<span style="font-size:14px;font-weight:620;width:150px;flex:none">Codex, ChatGPT</span>
+<span style="font-size:13px;color:var(--ink2);flex:1;min-width:0">Abonnement ChatGPT Plus ou Team</span>
+<span style="font-size:12px;font-weight:600;color:var(--priT);display:flex;align-items:center;gap:5px;flex:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Moteur actif</span>
+</div>
+<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px">
+<span style="font-size:14px;font-weight:500;width:150px;flex:none">Claude Code</span>
+<span style="font-size:13px;color:var(--ink3);flex:1;min-width:0">Connecté · abonnement Claude Pro ou Team</span>
+<button style="flex:none;white-space:nowrap;flex:none;height:28px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Sélectionner</button>
+</div>
+<div style="padding:12px 16px;display:flex;align-items:center;gap:12px">
+<span style="font-size:14px;font-weight:500;width:150px;flex:none">Gemini CLI</span>
+<span style="font-size:13px;color:var(--ink3);flex:1;min-width:0">Installé, non connecté · une commande à lancer</span>
+<button style="flex:none;white-space:nowrap;flex:none;height:28px;padding:0 12px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Voir la commande</button>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:9px">
+<span style="font-size:17px;font-weight:620">Espace de travail</span>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;overflow:hidden">
+<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:center">
+<span style="font-size:14px;font-weight:500">Export</span>
+<div style="display:flex;align-items:center;gap:12px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 13px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Exporter en JSON</button>
+<span style="font-size:13px;color:var(--ink3)">Stratégie, inventaire et journaux</span>
+</div>
+</div>
+<div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:center">
+<span style="font-size:14px;font-weight:500">Diagnostics</span>
+<div style="display:flex;align-items:center;gap:12px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 13px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ink2);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2)" type="button">Historique des générations</button>
+<span style="font-size:13px;color:var(--ink3)">Utile pour comprendre une erreur</span>
+</div>
+</div>
+<div style="padding:12px 16px;display:grid;grid-template-columns:168px 1fr;gap:14px;align-items:center">
+<span style="font-size:14px;font-weight:500">Journaux techniques</span>
+<div style="display:flex;align-items:center;gap:12px">
+<button style="flex:none;white-space:nowrap;height:30px;padding:0 11px;font-family:inherit;font-size:13px;font-weight:500;line-height:1;color:var(--ko);background:transparent;border:1px solid var(--bd2);border-radius:4px;cursor:pointer" style-hover="background:var(--sf2);border-color:var(--ko)" type="button">Purger les journaux</button>
+<span style="font-size:13px;color:var(--ink3)">Vos contenus et votre stratégie ne sont pas concernés</span>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)">Ce qui change ici</span>
+<div style="background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.6;color:var(--ink2)">
+<span>Trois mentions vertes « Connecté » devenaient un bruit uniforme. Une seule marque compte : le moteur actif, en bleu. Les autres états passent en texte gris.</span>
+<span>« Purger les journaux » n’est plus un bouton plein rouge : le rouge plein est réservé à la confirmation, une fois.</span>
+<span>Les titres de section descendent de 26 px à 17 px, graisse 620 : ils étaient plus lourds que le titre d’écran.</span>
+</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:12px;margin-top:6px">
+<span style="font-size:11px;font-weight:680;letter-spacing:.08em;text-transform:uppercase;color:#616a76">Correctifs pour cet écran</span>
+<div style="background:#f6f7f9;border:1px solid #e3e6ea;border-radius:4px;overflow:hidden">{{ correctifs }}</div>
+</div>
+
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1460,&quot;height&quot;:1400}}">
+const SOMBRE = "--bg:#0d1117;--sf:#151a21;--sf2:#1c222b;--bd:#2a3240;--bd2:#3a4353;--ink:#e7ecf2;--ink2:#a9b3c0;--ink3:#8b95a3;--pri:#1a6fc4;--priT:#5aa4ea;--priTint:#132639;--priBd:#274b6d;--amb:#e0a744;--ambT:#e6b25c;--ambTint:#2a2113;--ambBd:#4a3a1c;--ok:#4ec08c;--ko:#f0796f";
+
+const CORRECTIFS = {
+  strategie: [
+    ["Six coches vertes sur les onglets", "Le vert est réservé au terminal, c’est à dire au post publié. Six coches identiques ne hiérarchisent rien et épuisent la couleur. Remplacer par le compte d’éléments saisis, en 12 px graisse 500 gris tertiaire, et « à jour » en texte pour le socle."],
+    ["Complétude : cinq segments pour quatre champs", "L’indicateur affiche « 4 sur 4 » sous cinq segments dont un reste gris, donc il se contredit lui même. Un segment par champ obligatoire, ni plus ni moins, et le libellé précise l’unité : « 4 champs sur 4 »."],
+    ["Deux actions concurrentes en tête d’écran", "« Enregistrer » et « Régénérer le socle » sont au même rang, et c’est la régénération qui porte le remplissage bleu. Un seul bouton plein par écran, et c’est l’enregistrement. La régénération descend dans le panneau de droite, en bouton bordé, avec la phrase qui dit ce qu’elle fait."],
+    ["Colonne de libellés de 456 px", "Le libellé et son champ sont séparés par près de 300 px de vide, ce qui casse l’association œil, libellé, champ. Colonne de libellé à 168 px, gouttière de 14 px, champ à 592 px maximum."],
+    ["Champ « Positionnement » qui tronque sa valeur", "La valeur dépasse la largeur du champ sur une seule ligne, donc l’utilisateur ne peut pas relire ce qu’il a écrit sans se déplacer dans le champ. Passer en zone de texte de deux lignes pour tout champ dont la valeur dépasse 90 caractères."],
+    ["Moitié inférieure de l’écran vide", "Le formulaire s’arrête à mi hauteur et laisse 500 px inutilisés, alors que l’écran est réputé trop long. Occuper la colonne rendue par un panneau qui dit l’effet du profil sur les générations, la fraîcheur du socle, et le contrôle de recette."],
+    ["« Déplier toutes les aides » en bouton bordé", "Ce contrôle est un confort, pas une action métier : il ne doit pas porter de bordure au même niveau que les actions réelles. Texte gris, aligné sur la ligne d’onglets."]
+  ],
+  creer: [
+    ["Deux motifs d’aide coexistent", "« Titre du sujet » et « Angle » gardent leur phrase d’aide dans le flux, seul « Pilier éditorial » a le point d’interrogation. Le motif doit être unique sur les quatre champs : libellé, bouton d’aide de 20 px, champ. Aucune aide dans le flux tant qu’elle n’est pas demandée."],
+    ["Colonne de libellés de 460 px", "Même écart que sur Stratégie : le champ commence à 767 px du bord. Colonne à 150 px sur cet écran, le plan de saisie tenant en 700 px de large."],
+    ["Cinq piliers empilés sur quatre lignes", "Les pastilles font 40 px de haut et se posent une par ligne, ce qui fait de la taxonomie le plus gros bloc de l’écran. Rangée à retour automatique, hauteur 30 px, gouttière 6 px, libellés raccourcis : « Adoption et changement », « Pédagogie et montée en compétences »."],
+    ["« Cible visée » absent", "La doctrine exige une cible unique et l’application envoie encore toutes les cibles au modèle. Ajouter la rangée de cibles, sélection unique, juste sous le pilier : c’est le champ qui change le plus la qualité du texte."],
+    ["Deux idées sans titre dans la liste", "Deux lignes n’affichent que « Veille » ou « General », donc une ligne cliquable sans contenu lisible. Repli explicite : « Idée sans titre » en italique gris, et la provenance datée en dessous."],
+    ["« Ajouter au backlog » paraît désactivé", "Le gris plein sur fond gris se lit comme un bouton inactif alors que l’action est disponible. Surface blanche, bordure 1 px, encre secondaire : une action secondaire lisible, jamais un faux désactivé."],
+    ["Vide de 400 px sous le formulaire", "Le plan de saisie flotte au dessus d’un vide, la barre d’action étant collée en bas de la carte. Réduire la carte à sa hauteur de contenu et laisser la barre d’action juste sous le dernier champ."]
+  ],
+  atelier: [
+    ["Barre d’action absente de l’écran", "« Copier le post », le geste qui termine le parcours, n’est pas visible : les seules actions présentes sont deux sorties, « Changer d’idée » et « Revenir au cadrage ». Barre d’action fixée en bas de la colonne de texte, hauteur 60 px, bouton plein « Copier le post » à gauche."],
+    ["Chip d’accroche tronquée par des points de suspension", "« Si vos équipes bloquent dès qu’un outil IA de… » coupe au milieu et ne se relit pas. Préfixer par « Accroche : », limiter à 26 caractères d’affichage, texte complet en infobulle native."],
+    ["« Draft prêt. » collé à la chip voisine", "Anglicisme, point final parasite, et aucun espace avec l’élément précédent. Statut en pastille grise « Brouillon prêt », posée après un séparateur, ou retirée puisque l’étape 4 le dit déjà."],
+    ["Deux sorties de même poids", "« Changer d’idée » en haut à droite et « Revenir au cadrage » dans le ruban font la même promesse. Garder « Revenir au cadrage » dans le ruban, supprimer l’autre."],
+    ["Aperçu au même corps que le brouillon", "Les deux colonnes se lisent en 16 px, donc rien ne dit laquelle est la source. Brouillon en 16 px interlignage 1,65, aperçu en 15 px interlignage 1,5."],
+    ["Mise en garde sur la détection dans le flux", "La phrase « la détection sous compte » occupe deux lignes sous le texte, en permanence, alors qu’elle ne sert qu’une fois. Compte de marqueurs en 12 px près du compteur de caractères, mise en garde dans son infobulle."],
+    ["Compteur de caractères sans référence", "« 1 914 caractères restants » ne dit pas restants sur quoi. Écrire « 1 914 restants sur 3 000 », en chiffres tabulaires."],
+    ["Le repli tombe au milieu d’un mot", "L’aperçu montre la coupe à « ren | force » : c’est exactement l’information utile, il faut la commenter. Ajouter la phrase sous l’aperçu qui invite à terminer l’accroche avant 210 caractères."]
+  ],
+  biblio: [
+    ["Option B, le vrai problème : 30 brouillons, 1 planifié, 0 publié", "Une liste bien rangée reste une liste de fichiers. Elle ne dit pas lequel des trente est le plus près d’être publié, et elle ne montrera jamais un texte. Deux volets : le tri à gauche en 440 px, le post lisible à droite à 68 caractères de mesure, avec le repli à 210 tracé dedans. On juge un brouillon en le lisant, pas en lisant sa fiche."],
+    ["Option B : cinq variantes du même sujet, côte à côte sans le dire", "Les captures montrent cinq posts sur les devis et trois sur les agents IA, présentés comme huit objets indépendants. Regrouper par sujet, la meilleure version dépliée, les autres repliées sous « deux variantes de plus », et une action « fusionner les variantes ». C’est le rangement que les données réclament."],
+    ["Option B : trier par ce qui reste à faire, pas par date", "Trois entrées seulement : à relire, prêts, planifiés. « Jamais relu » est un état visible en ambre, puisque c’est lui qui bloque la publication. La date de modification descend en méta de 12 px."],
+    ["Option B : l’historique des versions enfin affiché", "Il existe en base et n’apparaissait nulle part. Il tient en une ligne du panneau de métadonnées, « 3 versions, la dernière hier », et devient l’entrée d’une comparaison avant, après."],
+    ["Cinquante actions visibles simultanément", "Cinq actions par ligne sur dix lignes visibles saturent la moitié droite de l’écran et rendent la comparaison des titres impossible. Au repos : « Modifier » bordé et un menu de dépassement. Au survol ou au focus clavier de la ligne : les cinq actions."],
+    ["« Supprimer » en rouge répété onze fois", "L’action destructive est la plus colorée de l’écran et la plus répétée. Texte rouge dans le menu de dépassement, jamais de bouton plein en liste, rouge plein réservé à la boîte de confirmation."],
+    ["Mots clés tronqués en milieu de mot", "« entrep », « revolutio », « désorr » : la ligne de méta déborde sans limite de nombre. Trois mots clés au maximum, séparés par des virgules, puis « +6 » gris. Aucun mot ne se coupe."],
+    ["Point orphelin en tête de méta", "La ligne commence par une pastille suivie d’un séparateur puis « Brouillon », ce qui donne « · Brouillon » sans référent. Pastille de pilier de 6 px suivie du nom du pilier, et statut affiché seulement s’il diffère de « brouillon »."],
+    ["Statut redondant sur chaque ligne", "L’onglet actif dit déjà « Brouillons », et chaque ligne répète « Brouillon » trente fois. Retirer le statut de la ligne, garder l’état exceptionnel : « jamais relu », en ambre souligné."],
+    ["Deux cartes de mesure devenues une ligne, à finir", "Le nombre de brouillons et la longueur moyenne sont désormais dans le titre de section, ce qui est juste. Les afficher en une seule phrase alignée à droite, en 13 px graisse 500, chiffres tabulaires."],
+    ["Titre du volet et titre de section en double", "La barre d’écran affiche « Bibliothèque » et la section « Brouillons » avec une infobulle. Garder la barre d’écran, laisser à la section son étiquette 11 px capitales, retirer l’infobulle qui n’explique rien d’ambigu."]
+  ],
+  param: [
+    ["Trois mentions vertes « Connecté »", "Trois coches vertes identiques sur trois lignes ne distinguent pas ce qui compte, à savoir le moteur actif. Le moteur actif porte la marque bleue et une ligne teintée ; les autres disent leur état en texte gris."],
+    ["« Purger les journaux » en bouton plein rouge", "L’action la plus destructive de l’écran est aussi la plus visible, alors qu’elle est rarement utilisée. Bouton bordé, libellé rouge, bordure rouge au survol. Le rouge plein reste dans la confirmation."],
+    ["Titres de section en 26 px", "« Application », « Moteur d’exécution », « Données » sont plus lourds que le titre d’écran et que tous les titres de contenu du produit. Passer à 17 px graisse 620, ce qui est le palier de titre de bloc."],
+    ["Colonne de libellés de 340 px", "Même écart que sur les autres écrans, avec en plus des lignes de description qui repassent sous le contrôle. Libellé à 168 px, contrôle puis explication courte sur la même ligne."],
+    ["Explications plus longues que nécessaire", "Le paragraphe sur le moteur fait quatre lignes et répète ce que la liste montre. Une phrase par section, la conséquence utile en premier : « s’il n’est pas connecté, la génération échoue en le nommant »."],
+    ["Carte blanche dans un bloc gris", "Chaque groupe est une carte dans une carte, ce qui ajoute une bordure sans ajouter de sens. Un seul niveau : titre de section, puis une carte à lignes séparées."],
+    ["Écran le plus lisible du produit", "À préserver tel quel dans sa structure : titre, phrase, contrôle. C’est le modèle à généraliser aux autres écrans, pas l’inverse."]
+  ]
+};
+
+class Component extends DCLogic {
+  state = { ecran: "strategie", sombre: false, aide: {}, biblioVar: "B" };
+
+  nav(actif) {
+    const base = "flex:none;white-space:nowrap;height:34px;display:flex;align-items:center;padding:0 12px;font-family:inherit;font-size:14px;line-height:1;text-align:left;border:none;border-radius:4px;cursor:pointer;";
+    return actif ? base + "font-weight:600;color:#ffffff;background:var(--pri)" : base + "font-weight:400;color:var(--ink2);background:transparent";
+  }
+  onglet(actif) {
+    const base = "flex:none;white-space:nowrap;height:32px;padding:0 13px;font-family:inherit;font-size:13px;line-height:1;border:none;cursor:pointer;";
+    return actif ? base + "font-weight:600;color:#ffffff;background:#0f141b" : base + "font-weight:500;color:#414b57;background:#ffffff";
+  }
+  aideBtn(ouverte) {
+    const base = "width:20px;height:20px;flex:none;font-family:inherit;font-size:11px;font-weight:600;line-height:1;border-radius:50%;cursor:pointer;";
+    return ouverte ? base + "color:var(--ink);background:var(--sf2);border:1px solid var(--bd2)" : base + "color:var(--ink3);background:var(--sf2);border:1px solid var(--bd)";
+  }
+  va(ecran) { return () => this.setState({ ecran, aide: {} }); }
+  bascule(n) { return () => this.setState(s => ({ aide: Object.assign({}, s.aide, { [n]: !s.aide[n] }) })); }
+
+  liste(cle) {
+    const items = CORRECTIFS[cle] || [];
+    return items.map((it, i) => React.createElement("div", {
+      key: i,
+      style: {
+        display: "grid", gridTemplateColumns: "28px 300px 1fr", gap: "16px",
+        padding: "13px 20px", alignItems: "baseline",
+        borderBottom: i === items.length - 1 ? "none" : "1px solid #e3e6ea",
+        background: "#ffffff"
+      }
+    },
+      React.createElement("span", { style: { fontSize: "13px", fontWeight: 500, lineHeight: 1.5, color: "#616a76", fontVariantNumeric: "tabular-nums" } }, String(i + 1).padStart(2, "0")),
+      React.createElement("span", { style: { fontSize: "14px", fontWeight: 620, lineHeight: 1.5, color: "#0f141b" } }, it[0]),
+      React.createElement("span", { style: { fontSize: "14px", fontWeight: 400, lineHeight: 1.6, color: "#414b57" } }, it[1])
+    ));
+  }
+
+  renderVals() {
+    const s = this.state, e = s.ecran;
+    return {
+      themeVars: s.sombre ? SOMBRE : "",
+      basculerTheme: () => this.setState(p => ({ sombre: !p.sombre })),
+      iconeTheme: s.sombre
+        ? React.createElement("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round" },
+            React.createElement("circle", { cx: 12, cy: 12, r: 4.5 }),
+            React.createElement("line", { x1: 12, y1: 3, x2: 12, y2: 5 }),
+            React.createElement("line", { x1: 12, y1: 19, x2: 12, y2: 21 }),
+            React.createElement("line", { x1: 3, y1: 12, x2: 5, y2: 12 }),
+            React.createElement("line", { x1: 19, y1: 12, x2: 21, y2: 12 }),
+            React.createElement("line", { x1: 5.6, y1: 5.6, x2: 7, y2: 7 }),
+            React.createElement("line", { x1: 17, y1: 17, x2: 18.4, y2: 18.4 }),
+            React.createElement("line", { x1: 5.6, y1: 18.4, x2: 7, y2: 17 }),
+            React.createElement("line", { x1: 17, y1: 7, x2: 18.4, y2: 5.6 }))
+        : React.createElement("svg", { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round" },
+            React.createElement("path", { d: "M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z" })),
+      estStrategie: e === "strategie", estCreer: e === "creer", estAtelier: e === "atelier",
+      estBiblio: e === "biblio", estParam: e === "param",
+      voirStrategie: this.va("strategie"), voirCreer: this.va("creer"), voirAtelier: this.va("atelier"),
+      voirBiblio: this.va("biblio"), voirParam: this.va("param"),
+      navCockpit: this.nav(false),
+      navStrategie: this.nav(e === "strategie"),
+      navCreer: this.nav(e === "creer" || e === "atelier"),
+      navBiblio: this.nav(e === "biblio"),
+      navParam: this.nav(e === "param"),
+      ongletStrategie: this.onglet(e === "strategie"), ongletCreer: this.onglet(e === "creer"),
+      ongletAtelier: this.onglet(e === "atelier"), ongletBiblio: this.onglet(e === "biblio"),
+      ongletParam: this.onglet(e === "param"),
+      aide1: this.bascule(1), aide2: this.bascule(2), aide3: this.bascule(3), aide4: this.bascule(4),
+      aideOuverte1: !!s.aide[1], aideOuverte2: !!s.aide[2], aideOuverte3: !!s.aide[3], aideOuverte4: !!s.aide[4],
+      boutonAide1: this.aideBtn(!!s.aide[1]), boutonAide2: this.aideBtn(!!s.aide[2]),
+      boutonAide3: this.aideBtn(!!s.aide[3]), boutonAide4: this.aideBtn(!!s.aide[4]),
+      libelleAide: [1, 2, 3, 4].every(n => s.aide[n]) ? "Replier les aides" : "Déplier les aides",
+      basculerAideGlobale: () => this.setState(p => {
+        const tout = [1, 2, 3, 4].every(n => p.aide[n]);
+        return { aide: { 1: !tout, 2: !tout, 3: !tout, 4: !tout } };
+      }),
+      biblioVar: s.biblioVar,
+      biblioListe: s.biblioVar === "A",
+      biblioTriage: s.biblioVar === "B",
+      basculerBiblio: () => this.setState(p => ({ biblioVar: p.biblioVar === "A" ? "B" : "A" })),
+      correctifs: this.liste(e)
+    };
+  }
+}
+</script>
+</body>
+</html>

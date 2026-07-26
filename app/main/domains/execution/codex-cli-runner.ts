@@ -7,6 +7,8 @@ import type {
   SkillRunnerResult
 } from "./skill-runner.service";
 import { findCodexBinary } from "./find-codex-binary";
+import { CODEX_ENV_KEYS, CODEX_POLICY_ARGS } from "./codex-engine";
+import { buildChildEnv } from "./spawn-cli";
 import {
   FrameworkPromptNotFoundError,
   SkillPromptNotFoundError,
@@ -63,14 +65,30 @@ export function resolveCodexCommand(): string {
   return findCodexBinary() ?? "codex";
 }
 
+/**
+ * Racine de travail demandee a Codex, relue depuis l argument `-C` de l argv.
+ *
+ * L executeur ne recoit que `args` et `input` : il n a pas de reference au
+ * dossier temporaire cree plus haut. Plutot que d elargir la signature, donc
+ * tous les doubles de test avec elle, la valeur est relue depuis l argv, ou
+ * elle est deja. Ainsi le repertoire de travail du processus ne peut pas
+ * diverger de la racine annoncee a l agent.
+ */
+function workingDirectoryFromArgs(args: string[]): string | undefined {
+  const index = args.indexOf("-C");
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
 function defaultExecutor(args: string[], input: string) {
   const timeoutMs = resolveCodexCliTimeoutMs();
   const command = resolveCodexCommand();
   const result = spawnSync(command, args, {
     input,
     encoding: "utf8",
-    cwd: process.cwd(),
-    env: process.env,
+    cwd: workingDirectoryFromArgs(args) ?? process.cwd(),
+    // Meme liste blanche que le moteur asynchrone. `process.env` en entier
+    // laissait passer les jetons de tous les autres projets du poste.
+    env: buildChildEnv(CODEX_ENV_KEYS),
     timeout: timeoutMs
   });
 
@@ -139,6 +157,20 @@ export class CodexCliRunner {
       const result = this.executor(
         [
           "exec",
+          // POLITIQUE D EXECUTION EPINGLEE, identique a celle du moteur
+          // asynchrone : les drapeaux viennent de la meme constante partagee,
+          // ils ne peuvent donc pas diverger. Voir le bloc de documentation
+          // au-dessus de `CodexEngine`.
+          //
+          // Ce chemin-ci n est pas celui qu emprunte l application aujourd hui
+          // (`executeAsync` passe par le registre de moteurs), mais il lance la
+          // meme commande avec le meme prompt, donc avec le meme texte
+          // d origine incontrolee. « Ce n est pas le chemin actif » n est pas
+          // une propriete qui se garantit dans le temps : un montage sans
+          // registre le rallume en silence.
+          ...CODEX_POLICY_ARGS,
+          "-C",
+          tempDirectory,
           "--skip-git-repo-check",
           "--ephemeral",
           "--output-last-message",

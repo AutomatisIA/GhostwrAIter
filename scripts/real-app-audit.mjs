@@ -7,7 +7,30 @@ function createAuditHome() {
   return process.env.AUDIT_HOME || mkdtempSync(join(tmpdir(), "ghostwraiter-audit-"));
 }
 
+/**
+ * CE QUE CE SCRIPT EST, ET CE QU IL N EST PAS.
+ *
+ * C est un PARCOURS JOURNALISE : il traverse la chaine editoriale de bout en
+ * bout et imprime ce qu il voit a chaque etape. Il n assertit rien. Aucune de
+ * ses lignes ne compare une valeur relevee a une valeur attendue, et ce n est
+ * pas un oubli : la plupart de ces etapes appellent un moteur d IA, dont la
+ * sortie n a pas de valeur attendue. Le journal est fait pour etre LU.
+ *
+ * Il etait pourtant declare porte de recette par le modele de pull request et
+ * par `docs/exploitation.md`. Il avalait toute erreur dans un `catch` et
+ * sortait en 0 quoi qu il arrive : une panne a l etape 3 sautait les onze
+ * suivantes, imprimait une ligne au milieu de quatorze blocs de JSON, et la
+ * case « aucune regression » restait cochable. Les deux documents le decrivent
+ * desormais pour ce qu il est, et le code de sortie a cesse de mentir : un
+ * parcours interrompu sort en 1 et annonce combien d etapes n ont pas ete
+ * jouees. C est le minimum pour qu un journal serve a quelque chose : savoir
+ * qu il est complet.
+ */
+const ETAPES_ATTENDUES = 14;
+let etapesJouees = 0;
+
 function logStep(step, data) {
+  etapesJouees += 1;
   console.log(`STEP ${step}: ${JSON.stringify(data)}`);
 }
 
@@ -28,6 +51,8 @@ const app = await electron.launch({
 const page = await app.firstWindow();
 page.setDefaultTimeout(30000);
 await page.waitForTimeout(1500);
+
+let interruption = null;
 
 try {
   logStep("environment", {
@@ -227,7 +252,33 @@ try {
     text: (await page.locator("body").innerText()).slice(0, 1200)
   });
 } catch (error) {
-  logStep("error", { message: String(error) });
+  interruption = error;
+  console.error(`STEP error: ${JSON.stringify({ message: String(error) })}`);
 } finally {
   await app.evaluate(async ({ app }) => app.quit());
+}
+
+// Les quatorze etapes sont les quatorze appels a `logStep`, `environment`
+// compris : c est le compte que `docs/exploitation.md` annonce.
+const parcourues = etapesJouees;
+
+console.log(
+  `\nParcours : ${parcourues} etape(s) sur ${ETAPES_ATTENDUES}${
+    interruption ? " avant interruption" : ""
+  }.`
+);
+
+if (interruption) {
+  console.error(
+    `Interrompu a l etape ${parcourues + 1} : ${String(interruption)}\n` +
+      `Les ${ETAPES_ATTENDUES - parcourues} etapes suivantes n ont PAS ete jouees.`
+  );
+  process.exit(1);
+}
+
+if (parcourues < ETAPES_ATTENDUES) {
+  console.error(
+    `Le parcours annonce ${ETAPES_ATTENDUES} etapes et n en a journalise que ${parcourues}.`
+  );
+  process.exit(1);
 }

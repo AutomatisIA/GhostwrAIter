@@ -44,8 +44,82 @@ jobs:
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi
 
-  package:
+  # Chaine de verification complete, portee PAR ce workflow.
+  #
+  # `ci.yml` part sur le meme push, mais c'est une execution independante :
+  # avant ce job, une CI rouge et une release publique pouvaient coexister,
+  # parce que `package` ne dependait que de `check-version`. Rien ne gatait la
+  # publication.
+  #
+  # Les etapes sont dupliquees avec `ci.yml` plutot que factorisees dans un
+  # workflow appele. C'est un choix : la chaine qui publie se relit dans son
+  # propre YAML, donc elle se teste dans `tests/unit/ci-workflows.test.ts`, et
+  # sa panne ne peut pas etre silencieuse. Les deux listes sont verrouillees
+  # ensemble par ce fichier de test, qui exige qu'elles portent les memes
+  # commandes : elles ne peuvent pas deriver sans faire tomber un test.
+  #
+  # Le `if` est le meme que celui de `package` : sur un push sans bump de
+  # version, les deux jobs sont ignores ensemble et rien ne tourne deux fois.
+  # Sur un push AVEC bump, la chaine tourne une seconde fois, en plus de
+  # `ci.yml`. Cout assume : une release est rare.
+  #
+  # Aucun `always()` ni `!cancelled()` sur `package` ni sur `publish` : ces
+  # expressions font tourner un job dont une dependance a ete IGNOREE ou a
+  # ECHOUE, ce qui rouvrirait le chemin qu'on ferme ici. Verrouille par
+  # `tests/unit/ci-workflows.test.ts`.
+  checks:
     needs: check-version
+    if: needs.check-version.outputs.release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild native modules for Electron target
+        run: npm run rebuild:native:electron
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Security audit (production dependencies only)
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Palette contrast (WCAG AA on both themes)
+        run: npm run audit:contraste
+
+      - name: Verify hardening (macOS only)
+        if: runner.os == 'macOS'
+        run: npm run verify-hardening
+
+  package:
+    needs:
+      - check-version
+      - checks
     if: needs.check-version.outputs.release == 'true'
     strategy:
       fail-fast: false
@@ -127,7 +201,25 @@ jobs:
           tag_name: v${{ needs.check-version.outputs.version }}
           target_commitish: ${{ github.sha }}
           name: v${{ needs.check-version.outputs.version }}
+          # Notes ECRITES, pas generees. Les releases precedentes ne portaient
+          # que le lien « Full Changelog » produit automatiquement, c est a dire
+          # une liste de messages de commit : lisible par qui a ecrit le code,
+          # opaque pour qui telecharge l application. Le corps vient donc d un
+          # fichier redige pour l utilisateur final, et la liste automatique est
+          # conservee EN DESSOUS pour qui veut le detail technique.
+          #
+          # Un fichier manquant est un echec de la CI, pas une release muette :
+          # `tests/unit/ci-workflows.test.ts` exige qu il existe pour la version
+          # portee par `package.json`.
+          body_path: .github/release-notes/v${{ needs.check-version.outputs.version }}.md
           generate_release_notes: true
+          # Le defaut de cette entree est `false` (verifie dans l'`action.yml`
+          # de softprops/action-gh-release : « Fails if any of the `files` globs
+          # match nothing. Defaults to false »). Sans elle, un motif qui ne
+          # correspond a rien publie une release VERTE, avec son tag public, et
+          # sans le moindre binaire attache. Un utilisateur arrive sur une page
+          # de release vide et l'echec n'apparait nulle part.
+          fail_on_unmatched_files: true
           files: |
             artifacts/*.dmg
             artifacts/*.exe

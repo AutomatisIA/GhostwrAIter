@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useId, useRef } from "react";
+import React, { useEffect, useId, useRef } from "react";
 import { Button } from "./Button";
+import { useDialogKeyboard } from "./use-dialog-keyboard";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -18,9 +19,6 @@ export interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
-
-const FOCUSABLE =
-  'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Dialogue de confirmation accessible (T015b, FR-011). Remplace le pattern
@@ -52,48 +50,10 @@ export function ConfirmDialog({
     }
   }, [open]);
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCancel();
-        return;
-      }
-      if (event.key !== "Tab") {
-        return;
-      }
-      const dialog = dialogRef.current;
-      if (!dialog) {
-        return;
-      }
-      const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (focusables.length === 0) {
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (!first || !last) {
-        return;
-      }
-      const active = document.activeElement;
-      // Garde : si le focus est hors du dialogue (ou nul), on le ramène sur le
-      // premier élément focusable plutôt que de comparer un `activeElement`
-      // étranger à `first`/`last` (comparaison qui n'aurait aucun sens).
-      if (!active || !dialog.contains(active)) {
-        event.preventDefault();
-        first.focus();
-        return;
-      }
-      if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    },
-    [onCancel]
-  );
+  // Echap, piege de focus et restitution au declencheur : le clavier du
+  // dialogue est ecoute sur `document` et non sur son propre `div`, sans quoi un
+  // clic sur le texte du message le rendait sourd (cf. `use-dialog-keyboard`).
+  useDialogKeyboard(open, dialogRef, onCancel);
 
   if (!open) {
     return null;
@@ -115,7 +75,6 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        onKeyDown={handleKeyDown}
       >
         <h2 className="ds-dialog__title" id={titleId}>
           {title}

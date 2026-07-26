@@ -450,4 +450,214 @@ describe("skill runner service", () => {
     );
     expect(capturedPrompt).toContain("Contract-specific instructions:");
   });
+
+  it("execute le moteur choisi par l utilisateur, pas Codex", async () => {
+    let claudeCalled = false;
+    let codexCalled = false;
+
+    const claudeEngine = {
+      executeSkill: async () => {
+        claudeCalled = true;
+        return JSON.stringify({
+          status: "succeeded",
+          summary: "ok",
+          data: {
+            draft: { headline: "H", bodyMarkdown: "B" },
+            hooks: [],
+            variants: [],
+            qualitySignals: { clarity: 0.9, specificity: 0.9, antiHypeAlignment: 0.9 }
+          }
+        });
+      }
+    };
+
+    const engineRegistry = {
+      getActiveEngine: async () => ({
+        engine: "claude",
+        status: { name: "claude", installState: "authenticated" }
+      }),
+      getEngineByName: () => claudeEngine
+    } as unknown as EngineRegistry;
+
+    const service = new SkillRunnerService({
+      engineRegistry,
+      codexCliRunner: {
+        isAvailable: () => true,
+        execute: () => {
+          codexCalled = true;
+          return { status: "failed", summary: "codex ne doit pas etre appele" };
+        }
+      } as never
+    });
+
+    const result = await service.executeAsync({
+      runId: "run_choice",
+      skillName: "linkedin-post-writer",
+      skillVersion: "1.0.0",
+      context: {},
+      payload: { title: "t", angle: "a" },
+      attachments: []
+    });
+
+    expect(result.status).toBe("succeeded");
+    expect(claudeCalled).toBe(true);
+    expect(codexCalled).toBe(false);
+  });
+
+  it("echoue en nommant le moteur choisi quand il n est pas authentifie, sans repli silencieux", async () => {
+    let codexCalled = false;
+
+    const engineRegistry = {
+      getActiveEngine: async () => ({
+        engine: "antigravity",
+        status: { name: "antigravity", displayName: "Antigravity", installState: "installed" }
+      }),
+      getEngineByName: () => ({ executeSkill: async () => "{}" })
+    } as unknown as EngineRegistry;
+
+    const service = new SkillRunnerService({
+      engineRegistry,
+      codexCliRunner: {
+        isAvailable: () => true,
+        execute: () => {
+          codexCalled = true;
+          return { status: "succeeded", summary: "repli silencieux interdit" };
+        }
+      } as never
+    });
+
+    const result = await service.executeAsync({
+      runId: "run_unauth",
+      skillName: "linkedin-post-writer",
+      skillVersion: "1.0.0",
+      context: {},
+      payload: { title: "t", angle: "a" },
+      attachments: []
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("ENGINE_NOT_AUTHENTICATED");
+    // Le message doit nommer le moteur pour etre actionnable cote utilisateur.
+    expect(result.error?.message).toContain("Antigravity");
+    expect(codexCalled).toBe(false);
+  });
+});
+
+/**
+ * Panne de moteur sur le chemin asynchrone.
+ *
+ * Les moteurs LEVENT sur sortie non nulle (quota, limite de debit) et sur delai
+ * depasse : cf. `claude-engine.ts` et `antigravity-engine.ts`. Ces tests
+ * couvrent le moteur qui leve, pas le moteur qui rend un resultat en echec :
+ * c est ce premier cas qui traversait `executeAsync` et laissait l interface
+ * bloquee.
+ */
+describe("skill runner service - panne moteur sur executeAsync", () => {
+  function makeRegistryFor(engine: {
+    executeSkill(prompt: string, timeoutMs?: number): Promise<string>;
+  }): EngineRegistry {
+    return {
+      getActiveEngine: async () => ({
+        engine: "claude",
+        status: { name: "claude", displayName: "Claude Code", installState: "authenticated" }
+      }),
+      getEngineByName: () => engine
+    } as unknown as EngineRegistry;
+  }
+
+  const invocation = {
+    runId: "run_engine_throws",
+    skillName: "linkedin-hook-engine",
+    skillVersion: "1.0.0",
+    context: {},
+    payload: { title: "t", angle: "a" },
+    attachments: []
+  };
+
+  it("rend un resultat en echec estampille quand le moteur leve (limite de debit)", async () => {
+    const service = new SkillRunnerService({
+      engineRegistry: makeRegistryFor({
+        executeSkill: async () => {
+          throw new Error("rate limit reached, retry in 5 minutes");
+        }
+      })
+    });
+
+    // Ne DOIT pas rejeter : un throw ici traverse `executeAsync` et prive les
+    // appelants de toute borne terminale de progression.
+    const result = await service.executeAsync(invocation);
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("ENGINE_EXECUTION_ERROR");
+    expect(result.error?.message).toContain("rate limit");
+    // L estampille de moteur doit etre posee sur les chemins d echec aussi,
+    // sinon l echec reste inattribuable.
+    expect(result.engine).toBe("claude");
+  });
+
+  it("rend un resultat en echec quand le moteur depasse son delai", async () => {
+    const service = new SkillRunnerService({
+      engineRegistry: makeRegistryFor({
+        executeSkill: async () => {
+          throw new Error("Claude Code did not respond within 180000 ms.");
+        }
+      })
+    });
+
+    const result = await service.executeAsync(invocation);
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("ENGINE_EXECUTION_ERROR");
+    expect(result.engine).toBe("claude");
+  });
+
+  it("porte un message lisible quand la CLI sort a zero sans rien ecrire", async () => {
+    const service = new SkillRunnerService({
+      engineRegistry: makeRegistryFor({
+        executeSkill: async () => ""
+      })
+    });
+
+    const result = await service.executeAsync(invocation);
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("ENGINE_INVALID_JSON");
+    // `skillRunError` fait `message ?? summary` : `??` ne se declenche PAS sur
+    // une chaine vide, donc un message vide arrive vide jusqu a l utilisateur.
+    expect(result.error?.message.trim().length).toBeGreaterThan(0);
+  });
+
+  it("rend un echec de contrat sur la sortie litterale `null` au lieu de lever", async () => {
+    const service = new SkillRunnerService({
+      engineRegistry: makeRegistryFor({
+        executeSkill: async () => "null"
+      })
+    });
+
+    // `JSON.parse("null")` reussit : la lecture de `.status` levait un TypeError.
+    const result = await service.executeAsync(invocation);
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("ENGINE_INVALID_CONTRACT");
+    expect(result.engine).toBe("claude");
+  });
+
+  it("rend un echec estampille quand la lecture du contrat leve (qualitySignals null)", async () => {
+    const service = new SkillRunnerService({
+      engineRegistry: makeRegistryFor({
+        executeSkill: async () =>
+          JSON.stringify({
+            status: "succeeded",
+            summary: "ok",
+            data: { hooks: [], qualitySignals: null }
+          })
+      })
+    });
+
+    const result = await service.executeAsync(invocation);
+
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("SKILL_RUN_FAILED");
+    expect(result.engine).toBe("claude");
+  });
 });

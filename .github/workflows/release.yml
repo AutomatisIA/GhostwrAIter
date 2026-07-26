@@ -46,6 +46,9 @@ jobs:
         with:
           draft: true
           tag_name: ${{ github.event.inputs.tag || github.event.workflow_run.head_branch }}
+          # Defaut `false` cote action : un motif sans correspondance produirait
+          # un brouillon vide sans que rien n'echoue.
+          fail_on_unmatched_files: true
           files: |
             artifacts/*.dmg
             artifacts/*.exe

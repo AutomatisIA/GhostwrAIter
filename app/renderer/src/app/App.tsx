@@ -6,7 +6,7 @@ import {
   Route,
   Routes,
   useLocation
-} from "react-router-dom";
+} from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { LibraryScreen } from "../features/library/LibraryScreen";
 import { SettingsScreen } from "../features/settings/SettingsScreen";
@@ -14,6 +14,7 @@ import { StrategyScreen } from "../features/strategy/StrategyScreen";
 import { CreateScreen } from "../features/create/CreateScreen";
 import { CockpitScreen } from "../features/cockpit/CockpitScreen";
 import { applyTheme } from "./theme";
+import { ActiveEngineFooter } from "./ActiveEngineFooter";
 import { isTourSeen } from "./tour-seen";
 import { ToastProvider } from "../feedback/ToastProvider";
 import {
@@ -45,6 +46,14 @@ const sections = [
 function AnimatedRoutes() {
   const location = useLocation();
   const variants = useMotionVariants(pageTransition);
+
+  // Le defilement etait conserve d un ecran a l autre : en arrivant sur une page
+  // depuis le bas d une autre, l utilisateur atterrissait au milieu, sans voir le
+  // titre ni les actions du haut. Signale plusieurs fois comme « le haut de
+  // l app n est pas visible quand on change d ecran ».
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+  }, [location.pathname]);
 
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -217,6 +226,8 @@ function AppShell() {
             </NavLink>
           ))}
         </nav>
+
+        <ActiveEngineFooter />
       </aside>
 
       <main className="content">

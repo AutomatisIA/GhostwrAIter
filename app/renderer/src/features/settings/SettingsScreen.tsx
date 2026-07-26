@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { motion } from "motion/react";
 import { ThemeSelector } from "./components/ThemeSelector";
 import { EnginePanel } from "./components/EnginePanel";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
-import { Button, Card, ConfirmDialog, useToast } from "../../design-system/primitives";
-import { useTour } from "../../help";
-import { fadeInUp, staggerContainer, useMotionVariants } from "../../design-system/motion/variants";
+import { Button, ConfirmDialog, PageFrame, useToast } from "../../design-system/primitives";
+import { InfoHint, useTour } from "../../help";
+import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
 
+import "./settings.css";
 export function SettingsScreen() {
   const toast = useToast();
   const tour = useTour();
@@ -19,8 +20,7 @@ export function SettingsScreen() {
 
   const autoExpandDiagnostics = searchParams.get("section") === "diagnostics";
 
-  const container = useMotionVariants(staggerContainer);
-  const item = useMotionVariants(fadeInUp);
+  const reveal = useMotionVariants(fadeInUp);
 
   async function handleExport() {
     setExporting(true);
@@ -66,98 +66,116 @@ export function SettingsScreen() {
     }
   }
 
-  return (
-    <section className="panel page-panel">
-      <h1>Paramètres</h1>
+  // Export : action de portee ecran, donc dans la barre de page.
+  const pageActions = (
+    <Button variant="secondary" size="sm" loading={exporting} onClick={handleExport}>
+      Exporter l'espace de travail
+    </Button>
+  );
 
+  return (
+    <PageFrame eyebrow="Paramètres" actions={pageActions}>
       <motion.div
         className="settings-sections"
-        variants={container}
+        variants={reveal}
         initial="hidden"
         animate="visible"
       >
-        {/* Apparence */}
-        <motion.div variants={item}>
-          <Card elevation={1} className="settings-section">
-            <header className="settings-section-head">
-              <h2 className="settings-section-title">Apparence</h2>
-              <p className="settings-section-desc">
-                Choisissez le thème de l'application. Le mode système suit le réglage de votre ordinateur.
-              </p>
-            </header>
-            <ThemeSelector />
-          </Card>
-        </motion.div>
+        {/* Application : deux reglages a une ligne chacun. Ils tenaient dans deux
+            cartes distinctes, ce qui donnait deux en-tetes pour deux controles. */}
+        <section className="settings-section">
+          <header className="settings-section-head">
+            <h2 className="settings-section-title">Application</h2>
+            <p className="settings-section-desc">
+              « Système » suit le réglage clair ou sombre de votre ordinateur.
+            </p>
+          </header>
 
-        {/* Prise en main */}
-        <motion.div variants={item}>
-          <Card elevation={1} className="settings-section">
-            <header className="settings-section-head">
-              <h2 className="settings-section-title">Prise en main</h2>
-              <p className="settings-section-desc">
-                Revoyez la visite guidée du premier lancement, qui présente les écrans et l'ordre du
-                parcours conseillé : stratégie, puis création, puis bibliothèque.
-              </p>
-            </header>
-            <Button variant="secondary" onClick={() => tour.open()}>
-              Revoir la visite guidée
-            </Button>
-          </Card>
-        </motion.div>
+          <div className="settings-form">
+            <div className="settings-row">
+              <span className="settings-row__label">Thème</span>
+              <div className="settings-row__control">
+                <ThemeSelector />
+              </div>
+            </div>
+
+            <div className="settings-row">
+              <span className="settings-row__label">Visite guidée</span>
+              <div className="settings-row__control">
+                <Button variant="secondary" size="sm" onClick={() => tour.open()}>
+                  Revoir la visite guidée
+                </Button>
+                <p className="settings-row__hint">Sept étapes pour situer chaque écran</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Moteur d'exécution */}
-        <motion.div variants={item}>
-          <Card elevation={1} className="settings-section">
-            <header className="settings-section-head">
-              <h2 className="settings-section-title">Moteur d'exécution</h2>
-              <p className="settings-section-desc">
-                L'assistant IA qui rédige vos contenus. Installez-le, connectez-vous, puis activez-le.
-              </p>
-            </header>
-            <EnginePanel />
-          </Card>
-        </motion.div>
+        <section className="settings-section">
+          <header className="settings-section-head">
+            <h2 className="settings-section-title">Moteur d'exécution</h2>
+            <p className="settings-section-desc">
+              Le moteur IA
+              <InfoHint term="moteur-ia" /> retenu est contraignant : s'il n'est pas connecté
+              <InfoHint term="oauth" />, la génération échoue en le nommant.
+            </p>
+          </header>
+          <EnginePanel />
+        </section>
 
         {/* Diagnostics */}
-        <motion.div variants={item}>
-          <Card elevation={1} className="settings-section">
-            <header className="settings-section-head">
-              <h2 className="settings-section-title">Diagnostics</h2>
-              <p className="settings-section-desc">
-                L'historique des générations passées, utile pour comprendre une erreur.
-              </p>
-            </header>
-            <DiagnosticsPanel defaultExpanded={autoExpandDiagnostics} />
-          </Card>
-        </motion.div>
+        <section className="settings-section">
+          <header className="settings-section-head">
+            <h2 className="settings-section-title">Diagnostics</h2>
+            <p className="settings-section-desc">
+              Utile pour comprendre une erreur : l'historique des générations passées.
+            </p>
+          </header>
+          <DiagnosticsPanel defaultExpanded={autoExpandDiagnostics} />
+        </section>
 
         {/* Données */}
-        <motion.div variants={item}>
-          <Card elevation={1} className="settings-section">
-            <header className="settings-section-head">
-              <h2 className="settings-section-title">Données</h2>
-              <p className="settings-section-desc">
-                Vos données restent sur votre ordinateur. L'export crée une sauvegarde de votre espace de
-                travail (stratégie, inventaire des fichiers et journaux de génération) dans un fichier JSON.
-              </p>
-            </header>
+        <section className="settings-section">
+          <header className="settings-section-head">
+            <h2 className="settings-section-title">Données</h2>
+            <p className="settings-section-desc">
+              Tout reste sur votre ordinateur ; l'export, en haut de l'écran, en fait une sauvegarde
+              JSON.
+            </p>
+          </header>
 
-            <div className="settings-data-actions">
-              <Button variant="primary" loading={exporting} onClick={handleExport}>
-                Exporter l'espace de travail
-              </Button>
-              <Button variant="danger" onClick={handleAskConfirm}>
-                Purger les journaux
-              </Button>
+          <div className="settings-form">
+            <div className="settings-row">
+              <span className="settings-row__label">Journaux techniques</span>
+              <div className="settings-row__control">
+                {/* Bordé, encre rouge. L action la plus destructive de l ecran est
+                    aussi la plus rare : le rouge plein est garde pour la
+                    confirmation, ou il porte enfin une decision. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="settings-danger"
+                  onClick={handleAskConfirm}
+                >
+                  Purger les journaux
+                </Button>
+                <p className="settings-row__hint">
+                  Vos contenus et votre stratégie ne sont pas concernés
+                </p>
+              </div>
             </div>
 
             {exportPath ? (
-              <p className="settings-export-path">
-                Sauvegarde créée : <code>{exportPath}</code>
-              </p>
+              <div className="settings-row">
+                <span className="settings-row__label">Dernière sauvegarde</span>
+                <div className="settings-row__control">
+                  <code className="settings-path">{exportPath}</code>
+                </div>
+              </div>
             ) : null}
-          </Card>
-        </motion.div>
+          </div>
+        </section>
       </motion.div>
 
       <ConfirmDialog
@@ -179,6 +197,6 @@ export function SettingsScreen() {
         onConfirm={handleConfirmPurge}
         onCancel={() => setConfirmOpen(false)}
       />
-    </section>
+    </PageFrame>
   );
 }

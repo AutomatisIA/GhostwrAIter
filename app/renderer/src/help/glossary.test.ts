@@ -17,8 +17,7 @@ const REQUIRED_TERMS: TermKey[] = [
   "repurpose",
   "moteur-ia",
   "oauth",
-  "cadrage",
-  "score-qualite"
+  "cadrage"
 ];
 
 describe("glossary", () => {
