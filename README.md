@@ -6,7 +6,9 @@ GhostwrAIter is a desktop application that guides editorial production end to en
 
 The application drives an external AI assistant (Codex, Claude Code or Antigravity) through your own subscription. You keep editorial control at every step.
 
-> The application interface is in French. This README, the code comments and the release notes are in English, because the repository is public.
+> The application interface is in French, because the product is aimed at French-speaking users. This README, the documentation and the release notes are in English, because the repository is public.
+>
+> Code comments are moving to English, and new code is written that way. Most existing files still carry French comments: converting several thousand lines is its own piece of work, not a prerequisite for contributing. If a French comment blocks you, say so in an issue.
 
 ---
 
