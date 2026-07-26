@@ -25,7 +25,10 @@ import { _electron as electron } from "playwright";
 
 const LARGEUR = 1400;
 const HAUTEUR = 900;
-const SORTIE = join(process.cwd(), "dist-captures");
+const SORTIE = join(
+  process.cwd(),
+  process.argv.includes("--vierge") ? "dist-captures-vierge" : "dist-captures"
+);
 
 /**
  * Ecrans captures, dans l ordre de la barre laterale.
@@ -52,9 +55,17 @@ const espace = join(maison, "workspace");
 /*
  * Copie de l espace reel quand il existe : un ecran vide ne montre pas ce qu il
  * y a a voir. L original n est jamais ouvert, Electron ecrit dans la copie.
+ *
+ * `--vierge` saute la copie et lance l application sur un espace de travail
+ * neuf. C est ce que voit quelqu un qui installe l application pour la premiere
+ * fois, et c est un etat qu aucune capture ne montrait : toutes partaient des
+ * donnees du poste qui les produisait. Un ecran vide se juge sur ce qu il dit
+ * a qui n a encore rien, et une donnee du mainteneur qui apparaitrait la ne
+ * serait visible d aucune autre facon.
  */
+const vierge = process.argv.includes("--vierge");
 const espaceReel = join(homedir(), "Library", "Application Support", "ghostwraiter", "workspace");
-const surDonneesReelles = existsSync(espaceReel);
+const surDonneesReelles = !vierge && existsSync(espaceReel);
 if (surDonneesReelles) {
   cpSync(espaceReel, espace, { recursive: true });
 }

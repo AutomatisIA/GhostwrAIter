@@ -4,6 +4,7 @@ dist-electron/
 dist-app/
 dist-eval/
 dist-captures/
+dist-captures-vierge/
 dist-launcher/
 out/
 playwright-report/
