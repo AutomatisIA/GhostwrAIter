@@ -105,7 +105,15 @@ export function compareByAchievement(a: LibraryEntry, b: LibraryEntry): number {
   const byDate = timeOf(b.lastVersionAt) - timeOf(a.lastVersionAt);
   if (byDate !== 0) return byDate;
 
-  return a.draftId.localeCompare(b.draftId);
+  // Comparaison BRUTE, pas `localeCompare`. Un identifiant n est pas du texte
+  // humain : le comparer selon une locale le soumet aux donnees ICU, qui
+  // different d une plateforme a l autre. Ce dernier critere existe pour rendre
+  // l ordre STABLE ; le confier a une comparaison dependante du systeme
+  // reviendrait a le rendre stable sur une machine et pas sur une autre, ce qui
+  // est precisement ce qu il doit empecher.
+  if (a.draftId < b.draftId) return -1;
+  if (a.draftId > b.draftId) return 1;
+  return 0;
 }
 
 export type SubjectGroup = {

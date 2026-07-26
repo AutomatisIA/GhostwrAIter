@@ -29,8 +29,23 @@ import { LINKEDIN_FOLD_CHARS } from "../../../../shared/post-metrics";
 
 const DAY = 86_400_000;
 
+/**
+ * Instant de reference FIGE, partage par toutes les fixtures du fichier.
+ *
+ * `daysAgo` appelait `Date.now()` a chaque construction d entree. Sur une
+ * machine rapide, deux entrees creees a la suite tombaient dans la meme
+ * milliseconde et leur egalite passait au critere de departage suivant. Sur un
+ * runner Windows plus lent, elles differaient d une milliseconde, la date
+ * tranchait, et l ordre s inversait : `montre trois variantes puis replie les
+ * suivantes` a echoue en integration continue apres avoir toujours passe en
+ * local. Le test n etait pas juste, il etait rapide.
+ *
+ * Une fixture qui lit l horloge mesure la machine autant que le code.
+ */
+const MAINTENANT = Date.parse("2026-07-26T12:00:00.000Z");
+
 function daysAgo(days: number): string {
-  return new Date(Date.now() - days * DAY).toISOString();
+  return new Date(MAINTENANT - days * DAY).toISOString();
 }
 
 function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {

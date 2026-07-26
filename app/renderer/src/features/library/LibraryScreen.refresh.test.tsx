@@ -25,7 +25,13 @@ import { ToastProvider } from "../../feedback/ToastProvider";
 import { LibraryScreen } from "./LibraryScreen";
 
 const DAY = 86_400_000;
-const daysAgo = (d: number) => new Date(Date.now() - d * DAY).toISOString();
+
+// Instant FIGE : une fixture qui lit l horloge mesure la machine autant que le
+// code. Un decalage d une milliseconde entre deux entrees a suffi a inverser un
+// ordre en integration continue Windows, sur un test vert en local depuis des
+// semaines.
+const MAINTENANT = Date.parse("2026-07-26T12:00:00.000Z");
+const daysAgo = (d: number) => new Date(MAINTENANT - d * DAY).toISOString();
 
 function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
   return {

@@ -104,6 +104,12 @@ describe("LibraryScreen a11y", () => {
 
 const DAY = 86_400_000;
 
+// Instant FIGE : une fixture qui lit l horloge mesure la machine autant que le
+// code. Un decalage d une milliseconde entre deux entrees a suffi a inverser un
+// ordre en integration continue Windows, sur un test vert en local depuis des
+// semaines.
+const MAINTENANT = Date.parse("2026-07-26T12:00:00.000Z");
+
 function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
   return {
     draftId: "draft_1",
@@ -112,7 +118,7 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     bodyPreview: "Apercu",
     bodyMarkdown: "Corps du brouillon",
     qualityScore: 0.8,
-    createdAt: new Date(Date.now() - 6 * DAY).toISOString(),
+    createdAt: new Date(MAINTENANT - 6 * DAY).toISOString(),
     status: "draft",
     pillarLabel: "Adoption IA",
     tags: ["agents", "entreprises", "française", "apprentissage", "generative"],
@@ -120,7 +126,7 @@ function entry(overrides: Partial<LibraryEntry> = {}): LibraryEntry {
     ideaTitle: "Devis et valeur perçue",
     targetIcpSegment: null,
     versionCount: 3,
-    lastVersionAt: new Date(Date.now() - DAY).toISOString(),
+    lastVersionAt: new Date(MAINTENANT - DAY).toISOString(),
     triage: "a-relire",
     ...overrides
   };
