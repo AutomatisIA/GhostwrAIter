@@ -14,6 +14,7 @@ import { StrategyScreen } from "../features/strategy/StrategyScreen";
 import { CreateScreen } from "../features/create/CreateScreen";
 import { CockpitScreen } from "../features/cockpit/CockpitScreen";
 import { applyTheme } from "./theme";
+import { ActiveEngineFooter } from "./ActiveEngineFooter";
 import { isTourSeen } from "./tour-seen";
 import { ToastProvider } from "../feedback/ToastProvider";
 import {
@@ -24,7 +25,7 @@ import {
   type TourApi
 } from "../help";
 import { pageTransition, useMotionVariants } from "../design-system/motion/variants";
-import type { EngineSelection, ThemePreference } from "../../../shared/types/settings";
+import type { ThemePreference } from "../../../shared/types/settings";
 
 const sections = [
   { path: "/", label: "Cockpit" },
@@ -79,56 +80,6 @@ function AnimatedRoutes() {
         </Routes>
       </motion.div>
     </AnimatePresence>
-  );
-}
-
-/**
- * Moteur actif, affiche en permanence au pied de la navigation.
- *
- * Le moteur decide de la qualite de chaque generation, et il se choisissait
- * dans un onglet des Parametres qu on ne rouvre jamais. Aucun ecran ne
- * rappelait lequel etait retenu, ni s il repondait encore. Le pied de la barre
- * laterale est le seul endroit visible depuis les cinq ecrans.
- *
- * En cas d echec de lecture, le bloc ne s affiche pas : mieux vaut ne rien
- * annoncer qu annoncer un moteur qui n est peut-etre pas celui qui tournera.
- */
-function ActiveEngineFooter() {
-  const [selection, setSelection] = useState<EngineSelection | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    window.linkedinPoster.settings
-      .getActiveEngine()
-      .then((result) => {
-        if (mounted) setSelection(result);
-      })
-      .catch(() => {
-        /* Sans reponse, on n affiche rien. */
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  if (!selection) return null;
-
-  const connecte = selection.status.installState === "authenticated";
-
-  return (
-    <div className="sidebar-engine">
-      <span className="sidebar-engine__label">Moteur</span>
-      <span
-        className={
-          connecte
-            ? "sidebar-engine__value"
-            : "sidebar-engine__value sidebar-engine__value--off"
-        }
-      >
-        {selection.status.displayName},{" "}
-        {connecte ? "connecté" : "non authentifié"}
-      </span>
-    </div>
   );
 }
 

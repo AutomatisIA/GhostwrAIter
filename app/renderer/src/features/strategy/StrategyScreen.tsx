@@ -97,14 +97,13 @@ export function StrategyScreen() {
     pipeline: ["foundation"]
   });
 
-  // L horodatage est pose apres que `saveBundle` a rendu la main. Le hook avale
-  // l erreur et la signale par un toast sans la remonter ici : distinguer le
-  // succes de l echec demanderait de modifier la logique d enregistrement, qui
-  // n appartient pas a ce chantier. L heure est donc celle de la derniere
-  // tentative, jamais affichee avant qu il y en ait eu une.
+  // L horodatage n est pose que sur un enregistrement REUSSI. Il l etait sur
+  // toute tentative : un echec affichait donc « Enregistré à 14:32 » dans la
+  // barre de page en meme temps que le toast rouge d echec, et l horodatage
+  // survivait au toast. C est la mention qui reste a l ecran qui doit etre
+  // vraie, pas seulement celle qui passe.
   async function handleSave() {
-    await saveBundle();
-    setSavedAt(new Date());
+    if (await saveBundle()) setSavedAt(new Date());
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

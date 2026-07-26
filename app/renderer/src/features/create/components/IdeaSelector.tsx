@@ -234,9 +234,28 @@ export function IdeaSelector({ onSelect }: IdeaSelectorProps) {
   });
   const engineSignal = useEngineSignal(aiActive);
 
+  /**
+   * Recharge le backlog apres une creation.
+   *
+   * Elle absorbe son propre echec, et c est le geste central de cette fonction.
+   * Elle etait appelee DANS le `try` qui decide du verdict de la creation : une
+   * idee pourtant enregistree se voyait alors annoncer « La création de l'idée a
+   * échoué. Réessaie. », `createIdea` rendait `null`, et l atelier ne s ouvrait
+   * pas. Le geste suivant est de reessayer, ce qui cree un doublon.
+   *
+   * Un rafraichissement rate n est pas une creation ratee. Il se dit quand meme,
+   * mais sous son vrai nom : la liste affichee est perimee, et rien d autre a
+   * l ecran ne le signalerait.
+   */
   async function loadIdeas() {
-    const result = await window.linkedinPoster.ideas.listIdeas();
-    setIdeas(result);
+    try {
+      setIdeas(await window.linkedinPoster.ideas.listIdeas());
+    } catch (error) {
+      toast.show({
+        kind: "error",
+        message: describeError(error, "La liste des idées n'a pas pu être rafraîchie.")
+      });
+    }
   }
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent
 } from "react";
@@ -232,6 +233,25 @@ export function LibraryScreen() {
     setConfirmingVariant(false);
   }
 
+  /**
+   * Depuis le planning, ouvre les brouillons SUR le brouillon vise.
+   *
+   * Le bouton ne faisait que changer d onglet. Un post planifie est par
+   * construction dans l entree de triage « Planifiés », alors que l ecran ouvre
+   * la premiere entree non vide, en general « À relire » : le brouillon promis
+   * n apparaissait donc nulle part, et le libelle du bouton devenait faux. On
+   * pose l entree de triage AVANT la selection, sinon la selection derivee
+   * retombe sur la premiere ligne de l entree affichee.
+   */
+  function showDraft(draftId: string) {
+    const cible = entries.find((item) => item.draftId === draftId);
+    if (cible) {
+      setPickedBucket(cible.triage);
+      selectDraft(draftId);
+    }
+    switchTab("drafts");
+  }
+
   function toggleGroup(key: string) {
     setExpandedKeys((previous) => {
       const next = new Set(previous);
@@ -272,12 +292,42 @@ export function LibraryScreen() {
     disclosure.focus();
   }
 
+  /**
+   * Relit les entrees EN RESPECTANT la recherche en cours.
+   *
+   * Les quatre mutations de l ecran rappelaient `listEntries()`, qui rend le jeu
+   * complet : enregistrer une modification pendant une recherche a trois
+   * resultats ramenait les trente brouillons, sous un champ qui affichait
+   * toujours le mot cherche et un compteur qui annoncait « 30 résultats ». Trois
+   * elements a l ecran se contredisaient, et c est la liste qui avait tort.
+   */
+  async function refreshEntries(): Promise<LibraryEntry[]> {
+    const terme = query.trim();
+    return terme
+      ? window.linkedinPoster.library.searchEntries({ query: terme })
+      : window.linkedinPoster.library.listEntries();
+  }
+
+  /**
+   * Jeton de requete : seule la reponse de la DERNIERE frappe est appliquee.
+   *
+   * La recherche part a chaque touche. Sans ce compteur, la reponse de « d »
+   * pouvait arriver apres celle de « devis » et repeindre la liste avec un
+   * resultat perime, sous un champ affichant autre chose. Un compteur suffit
+   * ici : on n annule pas la requete, on refuse simplement d appliquer ce qui
+   * n est plus la question posee.
+   */
+  const searchToken = useRef(0);
+
   async function handleSearch(nextQuery: string) {
     setQuery(nextQuery);
+    const jeton = ++searchToken.current;
     try {
       const result = await window.linkedinPoster.library.searchEntries({ query: nextQuery });
+      if (jeton !== searchToken.current) return;
       setEntries(result);
     } catch (err) {
+      if (jeton !== searchToken.current) return;
       const message = err instanceof Error ? err.message : "Erreur inconnue";
       toast.show({ kind: "error", message: `Erreur de recherche : ${message}` });
     }
@@ -287,7 +337,7 @@ export function LibraryScreen() {
     setBusyDraftId(draftId);
     try {
       await window.linkedinPoster.library.createDivergentVariant(draftId);
-      const refreshed = await window.linkedinPoster.library.listEntries();
+      const refreshed = await refreshEntries();
       setEntries(refreshed);
       toast.show({
         kind: "success",
@@ -312,7 +362,7 @@ export function LibraryScreen() {
     setBusyDraftId(draftId);
     try {
       await window.linkedinPoster.library.updateEntryText(draftId, editHeadline, editBody);
-      const refreshed = await window.linkedinPoster.library.listEntries();
+      const refreshed = await refreshEntries();
       setEntries(refreshed);
       setEditingDraftId(null);
       toast.show({ kind: "success", message: "Texte enregistré." });
@@ -334,7 +384,7 @@ export function LibraryScreen() {
     setBusyDraftId(draftId);
     try {
       await window.linkedinPoster.library.deleteEntry(draftId);
-      const refreshed = await window.linkedinPoster.library.listEntries();
+      const refreshed = await refreshEntries();
       setEntries(refreshed);
       setDeletingDraftId(null);
       closeActions();
@@ -357,7 +407,7 @@ export function LibraryScreen() {
         status: "planned"
       });
       const [refreshedEntries, refreshedItems] = await Promise.all([
-        window.linkedinPoster.library.listEntries(),
+        refreshEntries(),
         window.linkedinPoster.calendar.listItems()
       ]);
       setEntries(refreshedEntries);
@@ -822,7 +872,11 @@ export function LibraryScreen() {
                       </div>
 
                       <div className="library-row__actions">
-                        <Button variant="ghost" size="sm" onClick={() => switchTab("drafts")}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => showDraft(calItem.draftId)}
+                        >
                           Voir dans les brouillons
                         </Button>
                         {draft && (

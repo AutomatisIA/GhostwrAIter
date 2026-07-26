@@ -80,38 +80,51 @@ export function useWorkshopFlow(ideaId: string | null) {
   useEffect(() => {
     if (!ideaId) return;
 
-    window.linkedinPoster.workshop.getSessionByIdeaId(ideaId).then((result) => {
-      if (!result) return;
-      const restoredTypology = result.draft.typology ?? "expertise";
-      const restoredObjective = result.draft.objective ?? "awareness";
-      const restoredStructureKey = result.draft.structureKey ?? "";
-      const restoredStructureLabel = result.draft.structureLabel ?? restoredStructureKey;
-      const restoredHooks = toStoredHookOptions(result);
-      const restoredHookId =
-        restoredHooks.find((hook) => hook.text === result.draft.selectedHookText)?.id ??
-        restoredHooks[0]?.id ??
-        "";
+    window.linkedinPoster.workshop
+      .getSessionByIdeaId(ideaId)
+      .then((result) => {
+        // `null` n est pas une panne : c est une idee du backlog jamais passee a
+        // l atelier. Elle ouvre le cadrage, ce qui est le parcours nominal.
+        if (!result) return;
+        const restoredTypology = result.draft.typology ?? "expertise";
+        const restoredObjective = result.draft.objective ?? "awareness";
+        const restoredStructureKey = result.draft.structureKey ?? "";
+        const restoredStructureLabel = result.draft.structureLabel ?? restoredStructureKey;
+        const restoredHooks = toStoredHookOptions(result);
+        const restoredHookId =
+          restoredHooks.find((hook) => hook.text === result.draft.selectedHookText)?.id ??
+          restoredHooks[0]?.id ??
+          "";
 
-      setTypology(restoredTypology);
-      setObjective(restoredObjective);
-      setStructures(
-        restoredStructureKey
-          ? [
-              {
-                key: restoredStructureKey,
-                label: restoredStructureLabel,
-                rationale: "Structure déjà utilisée dans le draft courant."
-              }
-            ]
-          : []
-      );
-      setSelectedStructureKey(restoredStructureKey);
-      setHooks(restoredHooks);
-      setSelectedHookId(restoredHookId);
-      setSession(result);
-      setStep(4);
-      setStatus("Brouillon prêt");
-    });
+        setTypology(restoredTypology);
+        setObjective(restoredObjective);
+        setStructures(
+          restoredStructureKey
+            ? [
+                {
+                  key: restoredStructureKey,
+                  label: restoredStructureLabel,
+                  rationale: "Structure déjà utilisée dans le draft courant."
+                }
+              ]
+            : []
+        );
+        setSelectedStructureKey(restoredStructureKey);
+        setHooks(restoredHooks);
+        setSelectedHookId(restoredHookId);
+        setSession(result);
+        setStep(4);
+        setStatus("Brouillon prêt");
+      })
+      // Sans cette branche, une lecture en echec laissait l atelier a l etape 1
+      // avec un cadrage vierge, c est-a-dire l ecran EXACT d une idee neuve.
+      // L utilisateur refaisait son parcours et ecrasait, a la generation
+      // suivante, le brouillon qu il croyait perdu. Une session illisible doit
+      // se dire ; c est la seule information qui empeche la perte de travail.
+      .catch((err: unknown) => {
+        setError(extractError(err));
+        setStatus("Impossible de relire ce brouillon.");
+      });
   }, [ideaId]);
 
   function clearError() {
@@ -282,8 +295,13 @@ export function useWorkshopFlow(ideaId: string | null) {
     try {
       const result = await window.linkedinPoster.workshop.correctDraft(session.draft.id);
       setSession(result);
+      // Le drapeau est lu dans RESULT, jamais dans `session` : cette derniere est
+      // la valeur capturee par la closure au rendu, donc la session d AVANT
+      // l appel. Le verdict etait ainsi decale d un tour, et il decrivait la
+      // correction precedente. Le cas n a rien de rare : le drapeau vaut `false`
+      // sur 37 % des corrections reellement mesurees en base.
       setStatus(
-        session.correctionApplied === false
+        result.correctionApplied === false
           ? "La correction n'a pas amélioré le brouillon. Texte d'origine conservé."
           : "Draft corrigé."
       );

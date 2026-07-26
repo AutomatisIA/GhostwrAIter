@@ -107,8 +107,23 @@
   --gradient-surface: var(--surface-raised);
   --gradient-celebration: var(--primary-fill);
 
-  /* Focus : bordure primaire plus halo teinte, comme dans la maquette. */
-  --focus-ring: 0 0 0 3px var(--primary-tint);
+  /*
+   * Focus. L ENCRE primaire, opaque, jamais la teinte.
+   *
+   * `styles.css` pose `outline: none` sur tous les interactifs et remplace le
+   * contour natif par cette ombre : elle est donc le SEUL indicateur de focus de
+   * l application, et WCAG 1.4.11 lui demande 3:1 a ce titre. La teinte
+   * `--primary-tint` est une SURFACE, faite pour porter du texte, pas pour se
+   * detacher d une autre surface : elle ne donnait que 1,14:1 sur blanc comme
+   * sur le fond sombre, c est-a-dire rien du tout. L encre donne 6,86:1 et
+   * 6,40:1 en clair, 6,60:1 et 7,15:1 en sombre, sur `--surface-raised` et
+   * `--surface-app`. Mesure tenue par `focus-ring.test.ts`, qui lit ces deux
+   * feuilles plutot que d en recopier les valeurs.
+   *
+   * Aucune declaration en theme sombre : `var()` se resout a l usage, et
+   * `palette.css` redefinit deja `--primary-ink` sous `[data-theme="dark"]`.
+   */
+  --focus-ring: 0 0 0 3px var(--primary-ink);
 }
 
 :root[data-theme="dark"] {

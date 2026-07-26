@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { WorkshopSession } from "@shared/types/workshop";
 import { detectTells, type TellFamilyId } from "../../../../../shared/ai-tells";
-import { Button } from "../../../design-system/primitives";
+import { Button, useToast } from "../../../design-system/primitives";
 import { LINKEDIN_MAX_CHARS, measurePost } from "../../../../../shared/post-metrics";
 import {
   AI_TELL_FAMILIES_PREFERENCE_KEY,
@@ -83,6 +83,16 @@ export function DraftPanel({
   const [enabledTellFamilies, setEnabledTellFamilies] = useState<TellFamilyId[] | undefined>(
     undefined
   );
+  const toast = useToast();
+  /** Retour du libelle a l etat de repos, annule au demontage. */
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (copyTimer.current !== null) clearTimeout(copyTimer.current);
+    },
+    []
+  );
 
   // Lue au montage, comme la preference de theme : un changement fait dans
   // l'onglet Voix pendant que cet ecran est deja ouvert ne se propage pas ici
@@ -135,12 +145,27 @@ export function DraftPanel({
     setIsEditing(false);
   }
 
-  function handleCopyPost() {
+  /**
+   * « Copier le post » TERMINE le parcours : l application ne publie pas, elle
+   * prepare un texte a coller sur LinkedIn. Une copie refusee et muette, comme
+   * c etait le cas sans branche d erreur, envoie donc l utilisateur coller le
+   * contenu PRECEDENT de son presse-papier dans une publication publique. Meme
+   * traitement que la Bibliotheque, qui gerait deja ce cas.
+   */
+  async function handleCopyPost() {
     const text = session.draft.headline + "\n\n" + session.draft.bodyMarkdown;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopyLabel("Copié !");
-      setTimeout(() => setCopyLabel("Copier le post"), 1500);
-    });
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      toast.show({
+        kind: "error",
+        message: "Impossible de copier dans le presse-papier. Vérifiez les autorisations."
+      });
+      return;
+    }
+    setCopyLabel("Copié !");
+    if (copyTimer.current !== null) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopyLabel("Copier le post"), 1500);
   }
 
   return (

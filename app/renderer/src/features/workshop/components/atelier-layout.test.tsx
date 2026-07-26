@@ -3,6 +3,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import type { WorkshopSession } from "@shared/types/workshop";
+import { ToastProvider } from "../../../feedback/ToastProvider";
 import { WorkshopContextBar } from "./WorkshopContextBar";
 import { DraftPanel } from "./DraftPanel";
 import { PostPreview } from "./PostPreview";
@@ -90,17 +91,22 @@ describe("DraftPanel", () => {
     };
   });
 
+  // `ToastProvider` fait partie du montage REEL : `App` en enveloppe les cinq
+  // ecrans, et le panneau y annonce desormais une copie refusee. Rendre le
+  // composant sans lui testerait un montage qui n existe nulle part.
   function renderPanel(body: string) {
     return render(
-      <DraftPanel
-        session={makeSession(body)}
-        onReopenStructureSelection={() => {}}
-        onReopenHookSelection={() => {}}
-        onCorrect={() => {}}
-        isLoadingCorrection={false}
-        onSaveDraftText={() => {}}
-        isSavingDraftText={false}
-      />
+      <ToastProvider>
+        <DraftPanel
+          session={makeSession(body)}
+          onReopenStructureSelection={() => {}}
+          onReopenHookSelection={() => {}}
+          onCorrect={() => {}}
+          isLoadingCorrection={false}
+          onSaveDraftText={() => {}}
+          isSavingDraftText={false}
+        />
+      </ToastProvider>
     );
   }
 

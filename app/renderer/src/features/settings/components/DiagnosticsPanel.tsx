@@ -32,7 +32,35 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [runs, setRuns] = useState<ExecutionRunEntry[]>([]);
   const [loading, setLoading] = useState(defaultExpanded);
+  const [readFailed, setReadFailed] = useState(false);
 
+  /**
+   * Deplie et annonce qu une lecture commence.
+   *
+   * L etat de chargement est pose ICI, dans le geste qui le declenche, et non
+   * dans l effet : c est le clic qui ouvre le panneau et lance la lecture. Pose
+   * dans l effet, il aurait demande une derogation a
+   * `react-hooks/set-state-in-effect` alors qu il n a rien d une
+   * synchronisation avec un systeme externe. Le deep-link
+   * `?section=diagnostics` est couvert par la valeur initiale de `loading`, qui
+   * vaut `defaultExpanded`.
+   */
+  function toggle() {
+    setExpanded((ouvert) => {
+      if (!ouvert) {
+        setLoading(true);
+        setReadFailed(false);
+      }
+      return !ouvert;
+    });
+  }
+
+  // `loading` etait initialise a `defaultExpanded` et jamais remis a `true` :
+  // « Aucune génération enregistrée » sortait pendant tout l aller-retour IPC, et
+  // DEFINITIVEMENT si l appel echouait, le `.catch` vide avalant l erreur.
+  // Quelqu un venu diagnostiquer une generation ratee s entendait repondre qu il
+  // n en avait jamais lance. Un historique illisible et un historique vide ne se
+  // disent pas de la meme facon.
   useEffect(() => {
     if (!expanded) return;
     let mounted = true;
@@ -41,7 +69,9 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
       .then((data) => {
         if (mounted) setRuns(data);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (mounted) setReadFailed(true);
+      })
       .finally(() => {
         if (mounted) setLoading(false);
       });
@@ -65,7 +95,7 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
       <Button
         variant="secondary"
         size="sm"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={toggle}
         aria-expanded={expanded}
       >
         {expanded ? "Masquer l'historique" : "Afficher l'historique des générations"}
@@ -75,7 +105,14 @@ export function DiagnosticsPanel({ defaultExpanded = false }: DiagnosticsPanelPr
         <>
           {loading ? <p className="settings-diagnostics__note">Chargement…</p> : null}
 
-          {!loading && runs.length === 0 ? (
+          {!loading && readFailed ? (
+            <p className="settings-diagnostics__note" role="alert">
+              L'historique n'a pas pu être lu. Vos générations ne sont pas perdues :
+              c'est leur lecture qui a échoué.
+            </p>
+          ) : null}
+
+          {!loading && !readFailed && runs.length === 0 ? (
             <p className="settings-diagnostics__note">
               Aucune génération enregistrée pour l'instant.
             </p>

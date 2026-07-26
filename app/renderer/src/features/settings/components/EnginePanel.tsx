@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CliEngineStatus, CliEngineName } from "@shared/types/settings";
 import { Button, Skeleton, useToast, CheckCircleIcon } from "../../../design-system/primitives";
+import { annoncerChangementDeMoteur } from "../active-engine-events";
 
 /**
  * Etat d un moteur, en clair et sans couleur.
@@ -23,13 +24,36 @@ function stateLabel(engine: CliEngineStatus) {
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
+  const toast = useToast();
+  /** Retour du libelle a l etat de repos, annule au demontage. */
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, [text]);
+  useEffect(
+    () => () => {
+      if (timer.current !== null) clearTimeout(timer.current);
+    },
+    []
+  );
+
+  /**
+   * Un refus du presse-papier ne changeait rien a l ecran : ni « Copié », ni
+   * message. L utilisateur colle alors dans son terminal ce qui s y trouvait
+   * avant, et conclut que la commande de connexion affichee ne marche pas.
+   */
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      toast.show({
+        kind: "error",
+        message: "Impossible de copier dans le presse-papier. Vérifiez les autorisations."
+      });
+      return;
+    }
+    setCopied(true);
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 1500);
+  }, [text, toast]);
 
   return (
     <Button variant="ghost" size="sm" onClick={handleCopy} aria-label={label}>
@@ -92,6 +116,11 @@ export function EnginePanel() {
         .setActiveEngine(name)
         .then((selection) => {
           setActiveEngine(selection.engine);
+          // Le pied de la barre laterale lit le meme fait par un appel IPC
+          // independant et n est jamais remonte : sans cette annonce, il
+          // continue d afficher l ancien moteur jusqu a la fermeture de
+          // l application, a cote du toast qui dit le contraire.
+          annoncerChangementDeMoteur();
           toast.show({ kind: "success", message: `${displayName} est maintenant votre moteur IA actif.` });
           refresh();
         })

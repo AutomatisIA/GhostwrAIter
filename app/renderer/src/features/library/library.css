@@ -687,6 +687,43 @@
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-5);
+  /* Voir `.library-reader__read` plus bas : fondu de bas de course. */
+  animation: library-reader-fondu linear both;
+  animation-timeline: scroll(self block);
+}
+
+/*
+ * Fondu de bas de course.
+ *
+ * MESURE, fenetre de 1400 px : le volet a 795 px de hauteur visible pour 906 px
+ * de contenu. Le panneau de metadonnees passe sous le texte des que les deux ne
+ * tiennent plus cote a cote, ce qui demande 1 565 px de fenetre alors que la
+ * fenetre par defaut en fait 1 440 et son minimum 1 120. Le repli est donc l etat
+ * NORMAL, pas un cas limite : « Versions » s affichait avec son libelle et rien
+ * dessous, ce qui se lit comme un defaut de rendu et non comme une invitation a
+ * faire defiler. A 1 120 px, les quatre rangees sont 403 px sous le pli.
+ *
+ * Pourquoi pas le panneau remonte AU-DESSUS du texte, l autre option : il mesure
+ * environ 300 px, et le poser avant le post repousserait le texte lui-meme sous
+ * le pli. On deplacerait le defaut sur l element principal du volet, dont la
+ * lecture est la raison d etre.
+ *
+ * Le fondu ne coute aucune place et ne ment pas : la timeline de defilement le
+ * fait disparaitre EXACTEMENT quand on touche le bas, et reste inactive quand il
+ * n y a rien a faire defiler. L etat de base, hors animation, est donc l absence
+ * de masque : un navigateur sans `animation-timeline` rend le volet exactement
+ * comme aujourd hui, sans marque parasite.
+ */
+@keyframes library-reader-fondu {
+  /* Toute la course sauf la toute fin : le bord bas s efface. */
+  0%,
+  92% {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent 100%);
+  }
+
+  100% {
+    mask-image: linear-gradient(to bottom, #000 100%, #000 100%);
+  }
 }
 
 .library-reader__col {

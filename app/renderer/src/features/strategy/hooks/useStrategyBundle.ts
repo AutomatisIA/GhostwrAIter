@@ -248,7 +248,14 @@ export function useStrategyBundle() {
     }));
   }
 
-  async function saveBundle() {
+  /**
+   * Rend `true` quand l enregistrement a abouti.
+   *
+   * L erreur reste absorbee ici, avec son toast, mais le VERDICT remonte :
+   * l ecran posait sinon « Enregistré à HH:MM » sur un echec, a cote du toast
+   * qui disait le contraire.
+   */
+  async function saveBundle(): Promise<boolean> {
     const normalizedBundle: StrategyBundleInput = {
       ...bundle,
       pillars: bundle.pillars.map((pillar, index) => ({
@@ -261,12 +268,14 @@ export function useStrategyBundle() {
       await window.linkedinPoster.strategy.saveBundle(normalizedBundle);
       if (foundationSummary) setFoundationOutdated(true);
       toast.show({ kind: "success", message: "Stratégie enregistrée." });
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
       toast.show({
         kind: "error",
         message: `Échec de l'enregistrement de la stratégie : ${message}`
       });
+      return false;
     } finally {
       setSaving(false);
     }
