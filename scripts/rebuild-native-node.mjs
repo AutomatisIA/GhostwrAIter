@@ -1,26 +1,35 @@
 #!/usr/bin/env node
 // Cross-platform wrapper for `npm rebuild better-sqlite3`.
 //
-// On macOS and Linux we force PYTHON=/usr/bin/python3 when that binary exists,
-// because some systems have several Python installations and node-gyp needs
-// the right one. On Windows the POSIX-style env-var-prefix syntax is not
-// recognised by cmd/PowerShell, and /usr/bin/python3 does not exist anyway —
-// node-gyp on Windows discovers Python via PATH and the Windows registry.
+// The environment handed to node-gyp is computed by `resolveNativeBuildEnv`,
+// a pure function covered by tests/unit/native-build-env.test.ts. It pins
+// Python when several installations may be present, and pins clang when the
+// `cc` on PATH turns out not to be a compiler at all.
 //
 // Uses spawnSync with shell:true so that `npm` resolves to `npm.cmd` on
 // Windows (CVE-2024-27980 hardening prevents Node from executing .cmd files
-// directly). The command and arguments are fully hardcoded — no external
+// directly). The command and arguments are fully hardcoded, and no external
 // input flows into the shell, so there is no injection surface.
 
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { platform } from "node:os";
+import { resolveNativeBuildEnv } from "./native-build-env.mjs";
 
-const isWindows = platform() === "win32";
-const env = { ...process.env };
+const { env, notes } = resolveNativeBuildEnv({
+  env: process.env,
+  platform: platform(),
+  fileExists: existsSync,
+  probeCompiler: () => {
+    // A missing or non-executable `cc` yields no output; that reads as "does
+    // not answer like a compiler", which is exactly the case being detected.
+    const probe = spawnSync("cc", ["--version"], { encoding: "utf8", shell: true });
+    return `${probe.stdout ?? ""}${probe.stderr ?? ""}`;
+  }
+});
 
-if (!isWindows && existsSync("/usr/bin/python3")) {
-  env.PYTHON = "/usr/bin/python3";
+for (const note of notes) {
+  console.log(note);
 }
 
 const result = spawnSync("npm", ["rebuild", "better-sqlite3"], {
