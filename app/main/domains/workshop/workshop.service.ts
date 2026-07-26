@@ -24,7 +24,7 @@ import type {
 } from "../../../shared/types/workshop";
 import { createId } from "../../shared/create-id";
 import { tokenizeTags } from "./tokenize-tags";
-import { skillRunError } from "../execution/skill-run-error";
+import { SkillRunError, skillRunError } from "../execution/skill-run-error";
 import {
   buildStrategyContext,
   summarizeIcps,
@@ -873,7 +873,28 @@ export class WorkshopService {
   ): Promise<SkillRunnerResult> {
     const announced = this.skillRunnerService.getSelectedEngineName?.() ?? "codex";
     emitPhaseStarted(sender, { runId: invocation.runId, phase, engine: announced });
-    const result = await this.executeSkill(invocation);
+
+    let result: SkillRunnerResult;
+    try {
+      result = await this.executeSkill(invocation);
+    } catch (error) {
+      // `started` vient d etre emis : si l appel moteur LEVE (quota, limite de
+      // debit, delai depasse), le throw remonte avant toute borne terminale et
+      // l atelier reste fige sur cette etape, sans message d erreur. La garde
+      // couvre le SEUL appel moteur : l elargir ferait emettre une deuxieme
+      // borne terminale sur le chemin d echec deja couvert plus bas.
+      emitPhaseSettled(sender, {
+        runId: invocation.runId,
+        phase,
+        engine: announced,
+        status: "failed",
+        // Un `errorCode` absent disparait de l evenement (l emetteur omet la
+        // cle), alors que le contrat le veut present sur tout `failed`.
+        errorCode: error instanceof SkillRunError ? error.code : "SKILL_RUN_FAILED"
+      });
+      throw error;
+    }
+
     const usedEngine = result.engine ?? announced;
     // `completed` n'est emis QUE pour un succes franc : les appelants amont
     // throw des que `status !== "succeeded"` (y compris `partial`). Emettre

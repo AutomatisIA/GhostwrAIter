@@ -236,8 +236,25 @@ export class SkillRunnerService {
     invocation: SkillRunnerInvocation,
     engineName: ExecutionEngine
   ): Promise<SkillRunnerResult> {
-    const result = await this.runOnEngine(engine, invocation);
-    return { ...result, engine: engineName };
+    try {
+      const result = await this.runOnEngine(engine, invocation);
+      return { ...result, engine: engineName };
+    } catch (error) {
+      // Filet de securite : `runOnEngine` ne doit rendre que des resultats, mais
+      // la lecture du contrat sur une charge utile inattendue peut encore lever
+      // (par exemple `qualitySignals: null`, qui fait un TypeError). Sans ce
+      // filet l exception traverse `executeAsync`, les appelants n emettent
+      // aucune borne terminale et l interface reste figee sur l etape en cours.
+      return {
+        status: "failed",
+        summary: "Skill run failed",
+        error: {
+          code: "SKILL_RUN_FAILED",
+          message: error instanceof Error ? error.message : String(error)
+        },
+        engine: engineName
+      };
+    }
   }
 
   private async runOnEngine(
@@ -279,23 +296,64 @@ export class SkillRunnerService {
       frameworkPreamble,
       this.getUserConstraints?.() ?? ""
     );
+    let rawOutput: string;
+    try {
+      rawOutput = await engine.executeSkill(prompt);
+    } catch (error) {
+      // Un moteur qui sort en erreur (quota, limite de debit, delai depasse)
+      // LEVE. Sans cette garde l exception traversait `executeAsync` : aucun
+      // appelant n emettait de borne terminale et l atelier restait fige sur son
+      // etape. Le chemin synchrone `executeOnCodex` encadre deja son appel de la
+      // meme facon ; l asynchrone s aligne dessus.
+      return {
+        status: "failed",
+        summary: "Engine execution error",
+        error: {
+          code: "ENGINE_EXECUTION_ERROR",
+          message: error instanceof Error ? error.message : "Unknown execution error"
+        }
+      };
+    }
+
     // Les CLI n emettent pas tous le contrat nu : Claude et Gemini l encadrent
     // dans leur propre enveloppe JSON. Voir extract-skill-payload.
-    const raw = extractSkillPayload(await engine.executeSkill(prompt));
+    const raw = extractSkillPayload(rawOutput);
 
-    let result: SkillRunnerResult;
+    let parsed: unknown;
     try {
-      result = JSON.parse(raw) as SkillRunnerResult;
+      parsed = JSON.parse(raw);
     } catch {
       return {
         status: "failed",
         summary: "Engine returned non-JSON output",
         error: {
           code: "ENGINE_INVALID_JSON",
-          message: raw
+          // `raw` est vide quand la CLI sort a zero sans rien ecrire. Ce message
+          // remonte tel quel jusqu a l utilisateur, et `??` ne se declenche pas
+          // sur une chaine vide : il lisait donc une erreur sans aucun texte.
+          message:
+            raw.trim() ||
+            "Le moteur IA n'a rien renvoyé. Relancez la génération, ou ouvrez le journal d'exécution pour voir la sortie du moteur."
         }
       };
     }
+
+    // `JSON.parse(raw) as SkillRunnerResult` mentait : sur la sortie litterale
+    // `null` le parse reussit et la lecture de `.status` levait un TypeError,
+    // qui remontait par le meme chemin non garde. Un contrat de skill est un
+    // objet, jamais un scalaire ni un tableau.
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return {
+        status: "failed",
+        summary: "Engine returned an invalid contract",
+        error: {
+          code: "ENGINE_INVALID_CONTRACT",
+          message: `Engine returned a payload that does not satisfy the ${invocation.skillName} contract.`
+        }
+      };
+    }
+
+    const result = parsed as SkillRunnerResult;
 
     if (result.status === "failed") {
       return result;

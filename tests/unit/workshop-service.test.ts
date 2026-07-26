@@ -11,6 +11,7 @@ import {
   WorkshopService
 } from "../../app/main/domains/workshop/workshop.service";
 import { SkillRunnerService } from "../../app/main/domains/execution/skill-runner.service";
+import { SkillRunError } from "../../app/main/domains/execution/skill-run-error";
 import {
   EXECUTION_PROGRESS_CHANNEL,
   type ExecutionProgressEvent
@@ -415,6 +416,93 @@ describe("runPhase progress emission (finding revue Codex)", () => {
     const terminal = events.find((e) => e.status === "failed");
     expect(terminal?.status).toBe("failed");
     expect(terminal?.phase).toBe("structure");
+  });
+
+  /**
+   * Double de runner dont l appel moteur LEVE. C est le scenario reel d une
+   * panne de quota ou de limite de debit : le moteur sort en erreur et son CLI
+   * throw. Le double expose le meme contrat que le vrai runner (`executeAsync`
+   * + `getSelectedEngineName`), sinon il testerait un chemin qui n existe pas.
+   */
+  function makeServiceWithThrowingRunner(error: Error) {
+    const throwingRunner = {
+      executeAsync: async () => {
+        throw error;
+      },
+      getSelectedEngineName: () => "codex"
+    } as unknown as SkillRunnerService;
+
+    return new WorkshopService(
+      db,
+      ideasRepository,
+      () => createStrategyBundleFixture(),
+      undefined,
+      throwingRunner
+    );
+  }
+
+  it("emet `failed` avec le code porte par l'erreur quand le moteur LEVE", async () => {
+    const service = makeServiceWithThrowingRunner(
+      new SkillRunError("ENGINE_EXECUTION_ERROR", "rate limit reached")
+    );
+    const { sender, events } = makeFakeSender();
+    const idea = ideasRepository.createIdea({
+      title: "IA en PME",
+      angle: "Le process avant l'outil",
+      pillarLabel: "Methodes"
+    });
+
+    await expect(
+      service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)
+    ).rejects.toThrow("rate limit reached");
+
+    // Sans borne terminale, l'interface reste figee sur l'etape en cours et le
+    // message d'erreur ne part jamais.
+    const terminal = events.filter((e) => e.status === "failed" || e.status === "completed");
+    expect(terminal).toHaveLength(1);
+    expect(terminal[0]?.status).toBe("failed");
+    expect(terminal[0]?.phase).toBe("structure");
+    expect(terminal[0]?.errorCode).toBe("ENGINE_EXECUTION_ERROR");
+  });
+
+  it("emet `failed` avec SKILL_RUN_FAILED quand l'erreur ne porte aucun code", async () => {
+    const service = makeServiceWithThrowingRunner(new Error("boom"));
+    const { sender, events } = makeFakeSender();
+    const idea = ideasRepository.createIdea({
+      title: "IA en PME",
+      angle: "Le process avant l'outil",
+      pillarLabel: "Methodes"
+    });
+
+    await expect(
+      service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)
+    ).rejects.toThrow("boom");
+
+    const terminal = events.filter((e) => e.status === "failed" || e.status === "completed");
+    expect(terminal).toHaveLength(1);
+    // `errorCode` absent disparaitrait de l'evenement : l'emetteur omet la cle
+    // quand la valeur est vide, alors que le contrat la veut presente.
+    expect(terminal[0]?.errorCode).toBe("SKILL_RUN_FAILED");
+  });
+
+  it("n'emet qu'une seule borne terminale sur un echec rendu par le runner", async () => {
+    const service = makeServiceWithStatus("failed");
+    const { sender, events } = makeFakeSender();
+    const idea = ideasRepository.createIdea({
+      title: "IA en PME",
+      angle: "Le process avant l'outil",
+      pillarLabel: "Methodes"
+    });
+
+    await expect(
+      service.getSuggestedStructures(idea.id, "expertise", "awareness", sender as never)
+    ).rejects.toThrow();
+
+    // Une paire started/terminale par sous-etape reelle (contrat
+    // execution-progress-channel.md, ligne 9) : une garde trop large autour de
+    // l'appel moteur ferait emettre deux bornes terminales pour une etape.
+    const terminal = events.filter((e) => e.status === "failed" || e.status === "completed");
+    expect(terminal).toHaveLength(1);
   });
 
   it("emet `failed` avec l'errorCode quand le statut est failed", async () => {
