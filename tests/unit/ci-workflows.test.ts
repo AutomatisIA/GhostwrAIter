@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -265,6 +265,38 @@ describe("auto-release.yml", () => {
    * sur le meme push, est une execution independante dont l'echec n'empeche
    * rien.
    */
+  /*
+   * Les notes de version sont ECRITES, pas generees. Les releases precedentes
+   * ne portaient que le lien « Full Changelog » automatique, soit une liste de
+   * messages de commit : lisible par qui a ecrit le code, opaque pour qui
+   * telecharge l'application.
+   *
+   * Cette porte est ce qui separe « notes ecrites » de « notes promises ».
+   * `body_path` designe un fichier par version : sans elle, bumper sans ecrire
+   * les notes publierait une release dont le corps est vide ou dont l'action
+   * echoue au dernier moment, apres l'empaquetage des trois systemes. On veut
+   * l'echec AVANT, et sur une phrase qui dit quoi faire.
+   */
+  it("publie des notes ecrites pour la version portee par package.json", () => {
+    expect(raw).toContain(
+      "body_path: .github/release-notes/v${{ needs.check-version.outputs.version }}.md"
+    );
+
+    const version = JSON.parse(
+      readFileSync(join(__dirname, "..", "..", "package.json"), "utf-8")
+    ).version as string;
+    const chemin = join(__dirname, "..", "..", ".github", "release-notes", `v${version}.md`);
+
+    expect(
+      existsSync(chemin),
+      `Notes de version manquantes pour ${version}. Ecrire ${chemin} avant de publier.`
+    ).toBe(true);
+
+    // Un fichier vide passerait `existsSync` sans rien apprendre a personne.
+    const notes = readFileSync(chemin, "utf-8").trim();
+    expect(notes.length).toBeGreaterThan(200);
+  });
+
   it("empeche l'empaquetage de demarrer sans que les verifications aient reussi", () => {
     expect(needsOf(jobs.get("package") ?? "")).toContain("checks");
   });
