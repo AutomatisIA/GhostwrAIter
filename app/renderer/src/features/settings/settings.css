@@ -118,6 +118,17 @@
   color: var(--ink-subtle);
 }
 
+/* Le numero de version, a la difference d un chemin de fichier, tient sur
+   quelques caracteres : il ne doit pas s etirer. `settings-path` porte
+   `flex: 1 1 auto` pour absorber un chemin long, et le reutiliser ici poussait
+   la phrase d aide a l autre bout de la ligne, detachee de ce qu elle explique. */
+.settings-version {
+  flex: 0 0 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--font-size-sm);
+  color: var(--ink-muted);
+}
+
 .settings-path {
   flex: 1 1 auto;
   min-width: 0;
