@@ -61,6 +61,29 @@ function openArchive(archivePath: string): Promise<yauzl.ZipFile> {
   });
 }
 
+/**
+ * Settles a promise only once the archive's file descriptor is really closed.
+ *
+ * `zipFile.close()` returns before the descriptor is released; yauzl emits
+ * `close` when it actually is. On POSIX that distinction is invisible, because
+ * an open file can still be unlinked. On Windows it is not: deleting or moving
+ * a file whose descriptor is open fails, so returning early leaves the user's
+ * archive locked for as long as the application runs, right after an import
+ * that was refused.
+ *
+ * It surfaced as an intermittent `ENOTEMPTY` on the Windows CI runner and
+ * passed locally and on the other two platforms, which is exactly how this
+ * class of defect hides.
+ */
+function afterClose(zipFile: yauzl.ZipFile, settle: () => void): void {
+  if (!zipFile.isOpen) {
+    settle();
+    return;
+  }
+  zipFile.once("close", settle);
+  zipFile.close();
+}
+
 function readEntryBuffer(zipFile: yauzl.ZipFile, entry: yauzl.Entry): Promise<Buffer> {
   return new Promise((resolvePromise, rejectPromise) => {
     zipFile.openReadStream(entry, (err, stream) => {
@@ -97,20 +120,16 @@ export async function readArchiveEntry(
       }
       found = true;
       readEntryBuffer(zipFile, entry).then(
-        (buffer) => {
-          zipFile.close();
-          resolvePromise(buffer);
-        },
-        (err: unknown) => {
-          zipFile.close();
-          rejectPromise(err);
-        }
+        (buffer) => afterClose(zipFile, () => resolvePromise(buffer)),
+        (err: unknown) => afterClose(zipFile, () => rejectPromise(err))
       );
     });
     zipFile.on("end", () => {
-      if (!found) resolvePromise(null);
+      if (!found) afterClose(zipFile, () => resolvePromise(null));
     });
-    zipFile.on("error", rejectPromise);
+    zipFile.on("error", (err: unknown) =>
+      afterClose(zipFile, () => rejectPromise(asArchiveError(err)))
+    );
     zipFile.readEntry();
   });
 }
@@ -165,10 +184,8 @@ export async function extractArchive(
   const extracted: string[] = [];
 
   return new Promise<string[]>((resolvePromise, rejectPromise) => {
-    const fail = (err: unknown) => {
-      zipFile.close();
-      rejectPromise(asArchiveError(err));
-    };
+    const fail = (err: unknown) =>
+      afterClose(zipFile, () => rejectPromise(asArchiveError(err)));
 
     zipFile.on("entry", (entry: yauzl.Entry) => {
       // Directory entries carry no content; the parent directories of each
@@ -207,10 +224,7 @@ export async function extractArchive(
       });
     });
 
-    zipFile.on("end", () => {
-      zipFile.close();
-      resolvePromise(extracted);
-    });
+    zipFile.on("end", () => afterClose(zipFile, () => resolvePromise(extracted)));
     zipFile.on("error", fail);
     zipFile.readEntry();
   });
