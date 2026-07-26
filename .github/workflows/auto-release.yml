@@ -249,6 +249,23 @@ jobs:
       - package
     runs-on: ubuntu-latest
     steps:
+      # `body_path` designe un fichier DU DEPOT. Sans ce checkout, il n'existe
+      # pas sur le runner et l'action publie une release au corps VIDE, sans
+      # echouer : les v2.0.1 et v2.1.0 sont parties comme ca, avec leurs notes
+      # redigees, relues et jamais publiees.
+      #
+      # La porte censee l'empecher assertait la presence de `body_path` dans le
+      # YAML, le reglage `generate_release_notes: false` et l'existence du
+      # fichier DANS LE DEPOT. Les trois etaient vrais. Aucun ne dit que le job
+      # qui lit ce fichier y a acces. Troisieme variante du meme defaut sur la
+      # meme ligne : verifier la configuration n'est pas verifier le resultat.
+      #
+      # Le checkout vient AVANT le telechargement des artefacts : `actions/
+      # checkout` nettoie le repertoire de travail, et supprimerait un dossier
+      # `artifacts/` depose avant lui.
+      - name: Checkout (required for the release notes file)
+        uses: actions/checkout@v6
+
       - name: Download packaged artifacts
         uses: actions/download-artifact@v8
         with:

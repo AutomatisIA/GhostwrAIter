@@ -19,11 +19,12 @@ Download the latest version from [GitHub Releases](https://github.com/AutomatisI
 | Platform | File |
 |----------|------|
 | **macOS (Apple Silicon)** | `GhostwrAIter-x.x.x-arm64.dmg` |
-| **macOS (Intel)** | `GhostwrAIter-x.x.x-x64.dmg` |
 | **Windows** | `GhostwrAIter-x.x.x-setup.exe` |
 | **Linux** | `GhostwrAIter-x.x.x.AppImage` |
 
 Open the `.dmg`, drag the application into your Applications folder, and launch it from the Dock or Spotlight.
+
+macOS builds are Apple Silicon only. They are produced on GitHub's macOS runners, which are Apple Silicon, and no Intel target is requested. Intel Macs need [Option B](#option-b-from-source-developers).
 
 ### Option B: from source (developers)
 
