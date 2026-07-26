@@ -25,12 +25,13 @@
  */
 import { _electron as electron } from "playwright";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, existsSync } from "node:fs";
+import { mkdtempSync, existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
 
 const repoRoot = resolvePath(new URL("..", import.meta.url).pathname);
 const mainBundle = join(repoRoot, "dist-electron", "main", "index.js");
+const renderedHtml = join(repoRoot, "out", "renderer", "index.html");
 const electronBinary = join(repoRoot, "node_modules", ".bin", "electron");
 
 let passed = 0;
@@ -49,6 +50,73 @@ function report(name, ok, details) {
       console.log(`    ${line}`);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Check 0: the SHIPPED renderer carries a production-grade policy.
+//
+// `tests/unit/csp-injection.test.ts` couvre la fonction pure `injectCspMetaTag`.
+// Rien ne couvrait l artefact : le mode est choisi par
+// `process.env.NODE_ENV === "production"` dans `electron.vite.config.ts`, et un
+// build qui retomberait sur `developmentCsp` livrerait `'unsafe-inline'`,
+// `'unsafe-eval'` et `ws:` a l application packagee sans qu aucune porte ne
+// tombe.
+//
+// On assertit la PROPRIETE, jamais une copie de la politique. Recopier la
+// chaine attendue ici reconstruirait le defaut de `audit-contrast.mjs`, qui
+// certifiait une palette dupliquee au lieu de la palette reelle : la porte
+// resterait verte pendant que la source change. Les jetons ci-dessous sont
+// exactement ceux qui separent la politique de developpement de celle de
+// production, et le controle est borne a la directive `script-src` : `style-src
+// 'unsafe-inline'` figure dans les DEUX politiques et ferait une fausse alerte.
+// ---------------------------------------------------------------------------
+
+console.log("== Check 0: politique de securite de l artefact construit ==");
+
+if (!existsSync(renderedHtml)) {
+  report(
+    "le renderer construit porte une politique de production",
+    false,
+    `${renderedHtml} introuvable : lancez d abord \`npm run build\``
+  );
+} else {
+  const html = readFileSync(renderedHtml, "utf8");
+  const metas = html.match(/<meta[^>]+http-equiv=["']Content-Security-Policy["'][^>]*>/gi) ?? [];
+  // La valeur de `content` contient des apostrophes (`'self'`, `'none'`) : une
+  // classe `[^"']+` s arretait sur la premiere et ne rendait que
+  // « default-src ». La porte annoncait alors « aucune directive script-src »
+  // sur un artefact parfaitement conforme. On borne sur le delimiteur reel.
+  const contenu =
+    metas.length === 1 ? (metas[0].match(/content=(["'])([\s\S]*?)\1/i)?.[2] ?? "") : "";
+  const scriptSrc =
+    contenu
+      .split(";")
+      .map((d) => d.trim())
+      .find((d) => d.startsWith("script-src")) ?? "";
+
+  // Jetons qui distinguent `developmentCsp` de `productionCsp`, plus les
+  // elargissements qu un correctif presse pourrait introduire.
+  const interdits = ["'unsafe-inline'", "'unsafe-eval'", "data:", "http:", "https:", "ws:", "*"];
+  const presents = interdits.filter((jeton) => scriptSrc.includes(jeton));
+
+  const politiqueStricte =
+    metas.length === 1 &&
+    scriptSrc.includes("'self'") &&
+    presents.length === 0 &&
+    contenu.includes("object-src 'none'") &&
+    !contenu.includes("ws:");
+
+  report(
+    "le renderer construit porte une politique de production",
+    politiqueStricte,
+    [
+      `balises CSP trouvees : ${metas.length} (attendu 1)`,
+      `directive relevee : ${scriptSrc || "(aucune directive script-src)"}`,
+      `jetons interdits presents : ${presents.length > 0 ? presents.join(" ") : "aucun"}`,
+      `object-src 'none' : ${contenu.includes("object-src 'none'")}`,
+      `ws: dans la politique : ${contenu.includes("ws:")}`
+    ].join("\n")
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -148,10 +216,12 @@ const app = await electron.launch({
 try {
   const page = await app.firstWindow();
 
+  // Le collecteur de messages de console est parti avec l ancienne porte CSP,
+  // qui cherchait « refused to load » dans du texte libre. Les sondes actuelles
+  // lisent l evenement `securitypolicyviolation`, qui NOMME la directive au lieu
+  // de la deviner dans un journal.
   const pageErrors = [];
-  const consoleMessages = [];
   page.on("pageerror", (err) => pageErrors.push(err.message));
-  page.on("console", (msg) => consoleMessages.push({ type: msg.type(), text: msg.text() }));
 
   await page.waitForLoadState("domcontentloaded");
   await page.waitForTimeout(800);
@@ -192,9 +262,12 @@ try {
 
   const postWindowCount = await app.evaluate(async ({ BrowserWindow }) => BrowserWindow.getAllWindows().length);
 
+  // `typeof null` vaut "object", et un vrai WindowProxy aussi : la disjonction
+  // precedente (`handleIsNull === true || type === "object"`) etait vraie dans
+  // tous les cas et ne mesurait donc que le comptage de fenetres. Seul le
+  // handle nul atteste du refus.
   const windowOpenBlocked =
-    (windowOpenResult?.handleIsNull === true || windowOpenResult?.type === "object") &&
-    postWindowCount === initialWindowCount;
+    windowOpenResult?.handleIsNull === true && postWindowCount === initialWindowCount;
 
   report(
     "window.open to an external origin is denied and opens no new Electron window",
@@ -205,56 +278,108 @@ try {
     ].join("\n")
   );
 
-  // Check 2: injecting a <script src="https://external/..."> from the console
-  // should be blocked by the CSP. The external script never loads, so its
-  // onload never fires; a CSP violation is reported in the console.
-  consoleMessages.length = 0;
+  // -------------------------------------------------------------------------
+  // Check 2: la CSP refuse les trois choses qu elle promet de refuser.
+  //
+  // CE QUI NE MARCHAIT PAS. La porte precedente chargeait
+  // `https://example.com/should-be-blocked.js` et concluait sur
+  // `loaded === false && (violationConsole || errored === true)`. Cette URL
+  // renvoie 404 : `onerror` part avec ou sans CSP, et `loaded` est faux dans les
+  // deux cas. Aucun des deux membres ne dependait de la politique. Retirer la
+  // balise CSP entierement laissait la porte verte, et c est la seule porte qui
+  // regarde l application en marche.
+  //
+  // CE QUI LES REMPLACE. Trois sondes, chacune adossee a UNE directive, sans
+  // reseau donc sans verdict qui depende de la joignabilite d un hote :
+  //   - un script en URI `data:` n est pas `'self'`, `script-src 'self'` le
+  //     refuse ;
+  //   - un script inline est refuse en l absence de `'unsafe-inline'`.
+  // Chaque sonde mesure l EXECUTION (un temoin pose sur `window`), pas un
+  // evenement de chargement, et l evenement `securitypolicyviolation` est
+  // releve a cote pour nommer la directive qui a mordu.
+  //
+  // IL N Y A PAS DE SONDE `eval`, ET C EST DELIBERE. Une troisieme sonde a ete
+  // ecrite puis retiree apres mesure : `(0, eval)("40 + 2")` rend 42 dans ce
+  // renderer alors que la politique livree est `script-src 'self'` sans
+  // `'unsafe-eval'`. Le code de `page.evaluate` est injecte par le protocole
+  // DevTools, qui est exempt de CSP, et un `eval` imbrique herite de cette
+  // exemption. La sonde mesurait donc Playwright, pas l application : elle
+  // aurait ete verte ou rouge sans jamais dependre de la politique. Une porte
+  // qui ne peut pas dependre de ce qu elle nomme se retire, elle ne se garde
+  // pas au vert. `'unsafe-eval'` reste couvert par le Check 0, sur l artefact.
+  const sondes = await page.evaluate(
+    async () =>
+      new Promise((resolvePromise) => {
+        const violations = [];
+        const surViolation = (evenement) => {
+          violations.push({
+            directive: evenement.violatedDirective,
+            bloque: String(evenement.blockedURI ?? "").slice(0, 40)
+          });
+        };
+        document.addEventListener("securitypolicyviolation", surViolation);
 
-  const scriptInjectionResult = await page.evaluate(async () => {
-    return new Promise((resolvePromise) => {
-      const script = document.createElement("script");
-      script.src = "https://example.com/should-be-blocked.js";
-      script.dataset.verify = "hardening";
-      let loaded = false;
-      let errored = false;
-      script.onload = () => {
-        loaded = true;
-      };
-      script.onerror = () => {
-        errored = true;
-      };
-      document.head.appendChild(script);
-      setTimeout(() => {
-        script.remove();
-        resolvePromise({ loaded, errored });
-      }, 600);
-    });
-  });
+        delete window.__cspData;
+        delete window.__cspInline;
 
-  await page.waitForTimeout(200);
+        // Sonde 1 : source externe. `data:` n est couvert par aucune politique
+        // de production de ce depot.
+        const externe = document.createElement("script");
+        externe.src = "data:text/javascript,window.__cspData = true";
+        document.head.appendChild(externe);
 
-  const cspViolationDetected = consoleMessages.some(
-    (m) =>
-      m.text.toLowerCase().includes("content security policy") ||
-      m.text.toLowerCase().includes("content-security-policy") ||
-      m.text.toLowerCase().includes("refused to load")
+        // Sonde 2 : script inline.
+        const inline = document.createElement("script");
+        inline.textContent = "window.__cspInline = true";
+        document.head.appendChild(inline);
+
+        setTimeout(() => {
+          document.removeEventListener("securitypolicyviolation", surViolation);
+          externe.remove();
+          inline.remove();
+          resolvePromise({
+            dataExecute: window.__cspData === true,
+            inlineExecute: window.__cspInline === true,
+            violations
+          });
+        }, 500);
+      })
   );
 
-  const externalScriptBlocked =
-    scriptInjectionResult?.loaded === false && (cspViolationDetected || scriptInjectionResult?.errored === true);
+  const directives = sondes.violations.map((v) => v.directive).join(", ") || "aucune";
 
   report(
-    "an external script injection from the renderer console is blocked by CSP",
-    externalScriptBlocked,
+    "un script de source externe (URI data:) ne s execute pas dans le renderer",
+    sondes.dataExecute === false,
     [
-      `script onload fired: ${scriptInjectionResult?.loaded}`,
-      `script onerror fired: ${scriptInjectionResult?.errored}`,
-      `CSP violation in console: ${cspViolationDetected}`,
-      `relevant console messages: ${JSON.stringify(
-        consoleMessages.filter((m) =>
-          m.text.toLowerCase().includes("content security policy")
-        )
-      )}`
+      `temoin window.__cspData pose : ${sondes.dataExecute}`,
+      `directives violees relevees : ${directives}`
+    ].join("\n")
+  );
+
+  report(
+    "un script inline injecte depuis le renderer ne s execute pas",
+    sondes.inlineExecute === false,
+    [
+      `temoin window.__cspInline pose : ${sondes.inlineExecute}`,
+      `directives violees relevees : ${directives}`
+    ].join("\n")
+  );
+
+  // Les deux sondes doivent avoir ete VUES par le moteur de politique. Sans
+  // cette porte, une CSP absente ferait passer les deux precedentes si les
+  // scripts echouaient pour une autre raison, ce qui est exactement le defaut
+  // corrige ici : l ancienne porte concluait sur un `onerror` qu un 404
+  // declenchait de toute facon.
+  const directivesScript = sondes.violations.filter((v) =>
+    String(v.directive).startsWith("script-src")
+  );
+  report(
+    "les deux injections ont ete refusees PAR la politique, pas par autre chose",
+    directivesScript.length >= 2,
+    [
+      `violations script-src relevees : ${directivesScript.length} (2 attendues)`,
+      `detail : ${JSON.stringify(sondes.violations)}`
     ].join("\n")
   );
 

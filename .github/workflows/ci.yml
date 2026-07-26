@@ -1,5 +1,13 @@
 name: CI
 
+# Les memes etapes figurent dans le job `checks` de `auto-release.yml`, et
+# c'est delibere. La chaine qui publie ne doit dependre d'aucun montage dont la
+# panne serait silencieuse : elle porte ses propres etapes, lisibles dans son
+# YAML, donc verifiables par `tests/unit/ci-workflows.test.ts`. La duplication
+# est le prix, et il est faible devant une release publiee sur une porte rouge.
+# Les deux listes d'etapes sont verrouillees ensemble par ce meme fichier de
+# test, qui exige qu'elles portent les memes commandes.
+
 on:
   push:
     branches:
@@ -51,6 +59,9 @@ jobs:
 
       - name: Security audit (production dependencies only)
         run: npm audit --audit-level=high --omit=dev
+
+      - name: Palette contrast (WCAG AA on both themes)
+        run: npm run audit:contraste
 
       - name: Verify hardening (macOS only)
         if: runner.os == 'macOS'

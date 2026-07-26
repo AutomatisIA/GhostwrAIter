@@ -25,8 +25,23 @@ const HAUTEUR = 900;
 
 const resultats = [];
 
-function porte(nom, attendu, obtenu, passe) {
-  resultats.push({ nom, attendu, obtenu, passe });
+/**
+ * Une porte, avec un TROISIEME etat.
+ *
+ * `nonJoue` existe parce que ce script comptait des portes qu il n avait pas
+ * jouees. Une porte enfermee dans un `if` disparaissait du total quand la
+ * condition etait fausse, et le total restait plein : « 21 portes tenues sur
+ * 21 » ne disait pas que trois d entre elles n avaient rien mesure. Une porte
+ * qui ne peut pas mesurer doit le DIRE et rester au denominateur, sinon le
+ * total change de taille avec les donnees et deux executions ne se comparent
+ * plus.
+ *
+ * Une porte non jouee ne fait pas echouer le script : elle constate une
+ * situation ou la propriete n a pas de sens. Elle est comptee a part, et une
+ * porte d agregation verifie plus bas qu on n a pas TOUT esquive.
+ */
+function porte(nom, attendu, obtenu, passe, nonJoue = false) {
+  resultats.push({ nom, attendu, obtenu, passe, nonJoue });
 }
 
 const maison = mkdtempSync(join(tmpdir(), "ghostwraiter-geometrie-"));
@@ -121,23 +136,45 @@ try {
       corps.scrollTop = 0;
       corps.scrollTop = 999_999;
       const atteint = corps.scrollTop;
+      const cadre = document.querySelector(".page");
       return {
         atteint,
         debordant: corps.scrollHeight > corps.clientHeight + 1,
-        hauteurPage: Math.round(
-          document.querySelector(".page")?.getBoundingClientRect().height ?? 0
-        ),
+        // `?? 0` rendait 0 quand `.page` avait disparu, et `0 <= 901` passait :
+        // la porte anti-tautologie devenait elle-meme tautologique des que son
+        // selecteur mourait. On rapporte donc l ABSENCE, jamais un zero.
+        cadreTrouve: Boolean(cadre),
+        hauteurPage: cadre ? Math.round(cadre.getBoundingClientRect().height) : null,
         hauteurFenetre: window.innerHeight
       };
     });
     await page.waitForTimeout(200);
     const apres = await barre.evaluate((n) => n.getBoundingClientRect().top);
 
+    /*
+     * L en-tete ne peut etre eprouve que si le corps DEBORDE.
+     *
+     * L ancienne porte poussait `scrollTop` au maximum puis constatait que la
+     * barre n avait pas bouge. Sur un ecran dont le corps ne deborde pas,
+     * `scrollTop` reste a zero et la barre aussi : elle passait sans rien
+     * prouver, cinq fois de suite. Retirer l epinglage de `.page__bar` de la
+     * feuille ne l aurait pas fait tomber.
+     *
+     * Le defilement effectif fait desormais partie de l assertion, il n est
+     * plus une porte separee enfermee dans un `if (releve.debordant)` qui ne
+     * s executait ni en succes ni en echec. Et quand le corps ne deborde pas,
+     * la porte se declare non jouable au lieu de s attribuer un vert.
+     */
+    const mesurable = Boolean(releve && releve.debordant);
+
     porte(
       `En-tete fixe sur ${nom}`,
-      "position inchangee apres defilement",
-      `${avant} px puis ${apres} px`,
-      Math.abs(avant - apres) < 1
+      "position inchangee apres un defilement REEL du corps",
+      mesurable
+        ? `${avant} px puis ${apres} px, ${Math.round(releve.atteint)} px defiles`
+        : "le corps ne deborde pas a cette taille de fenetre, l en-tete ne peut pas bouger",
+      mesurable && Math.abs(avant - apres) < 1 && releve.atteint > 0,
+      !mesurable
     );
 
     // Porte anti-tautologie. La verification ci-dessus poussait `scrollTop` au
@@ -151,23 +188,16 @@ try {
     // ne le borne pas. `.page` faisait 2 538 px dans un parent de 900, et le
     // corps heritait de toute la hauteur du contenu. On mesure donc les deux
     // faits qui l auraient revele.
-    if (releve) {
-      porte(
-        `Hauteur de page bornee sur ${nom}`,
-        "<= hauteur de la fenetre",
-        `${releve.hauteurPage} px sur ${releve.hauteurFenetre} px`,
-        releve.hauteurPage <= releve.hauteurFenetre + 1
-      );
-
-      if (releve.debordant) {
-        porte(
-          `Defilement effectif sur ${nom}`,
-          "contenu debordant, donc scrollTop > 0",
-          `${Math.round(releve.atteint)} px atteints`,
-          releve.atteint > 0
-        );
-      }
-    }
+    porte(
+      `Hauteur de page bornee sur ${nom}`,
+      "un cadre .page mesurable, <= hauteur de la fenetre",
+      releve
+        ? releve.cadreTrouve
+          ? `${releve.hauteurPage} px sur ${releve.hauteurFenetre} px`
+          : "cadre .page introuvable, rien a mesurer"
+        : "corps .page__body introuvable",
+      Boolean(releve?.cadreTrouve) && releve.hauteurPage <= releve.hauteurFenetre + 1
+    );
   }
 
   await enTeteFixe("#/", "Cockpit");
@@ -175,6 +205,27 @@ try {
   await enTeteFixe("#/creer", "Creer");
   await enTeteFixe("#/bibliotheque", "Bibliotheque");
   await enTeteFixe("#/parametres", "Parametres");
+
+  /*
+   * Porte d agregation : au moins un ecran doit avoir REELLEMENT defile.
+   *
+   * Sans elle, les cinq portes precedentes pourraient toutes se declarer non
+   * jouables et l audit conclurait sans avoir jamais eprouve l epinglage de
+   * l en-tete. Une famille entiere de portes esquivees en silence est ce que ce
+   * script est cense empecher : elle doit se voir sur UNE ligne rouge, pas se
+   * deduire d un total qui a change de taille.
+   */
+  const enTetesEprouvees = resultats.filter(
+    (r) => r.nom.startsWith("En-tete fixe sur ") && !r.nonJoue
+  );
+  porte(
+    "L en-tete a ete eprouve sous un defilement reel",
+    "au moins un des cinq ecrans deborde et a pu etre mesure",
+    `${enTetesEprouvees.length} ecran(s) sur 5 : ${
+      enTetesEprouvees.map((r) => r.nom.replace("En-tete fixe sur ", "")).join(", ") || "aucun"
+    }`,
+    enTetesEprouvees.length >= 1
+  );
 
   // ---- Porte 4 : densite de l onglet Profil de la Strategie, aides repliees.
   //
@@ -270,12 +321,33 @@ try {
       };
     });
 
-  await basculerAides(true);
+  const basculesTrouvees = await basculerAides(true);
   await page.waitForTimeout(400);
   const profilDeplie = await mesurerProfil();
   await basculerAides(false);
   await page.waitForTimeout(400);
   const profil = await mesurerProfil();
+
+  /*
+   * Le depliage a-t-il eu lieu ?
+   *
+   * `basculerAides` rendait le nombre de boutons trouves et cette valeur etait
+   * JETEE. Renommer `.strategy-row__help-toggle` suffisait a ce que la boucle
+   * ne clique rien : `profilDeplie` devenait identique a `profil`, les trois
+   * portes du Profil restaient vertes puisqu elles n assertent que
+   * `aidesDepliees === 0`, et le detail affichait « N px les quatre aides
+   * ouvertes » sur une mesure prise aides FERMEES. C est le defaut que la porte
+   * « Les champs longs sont bornes » venait de corriger, reintroduit un cran
+   * plus haut : un texte fixe a la place d une mesure.
+   */
+  porte(
+    "L etat deplie est reellement atteint avant de mesurer le replie",
+    "4 bascules d aide trouvees, 4 aides visibles une fois ouvertes",
+    `${basculesTrouvees} bascule(s) trouvee(s), ${
+      profilDeplie ? profilDeplie.aidesDepliees : "?"
+    } aide(s) visible(s) apres ouverture`,
+    basculesTrouvees === 4 && profilDeplie?.aidesDepliees === 4
+  );
 
   if (!profil || !profilDeplie) {
     porte(
@@ -326,20 +398,66 @@ try {
       document.querySelectorAll('.ds-button[data-variant="primary"]')
     );
     if (boutons.length === 0) return null;
+
+    /*
+     * Un rectangle n est pas une visibilite.
+     *
+     * La version precedente ne retenait que `r.bottom <= hauteur && r.top >= 0`.
+     * Un bouton en `opacity: 0`, en `visibility: hidden` ou en
+     * `pointer-events: none` garde exactement le meme rectangle : la porte
+     * restait verte alors que l action etait invisible ou inerte. On mesure donc
+     * aussi ce que la feuille en fait, et la largeur non nulle, qu un parent
+     * replie a zero laisserait passer.
+     */
+    const juger = (b) => {
+      const r = b.getBoundingClientRect();
+      const style = getComputedStyle(b);
+      const refus = [];
+      if (r.bottom > hauteur || r.top < 0) refus.push("hors du pli");
+      if (r.width <= 0 || r.height <= 0) refus.push("rectangle nul");
+      if (style.visibility === "hidden") refus.push("visibility:hidden");
+      if (style.display === "none") refus.push("display:none");
+      if (style.pointerEvents === "none") refus.push("pointer-events:none");
+      /*
+       * Le seuil d opacite vise l INVISIBILITE, pas l opacite pleine.
+       *
+       * Une premiere version exigeait `> 0.99` et la porte est tombee sur le
+       * rendu reel : l unique action primaire de Creer est desactivee tant que
+       * le formulaire est vide, et la feuille la rend a 0,55. C est l etat
+       * normal de l ecran, pas un defaut. Une porte qui crie au loup sur un
+       * rendu correct se fait desactiver, et elle ne protege plus rien.
+       * `<= 0.1` distingue ce que la porte doit attraper, une action rendue
+       * invisible, de ce qu elle doit tolerer, une action attenuee.
+       */
+      if (Number.parseFloat(style.opacity) <= 0.1) refus.push(`opacity:${style.opacity}`);
+      return refus;
+    };
+
+    const jugements = boutons.map(juger);
     const rects = boutons.map((b) => b.getBoundingClientRect());
     const dansLePli = rects.filter((r) => r.bottom <= hauteur && r.top >= 0);
+
     return {
       total: boutons.length,
       dansLePli: dansLePli.length,
+      atteignables: jugements.filter((refus) => refus.length === 0).length,
+      // `disabled` n est PAS un motif de refus : un bouton primaire desactive
+      // tant que le formulaire est incomplet est un etat normal de l ecran, et
+      // la porte porte sur l atteignabilite, pas sur l activation. Il est
+      // rapporte pour que la ligne reste lisible.
+      desactives: boutons.filter((b) => b.disabled).length,
+      refus: jugements.filter((refus) => refus.length > 0).map((refus) => refus.join("+")),
       basLePlusHaut: Math.round(Math.min(...rects.map((r) => r.bottom)))
     };
   }, HAUTEUR);
   if (actionVisible) {
     porte(
       "Action primaire de Creer sous le pli",
-      "au moins une action primaire visible sans defiler",
-      `${actionVisible.dansLePli} sur ${actionVisible.total}, bas a ${actionVisible.basLePlusHaut} px`,
-      actionVisible.dansLePli >= 1
+      "au moins une action primaire visible, opaque et cliquable sans defiler",
+      `${actionVisible.atteignables} atteignable(s) sur ${actionVisible.total}, ${actionVisible.dansLePli} dans le pli, ${actionVisible.desactives} desactive(s), bas a ${actionVisible.basLePlusHaut} px${
+        actionVisible.refus.length > 0 ? ` ; refus : ${actionVisible.refus.join(" | ")}` : ""
+      }`,
+      actionVisible.atteignables >= 1
     );
   } else {
     porte("Action primaire de Creer", "au moins une", "aucun bouton primaire", false);
@@ -460,8 +578,12 @@ try {
   // Stabilite de hauteur au survol, sur le selecteur issu de la refonte.
   // La porte precedente visait `.library-row`, disparu : elle a echoue au lieu
   // de se taire, ce qui est exactement ce qu on lui demande.
+  // La porte etait enfermee dans `if (count > 0)` : sur un espace sans ligne
+  // elle quittait le total sans laisser de trace, et « N portes tenues sur N »
+  // changeait de taille avec les donnees. Elle se declare desormais non jouable.
   const ligneTriage = page.locator(".library-triage-row").first();
-  if ((await ligneTriage.count()) > 0) {
+  const lignesSurvolables = await ligneTriage.count();
+  if (lignesSurvolables > 0) {
     const avantSurvol = await ligneTriage.evaluate((n) =>
       Math.round(n.getBoundingClientRect().height)
     );
@@ -476,18 +598,46 @@ try {
       `${avantSurvol} px puis ${apresSurvol} px`,
       avantSurvol === apresSurvol
     );
+  } else {
+    porte(
+      "Hauteur de ligne stable au survol",
+      "une ligne .library-triage-row a survoler",
+      "aucune ligne rendue, rien a survoler",
+      false,
+      true
+    );
   }
 
   // ---- Porte 6 : aucune ombre portee sur les cartes.
   // La direction delimite par un trait. Une ombre residuelle signale une regle
   // heritee qui a survecu au remplacement des jetons.
-  const ombres = await page.evaluate(() => {
+  //
+  // Cette porte comptait les noeuds PORTEURS d une ombre sans jamais verifier
+  // qu elle en avait examine un seul. Or son jeu de noeuds est vide sur les
+  // ecrans visites : `.panel` n a plus aucun porteur dans l application (la
+  // regle CSS survit sans element qui la porte), et `.ds-card` n est emis que
+  // par `design-system/primitives/Card.tsx`, employe uniquement par les
+  // panneaux de l Atelier, ou ce script ne va pas. `ombres === 0` etait donc
+  // une certitude arithmetique sur zero noeud, comptee verte. On rapporte le
+  // nombre de cartes examinees, et l absence de carte se declare.
+  const cartes = await page.evaluate(() => {
     const noeuds = Array.from(document.querySelectorAll(".ds-card, .panel"));
-    return noeuds
-      .map((n) => getComputedStyle(n).boxShadow)
-      .filter((v) => v && v !== "none").length;
+    return {
+      examinees: noeuds.length,
+      avecOmbre: noeuds
+        .map((n) => getComputedStyle(n).boxShadow)
+        .filter((v) => v && v !== "none").length
+    };
   });
-  porte("Cartes sans ombre portee", "0 carte avec box-shadow", `${ombres} carte(s)`, ombres === 0);
+  porte(
+    "Cartes sans ombre portee",
+    "au moins une carte examinee, 0 avec box-shadow",
+    cartes.examinees === 0
+      ? "aucune carte rendue sur cet ecran, rien a examiner"
+      : `${cartes.avecOmbre} sur ${cartes.examinees} carte(s) examinee(s)`,
+    cartes.examinees > 0 && cartes.avecOmbre === 0,
+    cartes.examinees === 0
+  );
 
   // ---- Porte 7 : le theme sombre rend une surface reellement sombre.
   // Verifie que la bascule agit sur les jetons de palette et pas seulement sur
@@ -523,12 +673,23 @@ try {
 }
 
 let echecs = 0;
+let nonJoues = 0;
 const large = Math.max(...resultats.map((r) => r.nom.length));
+
 for (const r of resultats) {
-  if (!r.passe) echecs += 1;
-  console.log(
-    `${r.passe ? "  ok" : "ECHEC"}  ${r.nom.padEnd(large)}  attendu ${r.attendu}  obtenu ${r.obtenu}`
-  );
+  if (r.nonJoue) {
+    nonJoues += 1;
+  } else if (!r.passe) {
+    echecs += 1;
+  }
+
+  const marque = r.nonJoue ? "  --" : r.passe ? "  ok" : "ECHEC";
+  console.log(`${marque}  ${r.nom.padEnd(large)}  attendu ${r.attendu}  obtenu ${r.obtenu}`);
 }
-console.log(`\n${resultats.length - echecs} portes tenues sur ${resultats.length}.`);
+
+// Le denominateur ne bouge plus avec les donnees : une porte qui ne peut pas
+// mesurer reste comptee, sur sa propre ligne, au lieu de disparaitre du total.
+console.log(
+  `\n${resultats.length - echecs - nonJoues} portes tenues, ${nonJoues} non jouable(s), ${echecs} en echec, sur ${resultats.length}.`
+);
 process.exit(echecs > 0 ? 1 : 0);

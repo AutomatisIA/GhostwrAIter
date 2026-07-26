@@ -59,6 +59,18 @@ if (surDonneesReelles) {
   cpSync(espaceReel, espace, { recursive: true });
 }
 
+/*
+ * Le dossier de sortie est PURGE avant d ecrire.
+ *
+ * `mkdirSync` seul laissait les images du run precedent. Le garde de bascule de
+ * theme, plus bas, leve APRES l ecriture des captures et AVANT celle du
+ * rapport : un run rate laissait donc quatorze images fraiches d une passe
+ * cassee a cote d un `rapport.json` perime, qui annonce les deux fonds d une
+ * execution qui n existe plus. Quelqu un ouvre le dossier et juge des images
+ * sur un temoin qui decrit autre chose. Le meme piege vaut pour une liste
+ * d ecrans qui se reduit : les PNG de l ancien ecran survivaient.
+ */
+rmSync(SORTIE, { recursive: true, force: true });
 mkdirSync(SORTIE, { recursive: true });
 
 const app = await electron.launch({
@@ -98,20 +110,6 @@ try {
       document.documentElement.setAttribute("data-theme", valeur);
     }, theme);
 
-    /*
-     * Le fond est releve DANS la boucle, pas apres les deux.
-     *
-     * La version precedente lisait le temoin une seule fois, a la fin : il ne
-     * pouvait donc decrire que la derniere passe, et le rapport aurait affiche
-     * exactement la meme chose si les cinq captures « clair » avaient ete
-     * rendues en sombre. Un temoin qui ne peut designer qu un seul des deux
-     * etats qu il pretend distinguer ne distingue rien.
-     */
-    fonds[theme] = await page.evaluate(() => ({
-      theme: document.documentElement.getAttribute("data-theme"),
-      fond: getComputedStyle(document.body).backgroundColor
-    }));
-
     for (const ecran of ECRANS) {
       await page.evaluate((route) => {
         window.location.hash = route;
@@ -130,6 +128,35 @@ try {
       const chemin = join(SORTIE, `${ecran.nom}-${theme}.png`);
       await page.screenshot({ path: chemin });
       produites.push(chemin);
+    }
+
+    /*
+     * Le fond est releve APRES les captures de la passe, jamais avant.
+     *
+     * Premiere version : un seul releve, apres les deux boucles. Il ne pouvait
+     * decrire que la derniere passe. Deuxieme version : un releve par passe,
+     * mais pose dans le meme tick que le `setAttribute`, donc AVANT les sept
+     * navigations qu il est cense certifier. Il attestait l instant qui precede
+     * tout ce qu il couvre.
+     *
+     * Le mecanisme qui rendait cela concret existe : `app/renderer/src/app/
+     * theme.ts` arme un ecouteur `matchMedia` persistant quand la preference
+     * vaut `system`, qui est le defaut, et `App.tsx` appelle `applyTheme` dans
+     * un `.then()`. Une resolution de cette promesse posterieure au
+     * `setAttribute` de ce script reecrit l attribut, et les sept captures
+     * sortent dans l autre theme. Releve apres coup, le temoin voit ce que les
+     * images ont vu.
+     */
+    fonds[theme] = await page.evaluate(() => ({
+      theme: document.documentElement.getAttribute("data-theme"),
+      fond: getComputedStyle(document.body).backgroundColor
+    }));
+
+    // Le theme demande doit etre celui qui a survecu aux navigations.
+    if (fonds[theme].theme !== theme) {
+      throw new Error(
+        `Theme demande « ${theme} », theme rendu « ${fonds[theme].theme} » apres les captures : l attribut n a pas tenu.`
+      );
     }
   }
 
