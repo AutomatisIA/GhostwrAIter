@@ -236,3 +236,57 @@ describe("strategy IPC", () => {
     }
   });
 });
+
+/**
+ * Ce que recoit l interface au tout premier lancement.
+ *
+ * Le handler renvoyait l erreur « No active strategy profile found » sur une
+ * base neuve, et l ecran Creer l affichait telle quelle : « La strategie n a
+ * pas pu etre lue ». Rien n avait echoue, il n y avait simplement rien encore.
+ *
+ * La porte est ici, au niveau du canal, parce que c est la que la distinction
+ * se joue : le test du repository seul restait vert quand le handler appelait
+ * la variante stricte.
+ */
+describe("strategy IPC, espace de travail vierge", () => {
+  let db: Database.Database;
+
+  beforeEach(() => {
+    db = new Database(":memory:");
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it("repond une strategie vide plutot qu une erreur", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    registerStrategyIpcHandlers(
+      {
+        handle(channel, handler) {
+          handlers.set(channel, handler);
+        }
+      },
+      new StrategyService(db)
+    );
+
+    const resultat = (await handlers.get("strategy:get-active-bundle")?.(
+      undefined
+    )) as IpcResult<{
+      profile: { name: string };
+      offers: unknown[];
+      icps: unknown[];
+      pillars: unknown[];
+      voiceRules: unknown[];
+    }>;
+
+    expect(resultat.ok).toBe(true);
+    if (!resultat.ok) return;
+
+    expect(resultat.data.profile.name).toBe("");
+    expect(resultat.data.offers).toEqual([]);
+    expect(resultat.data.icps).toEqual([]);
+    expect(resultat.data.pillars).toEqual([]);
+    expect(resultat.data.voiceRules).toEqual([]);
+  });
+});

@@ -221,7 +221,21 @@ export class StrategyRepository {
     transaction();
   }
 
-  getActiveStrategyBundle(): StrategyBundleRecord {
+  /**
+   * The strategy as it stands, empty included.
+   *
+   * A fresh install has no active profile. That is not a failure, it is the
+   * normal first state, and the previous version could only say so by throwing:
+   * `getActiveStrategyBundle` raised "No active strategy profile found", and
+   * every caller had to decide for itself whether that meant "empty" or
+   * "broken". They did not agree. `App.tsx` read it as empty, and the Create
+   * screen rendered it as « La stratégie n'a pas pu être lue », so the very
+   * first screen of a new install announced a failure that had not happened.
+   *
+   * An empty bundle says the same thing without the ambiguity, and a real read
+   * error still throws, from SQLite, where it belongs.
+   */
+  findActiveStrategyBundle(): StrategyBundleRecord {
     const profile = this.db
       .prepare(`
         SELECT id, name, positioning, bio, expertise_summary AS expertiseSummary
@@ -232,8 +246,34 @@ export class StrategyRepository {
       .get() as StrategyBundleRecord["profile"] | undefined;
 
     if (!profile) {
+      return {
+        profile: { id: "", name: "", positioning: "", bio: "", expertiseSummary: "" },
+        offers: [],
+        icps: [],
+        pillars: [],
+        voiceRules: []
+      };
+    }
+
+    return this.readBundleFor(profile);
+  }
+
+  /**
+   * Same as above, but demands that a profile exists.
+   *
+   * Kept for the callers that cannot do anything useful without one, such as
+   * generating the editorial foundation: failing there names the cause, where
+   * an empty bundle would produce a foundation about nobody.
+   */
+  getActiveStrategyBundle(): StrategyBundleRecord {
+    const bundle = this.findActiveStrategyBundle();
+    if (!bundle.profile.id) {
       throw new Error("No active strategy profile found");
     }
+    return bundle;
+  }
+
+  private readBundleFor(profile: StrategyBundleRecord["profile"]): StrategyBundleRecord {
 
     const offers = this.db
       .prepare(`
