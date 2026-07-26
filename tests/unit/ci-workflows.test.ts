@@ -297,6 +297,46 @@ describe("auto-release.yml", () => {
     expect(notes.length).toBeGreaterThan(200);
   });
 
+  /*
+   * UN SECRET NON CONFIGURE N'EST PAS ABSENT, IL EST VIDE.
+   *
+   * L'etape d'empaquetage macOS passait `CSC_LINK: ${{ secrets.MAC_CSC_LINK }}`
+   * avec, en commentaire, la promesse « absents -> build non signe ». Ce chemin
+   * n'existait pas : GitHub substitue une variable non definie par la chaine
+   * vide, et electron-builder resout `CSC_LINK: ""` en repertoire courant. La
+   * publication de la 2.0.0 a echoue dessus, sur
+   * « ⨯ /Users/runner/work/GhostwrAIter/GhostwrAIter not a file », APRES que les
+   * trois systemes aient passe toutes les verifications.
+   *
+   * Cette porte verrouille le decoupage en deux etapes exclusives, parce qu'un
+   * commentaire qui promet un repli ne vaut rien tant que le repli n'est pas
+   * une branche du fichier.
+   */
+  it.each(["auto-release.yml", "package.yml"])(
+    "%s ne transmet jamais un certificat vide a electron-builder",
+    (nom) => {
+      const contenu = readWorkflow(nom);
+      const blocs = jobBlocks(contenu);
+      const empaquetage = [...blocs.values()].find((bloc) => bloc.includes("electron-builder --mac"));
+
+      expect(empaquetage).toBeDefined();
+
+      // Deux etapes macOS, mutuellement exclusives sur la meme sortie.
+      expect(empaquetage).toContain("steps.signing.outputs.configured == 'true'");
+      expect(empaquetage).toContain("steps.signing.outputs.configured != 'true'");
+
+      // Le chemin non signe ne recoit AUCUNE variable de signature, et coupe la
+      // decouverte d'identite comme la notarisation, qui echoueraient toutes
+      // deux sur un runner sans trousseau ni identifiants Apple.
+      const nonSigne = empaquetage!.slice(
+        empaquetage!.indexOf("steps.signing.outputs.configured != 'true'")
+      );
+      expect(nonSigne).not.toContain("CSC_LINK");
+      expect(nonSigne).toContain("CSC_IDENTITY_AUTO_DISCOVERY: false");
+      expect(nonSigne).toContain("--config.mac.notarize=false");
+    }
+  );
+
   it("empeche l'empaquetage de demarrer sans que les verifications aient reussi", () => {
     expect(needsOf(jobs.get("package") ?? "")).toContain("checks");
   });

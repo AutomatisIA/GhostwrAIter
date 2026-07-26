@@ -37,8 +37,27 @@ jobs:
       - name: Build Electron app
         run: npm run build
 
-      - name: Package for macOS
+      # Meme decoupage que dans `auto-release.yml`, et pour la meme raison : un
+      # secret non configure vaut la CHAINE VIDE, pas rien, et `CSC_LINK: ""`
+      # fait echouer electron-builder sur « not a file ». Voir le commentaire
+      # long dans `auto-release.yml`.
+      - name: Detect macOS signing configuration
+        id: signing
         if: matrix.os == 'macos-latest'
+        shell: bash
+        env:
+          CERTIFICAT: ${{ secrets.MAC_CSC_LINK }}
+        run: |
+          if [ -n "$CERTIFICAT" ]; then
+            echo "Certificat Developer ID present : build signe et notarise."
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Aucun certificat Developer ID : build NON SIGNE."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package for macOS (signed and notarized)
+        if: matrix.os == 'macos-latest' && steps.signing.outputs.configured == 'true'
         run: npx electron-builder --mac --publish never
         env:
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
@@ -46,6 +65,12 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Package for macOS (unsigned)
+        if: matrix.os == 'macos-latest' && steps.signing.outputs.configured != 'true'
+        run: npx electron-builder --mac --publish never --config.mac.notarize=false
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Package for Linux
         if: matrix.os == 'ubuntu-latest'
