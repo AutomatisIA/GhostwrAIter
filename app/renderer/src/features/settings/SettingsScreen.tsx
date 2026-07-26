@@ -5,6 +5,7 @@ import { ThemeSelector } from "./components/ThemeSelector";
 import { EnginePanel } from "./components/EnginePanel";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { Button, ConfirmDialog, PageFrame, useToast } from "../../design-system/primitives";
+import { summarizeArchiveContents } from "@shared/backup-summary";
 import { InfoHint, useTour } from "../../help";
 import { fadeInUp, useMotionVariants } from "../../design-system/motion/variants";
 
@@ -15,6 +16,7 @@ export function SettingsScreen() {
   const [searchParams] = useSearchParams();
   const [exportPath, setExportPath] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -26,13 +28,39 @@ export function SettingsScreen() {
     setExporting(true);
     try {
       const result = await window.linkedinPoster.settings.exportWorkspace();
+      // Closing the save dialog is a choice, not a failure: nothing is
+      // announced, because nothing was written.
+      if (result.canceled) return;
       setExportPath(result.exportPath);
-      toast.show({ kind: "success", message: "Export terminé. Votre sauvegarde est prête." });
+      toast.show({
+        kind: "success",
+        message: `Sauvegarde enregistrée : ${summarizeArchiveContents(result.tableCounts)}.`
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "L'export n'a pas pu être réalisé.";
       toast.show({ kind: "error", message });
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function handleImport() {
+    setImporting(true);
+    try {
+      const result = await window.linkedinPoster.settings.importWorkspace();
+      if (result.canceled) return;
+      toast.show({
+        kind: "success",
+        message: `Sauvegarde restaurée : ${summarizeArchiveContents(result.restoredTables)}.`
+      });
+      // Every screen holds data loaded before the restore. Reloading is the
+      // honest way to show the restored workspace rather than a mix of the two.
+      window.setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "La restauration n'a pas pu être réalisée.";
+      toast.show({ kind: "error", message });
+    } finally {
+      setImporting(false);
     }
   }
 
@@ -66,10 +94,13 @@ export function SettingsScreen() {
     }
   }
 
-  // Export : action de portee ecran, donc dans la barre de page.
+  // Sauvegarde : action de portee ecran, donc dans la barre de page. Elle
+  // s'appelait « Exporter l'espace de travail » quand elle produisait un
+  // inventaire ; elle produit maintenant une sauvegarde restaurable, et porte
+  // le meme mot que l'action qui la relit, plus bas dans la section Donnees.
   const pageActions = (
     <Button variant="secondary" size="sm" loading={exporting} onClick={handleExport}>
-      Exporter l'espace de travail
+      Enregistrer une sauvegarde
     </Button>
   );
 
@@ -140,12 +171,31 @@ export function SettingsScreen() {
           <header className="settings-section-head">
             <h2 className="settings-section-title">Données</h2>
             <p className="settings-section-desc">
-              Tout reste sur votre ordinateur ; l'export, en haut de l'écran, en fait une sauvegarde
-              JSON.
+              Tout reste sur votre ordinateur. La sauvegarde, en haut de l'écran, réunit vos idées,
+              brouillons, stratégie et calendrier dans un fichier que vous choisissez, et que vous
+              pouvez restaurer ici.
             </p>
           </header>
 
           <div className="settings-form">
+            <div className="settings-row">
+              <span className="settings-row__label">Sauvegarde</span>
+              <div className="settings-row__control">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={importing}
+                  onClick={handleImport}
+                >
+                  Restaurer une sauvegarde
+                </Button>
+                <p className="settings-row__hint">
+                  Remplace vos données actuelles, après confirmation. Une copie de sécurité est
+                  faite avant.
+                </p>
+              </div>
+            </div>
+
             <div className="settings-row">
               <span className="settings-row__label">Journaux techniques</span>
               <div className="settings-row__control">

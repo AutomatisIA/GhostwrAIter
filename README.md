@@ -76,7 +76,7 @@ Whatever the engine, GhostwrAIter pins its own execution policy on every call: r
 | **Strategy** | Positioning, offers, target audiences, editorial pillars, voice rules |
 | **Create** | Capture an idea (manual, news item, generated) then turn it into a post through a four-step workflow |
 | **Library** | Triage drafts by what is left to do, read the post itself, create variants, schedule publication |
-| **Settings** | Light and dark theme, AI engine selection, diagnostics, export |
+| **Settings** | Light and dark theme, AI engine selection, diagnostics, backup and restore |
 
 The production workflow follows four guided steps:
 
@@ -97,6 +97,12 @@ Editorial doctrine requires a single target audience per post. The audience you 
 - **Eight AI skills**: each workflow step is a specialised prompt with a structured input and output contract
 
 Data is stored in the application's user data folder: `~/Library/Application Support/GhostwrAIter/workspace` on macOS, `~/.config/GhostwrAIter/workspace` on Linux, `%APPDATA%\GhostwrAIter\workspace` on Windows. To move that folder (onto an external drive, or out of a cloud-synced directory), set the `LINKEDIN_POSTER_WORKSPACE_ROOT` environment variable to an absolute path of your choice.
+
+### Backups
+
+Settings writes a backup wherever you choose: a `.zip` holding a consistent snapshot of the database and your workspace files. Restoring it from the same screen replaces the current workspace, after a confirmation naming what the archive contains, and after the current database has been copied aside.
+
+Execution logs are excluded. They are raw CLI transcripts, reproducible, and Settings has a button to purge them, so shipping them into a file you may store or send would work against that.
 
 ---
 

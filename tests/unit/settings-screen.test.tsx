@@ -44,6 +44,7 @@ function mockLinkedinPoster(overrides: {
   exportWorkspace: ReturnType<typeof vi.fn>;
   countExecutionLogs: ReturnType<typeof vi.fn>;
   purgeExecutionLogs: ReturnType<typeof vi.fn>;
+  importWorkspace?: ReturnType<typeof vi.fn>;
   engines?: unknown[];
 }) {
   window.linkedinPoster = {
@@ -65,6 +66,7 @@ function mockLinkedinPoster(overrides: {
     },
     settings: {
       exportWorkspace: overrides.exportWorkspace,
+      importWorkspace: overrides.importWorkspace ?? vi.fn().mockResolvedValue({ canceled: true }),
       countExecutionLogs: overrides.countExecutionLogs,
       purgeExecutionLogs: overrides.purgeExecutionLogs,
       getPreference: vi.fn().mockResolvedValue({ key: "theme", value: null }),
@@ -83,10 +85,14 @@ describe("SettingsScreen", () => {
     cleanup();
   });
 
-  it("exports the workspace from settings", async () => {
+  it("saves a backup and says what it contains", async () => {
     const user = userEvent.setup();
     const exportWorkspace = vi.fn().mockResolvedValue({
-      exportPath: "/tmp/workspace-export-1.json"
+      canceled: false,
+      exportPath: "/Users/moi/Documents/ghostwraiter-sauvegarde-20260726-1405.zip",
+      tableCounts: { ideas: 10, drafts: 30, icps: 4 },
+      fileCount: 12,
+      byteSize: 2_400_000
     });
 
     mockLinkedinPoster({
@@ -97,13 +103,75 @@ describe("SettingsScreen", () => {
 
     renderScreen();
 
-    await user.click(screen.getByRole("button", { name: "Exporter l'espace de travail" }));
+    await user.click(screen.getByRole("button", { name: "Enregistrer une sauvegarde" }));
 
     await waitFor(() => {
       expect(exportWorkspace).toHaveBeenCalledTimes(1);
     });
 
-    expect(await screen.findByText("/tmp/workspace-export-1.json")).toBeTruthy();
+    // The path is shown, and so is what was actually written: an earlier
+    // version announced « Votre sauvegarde est prête » for a file that held
+    // none of the user's data, and nothing on screen could contradict it.
+    expect(
+      await screen.findByText("/Users/moi/Documents/ghostwraiter-sauvegarde-20260726-1405.zip")
+    ).toBeTruthy();
+    expect(
+      await screen.findByText("Sauvegarde enregistrée : 10 idées, 30 brouillons, 4 cibles.")
+    ).toBeTruthy();
+  });
+
+  // Fermer la boite de dialogue est un choix, pas une panne : rien n'a ete
+  // ecrit, donc l'ecran ne doit rien annoncer.
+  it("stays silent when the save dialog is closed", async () => {
+    const user = userEvent.setup();
+    const exportWorkspace = vi.fn().mockResolvedValue({ canceled: true });
+
+    mockLinkedinPoster({
+      exportWorkspace,
+      countExecutionLogs: vi.fn().mockResolvedValue({ count: 0 }),
+      purgeExecutionLogs: vi.fn()
+    });
+
+    renderScreen();
+
+    await user.click(screen.getByRole("button", { name: "Enregistrer une sauvegarde" }));
+
+    await waitFor(() => {
+      expect(exportWorkspace).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.queryByText(/Sauvegarde enregistrée/)).toBeNull();
+    expect(screen.queryByText("Dernière sauvegarde")).toBeNull();
+  });
+
+  it("restores a backup and names what came back", async () => {
+    const user = userEvent.setup();
+    const importWorkspace = vi.fn().mockResolvedValue({
+      canceled: false,
+      restoredTables: { ideas: 10, drafts: 30, icps: 4 },
+      ignoredTables: [],
+      restoredFileCount: 12,
+      backupPath: "/tmp/ghostwraiter.db.bak-avant-import-20260726-143000"
+    });
+
+    mockLinkedinPoster({
+      exportWorkspace: vi.fn().mockResolvedValue({ canceled: true }),
+      importWorkspace,
+      countExecutionLogs: vi.fn().mockResolvedValue({ count: 0 }),
+      purgeExecutionLogs: vi.fn()
+    });
+
+    renderScreen();
+
+    await user.click(screen.getByRole("button", { name: "Restaurer une sauvegarde" }));
+
+    await waitFor(() => {
+      expect(importWorkspace).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      await screen.findByText("Sauvegarde restaurée : 10 idées, 30 brouillons, 4 cibles.")
+    ).toBeTruthy();
   });
 
   it("requires inline confirmation before purging logs", async () => {
@@ -112,7 +180,7 @@ describe("SettingsScreen", () => {
     const purgeExecutionLogs = vi.fn().mockResolvedValue({ deletedCount: 7 });
 
     mockLinkedinPoster({
-      exportWorkspace: vi.fn().mockResolvedValue({ exportPath: "" }),
+      exportWorkspace: vi.fn().mockResolvedValue({ canceled: true }),
       countExecutionLogs,
       purgeExecutionLogs
     });
@@ -151,7 +219,7 @@ describe("SettingsScreen", () => {
     const purgeExecutionLogs = vi.fn();
 
     mockLinkedinPoster({
-      exportWorkspace: vi.fn().mockResolvedValue({ exportPath: "" }),
+      exportWorkspace: vi.fn().mockResolvedValue({ canceled: true }),
       countExecutionLogs,
       purgeExecutionLogs
     });
@@ -175,7 +243,7 @@ describe("SettingsScreen", () => {
   // plus visible.
   it("garde la purge en bouton borde, pas en bouton plein rouge", async () => {
     mockLinkedinPoster({
-      exportWorkspace: vi.fn().mockResolvedValue({ exportPath: "" }),
+      exportWorkspace: vi.fn().mockResolvedValue({ canceled: true }),
       countExecutionLogs: vi.fn().mockResolvedValue({ count: 0 }),
       purgeExecutionLogs: vi.fn()
     });
@@ -191,7 +259,7 @@ describe("SettingsScreen", () => {
   // lequel travaille. Une seule marque, bleue, sur le moteur actif.
   it("ne marque que le moteur actif et dit les autres etats en texte", async () => {
     mockLinkedinPoster({
-      exportWorkspace: vi.fn().mockResolvedValue({ exportPath: "" }),
+      exportWorkspace: vi.fn().mockResolvedValue({ canceled: true }),
       countExecutionLogs: vi.fn().mockResolvedValue({ count: 0 }),
       purgeExecutionLogs: vi.fn(),
       engines: [
@@ -222,7 +290,7 @@ describe("SettingsScreen", () => {
   // du moteur, et n inventer aucune commande pour un binaire qui n en a pas.
   it("garde le repere d installation sur la ligne du moteur actif non connecte", async () => {
     mockLinkedinPoster({
-      exportWorkspace: vi.fn().mockResolvedValue({ exportPath: "" }),
+      exportWorkspace: vi.fn().mockResolvedValue({ canceled: true }),
       countExecutionLogs: vi.fn().mockResolvedValue({ count: 0 }),
       purgeExecutionLogs: vi.fn(),
       engines: [

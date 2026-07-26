@@ -35,9 +35,35 @@ export type PreferenceEntry = {
   updated_at: string;
 };
 
-export type ExportWorkspaceResult = {
-  exportPath: string;
-};
+/**
+ * Result of an export or an import.
+ *
+ * `canceled` is a normal outcome, not a failure: the user closed the file
+ * dialog, or declined the import confirmation. The renderer distinguishes it
+ * so it can stay silent instead of announcing a backup that was never written.
+ */
+export type ExportWorkspaceResult =
+  | { canceled: true }
+  | {
+      canceled: false;
+      exportPath: string;
+      /** Row count per table, as written into the archive manifest. */
+      tableCounts: Record<string, number>;
+      fileCount: number;
+      byteSize: number;
+    };
+
+export type ImportWorkspaceResult =
+  | { canceled: true }
+  | {
+      canceled: false;
+      restoredTables: Record<string, number>;
+      /** Tables the archive holds that this version of the app does not know. */
+      ignoredTables: string[];
+      restoredFileCount: number;
+      /** Where the pre-import database was snapshotted, so the import is undoable. */
+      backupPath: string;
+    };
 
 export type CountExecutionLogsResult = {
   count: number;
@@ -49,6 +75,7 @@ export type PurgeExecutionLogsResult = {
 
 export type SettingsApi = {
   exportWorkspace: () => Promise<ExportWorkspaceResult>;
+  importWorkspace: () => Promise<ImportWorkspaceResult>;
   countExecutionLogs: () => Promise<CountExecutionLogsResult>;
   purgeExecutionLogs: () => Promise<PurgeExecutionLogsResult>;
   getPreference: (key: string) => Promise<{ key: string; value: string | null }>;
