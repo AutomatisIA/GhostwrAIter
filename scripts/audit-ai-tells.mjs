@@ -14,6 +14,8 @@
  */
 
 import { readFileSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
 /** Normalise apostrophes typographiques et espaces insecables. */
@@ -400,4 +402,16 @@ function main() {
   console.log("");
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+// La garde comparait `import.meta.url` a un `file://` compose a la main.
+// Sous Windows, la gauche vaut « file:///D:/a/... » et la droite
+// « file://D:\\a\\... » : la comparaison est TOUJOURS fausse, donc `main()`
+// n est jamais appele et le script sort a zero sans rien faire. Une sortie
+// muette a zero est indiscernable d un succes.
+//
+// Ce script n est ni dans `package.json` ni dans la CI, il se lance a la
+// main : aucun vert n en dependait. On le corrige quand meme, parce qu un
+// outil qui ne fait rien en silence est la meme maladie que les portes que
+// cette branche vient de reparer.
+if (resolvePath(fileURLToPath(import.meta.url)) === resolvePath(process.argv[1] ?? "")) {
+  main();
+}
