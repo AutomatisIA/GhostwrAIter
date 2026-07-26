@@ -181,6 +181,18 @@ export function LibraryScreen() {
   useEffect(() => {
     if (activeTab !== "planning") return;
 
+    // The rule is right in general: a synchronous setState in an effect body
+    // causes a cascading render. Kept here on purpose, because this effect runs
+    // only when the user switches to the planning tab, so the extra render is
+    // one per tab change, on a screen that is already fetching over IPC.
+    //
+    // Removing it would mean deriving the loading state from the data, and the
+    // data legitimately survives between visits to the tab: an empty calendar
+    // and a calendar not loaded yet would become indistinguishable, and the
+    // header would read "0 upcoming" during every load.
+    //
+    // Surfaced by eslint-plugin-react-hooks 7.1.1, which added this rule.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlanningLoading(true);
 
     window.linkedinPoster.calendar

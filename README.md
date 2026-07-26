@@ -30,7 +30,7 @@ macOS builds are Apple Silicon only. They are produced on GitHub's macOS runners
 
 ### Option B: from source (developers)
 
-Requirements: [Node.js 20+](https://nodejs.org/) and [Git](https://git-scm.com/).
+Requirements: [Node.js 22+](https://nodejs.org/) and [Git](https://git-scm.com/).
 
 ```bash
 git clone https://github.com/AutomatisIA/GhostwrAIter.git

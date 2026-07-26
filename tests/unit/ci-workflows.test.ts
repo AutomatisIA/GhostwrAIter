@@ -161,6 +161,39 @@ describe("le corpus de workflows", () => {
     expect(readWorkflow(name)).not.toMatch(/continue-on-error/);
   });
 
+  /*
+   * Une seule version de Node pour tout le depot.
+   *
+   * `ci.yml` verifie et `auto-release.yml` publie. Si l'un monte de version et
+   * pas l'autre, la chaine qui publie ne teste plus ce que la CI a valide, et
+   * l'ecart ne se voit nulle part tant qu'un paquet natif ne casse pas sur une
+   * seule des deux.
+   *
+   * La version doit aussi etre supportee. Le depot est reste sur Node 20
+   * jusqu'au 2026-07-26, soit trois mois apres sa fin de support (30 avril
+   * 2026) : `better-sqlite3` avait cesse d'y publier des binaires precompilis,
+   * l'installation Windows compilait depuis les sources et echouait, et chaque
+   * montee de version proposee par Dependabot arrivait rouge sans que la cause
+   * soit lisible dans le rapport.
+   */
+  it("epingle la meme version de Node, supportee, dans tous les workflows", () => {
+    const versions = new Set<string>();
+    for (const name of WORKFLOW_FILES) {
+      for (const [, version] of readWorkflow(name).matchAll(/node-version:\s*"(\d+)"/g)) {
+        versions.add(version as string);
+      }
+    }
+
+    expect(versions.size, `Versions de Node divergentes : ${[...versions].join(", ")}`).toBe(1);
+
+    const [version] = [...versions];
+    // Node 20 est hors support depuis le 30 avril 2026. Le seuil monte quand la
+    // version epinglee monte ; il n'a pas a suivre le calendrier tout seul.
+    expect(Number(version)).toBeGreaterThanOrEqual(22);
+    // Les versions impaires ne sont jamais LTS.
+    expect(Number(version) % 2, `Node ${version} n'est pas une version LTS`).toBe(0);
+  });
+
   it.each(WORKFLOW_FILES)(
     "%s n'interpole aucun secret dans une commande run:, blocs multilignes compris",
     (name) => {
