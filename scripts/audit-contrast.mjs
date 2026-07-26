@@ -28,8 +28,13 @@
 
 import { readFileSync } from "node:fs";
 import { join, resolve as resolvePath } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = resolvePath(new URL("..", import.meta.url).pathname);
+// `URL.pathname` rend « /D:/a/... » sous Windows, et `resolve` en fait
+// « D:\\D:\\a\\... », lettre de lecteur dupliquee. La CI Windows est tombee
+// dessus, aucune machine locale ne pouvait le voir. `fileURLToPath` est la
+// seule conversion correcte d une URL de fichier en chemin natif.
+const repoRoot = resolvePath(fileURLToPath(new URL("..", import.meta.url)));
 const designSystem = join(repoRoot, "app", "renderer", "src", "design-system");
 const cheminPalette = join(designSystem, "palette.css");
 const cheminTokens = join(designSystem, "tokens.css");
