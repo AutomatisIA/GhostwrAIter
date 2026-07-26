@@ -19,7 +19,6 @@
     "lint": "eslint .",
     "test": "npm run rebuild:native:node && vitest run",
     "test:watch": "vitest",
-    "db:init": "node scripts/init-workspace.mjs",
     "package:mac": "npm run build && electron-builder --mac dir",
     "package:win": "npm run build && electron-builder --win",
     "package:linux": "npm run build && electron-builder --linux",

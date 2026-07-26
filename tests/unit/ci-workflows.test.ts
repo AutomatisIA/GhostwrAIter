@@ -154,12 +154,7 @@ describe("le corpus de workflows", () => {
   // couverture sans qu'aucun test ne tombe, et une boucle sur un repertoire
   // vide passerait en n'assertant rien.
   it("est exactement celui que ce fichier couvre", () => {
-    expect(WORKFLOW_FILES).toEqual([
-      "auto-release.yml",
-      "ci.yml",
-      "package.yml",
-      "release.yml"
-    ]);
+    expect(WORKFLOW_FILES).toEqual(["auto-release.yml", "ci.yml"]);
   });
 
   it.each(WORKFLOW_FILES)("%s n'utilise jamais continue-on-error", (name) => {
@@ -386,10 +381,10 @@ describe("auto-release.yml", () => {
    * commentaire qui promet un repli ne vaut rien tant que le repli n'est pas
    * une branche du fichier.
    */
-  it.each(["auto-release.yml", "package.yml"])(
-    "%s ne transmet jamais un certificat vide a electron-builder",
-    (nom) => {
-      const contenu = readWorkflow(nom);
+  it(
+    "auto-release.yml ne transmet jamais un certificat vide a electron-builder",
+    () => {
+      const contenu = readWorkflow("auto-release.yml");
       const blocs = jobBlocks(contenu);
       const empaquetage = [...blocs.values()].find((bloc) => bloc.includes("electron-builder --mac"));
 
@@ -506,44 +501,3 @@ describe("auto-release.yml", () => {
   });
 });
 
-describe("package.yml", () => {
-  const raw = readWorkflow("package.yml");
-
-  it("references only the expected mac code-signing secrets", () => {
-    // Le build macOS est signe (Developer ID) + notarise : les secrets de
-    // signature sont attendus. On verrouille l'ensemble exact pour forcer une
-    // revue si la liste change.
-    const used = [...new Set([...raw.matchAll(/secrets\.([A-Z0-9_]+)/g)].map((m) => m[1]))].sort();
-
-    expect(used).toEqual([
-      "APPLE_APP_SPECIFIC_PASSWORD",
-      "APPLE_ID",
-      "APPLE_TEAM_ID",
-      "MAC_CSC_KEY_PASSWORD",
-      "MAC_CSC_LINK"
-    ]);
-  });
-});
-
-describe("release.yml", () => {
-  const raw = readWorkflow("release.yml");
-
-  it("only references the GITHUB_TOKEN secret (no other secrets)", () => {
-    const secretRefs = raw.match(/secrets\.[A-Z0-9_]+/g) ?? [];
-    const unique = Array.from(new Set(secretRefs));
-
-    expect(unique).toEqual(["secrets.GITHUB_TOKEN"]);
-  });
-
-  it("ne publie qu'un brouillon, jamais une release publique", () => {
-    // La publication publique passe par `auto-release.yml`, desormais gate par
-    // son job `checks`. Ce workflow-ci suit `Package`, qui ne verifie rien :
-    // son seul garde-fou est que la release reste un brouillon qu'un humain
-    // promeut.
-    expect(raw).toContain("draft: true");
-  });
-
-  it("ne produit pas un brouillon vide en silence", () => {
-    expect(raw).toContain("fail_on_unmatched_files: true");
-  });
-});
