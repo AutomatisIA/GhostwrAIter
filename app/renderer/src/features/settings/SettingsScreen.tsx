@@ -139,6 +139,21 @@ export function SettingsScreen() {
                 <p className="settings-row__hint">Sept étapes pour situer chaque écran</p>
               </div>
             </div>
+
+            {/* La version vivait uniquement dans la barre laterale, a cote du
+                logo, ou elle se lit comme un ornement. C est ici qu on la
+                cherche quand on veut savoir ce qu on utilise, ou la citer dans
+                un signalement. Meme source que la barre laterale : le champ
+                `version` de package.json, injecte dans le preload. */}
+            <div className="settings-row">
+              <span className="settings-row__label">Version</span>
+              <div className="settings-row__control">
+                <code className="settings-version">{window.linkedinPoster.appVersion}</code>
+                <p className="settings-row__hint">
+                  Le numéro à citer si vous signalez un problème
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 

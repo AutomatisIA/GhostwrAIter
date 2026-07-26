@@ -50,6 +50,7 @@ function mockLinkedinPoster(overrides: {
   window.linkedinPoster = {
     platform: "darwin",
     appName: "GhostwrAIter",
+    appVersion: "9.9.9",
     strategy: { getActiveBundle: vi.fn(), saveBundle: vi.fn() },
     ideas: { listIdeas: vi.fn(), createIdea: vi.fn() },
     workshop: {
@@ -83,6 +84,23 @@ describe("SettingsScreen", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     cleanup();
+  });
+
+  // La version ne vivait que dans la barre laterale, a cote du logo. Elle se
+  // cherche dans les Parametres, et elle doit venir de la meme source que
+  // l'application elle-meme, pas d'une constante recopiee : un numero fige dans
+  // le composant resterait vrai a l'ecran et faux dans le monde.
+  it("affiche la version de l'application, lue depuis le preload", () => {
+    mockLinkedinPoster({
+      exportWorkspace: vi.fn().mockResolvedValue({ canceled: true }),
+      countExecutionLogs: vi.fn().mockResolvedValue({ count: 0 }),
+      purgeExecutionLogs: vi.fn()
+    });
+
+    renderScreen();
+
+    expect(screen.getByText("Version")).toBeTruthy();
+    expect(screen.getByText("9.9.9")).toBeTruthy();
   });
 
   it("saves a backup and says what it contains", async () => {
