@@ -328,6 +328,50 @@ describe("auto-release.yml", () => {
   });
 
   /*
+   * `body_path` designe un fichier DU DEPOT, pas une chaine.
+   *
+   * Le job `publish` n'avait aucun checkout : il telechargeait les artefacts et
+   * appelait l'action de publication depuis un repertoire vide. Le fichier de
+   * notes n'existait pas sur le runner, et `softprops/action-gh-release`
+   * publiait un corps VIDE sans echouer. Les v2.0.1 et v2.1.0 sont parties
+   * comme ca, notes redigees et jamais publiees.
+   *
+   * Les trois assertions du test precedent etaient vertes pendant ce temps :
+   * `body_path` present dans le YAML, `generate_release_notes: false`, fichier
+   * present DANS LE DEPOT. Aucune ne dit que le job qui lit ce fichier y a
+   * acces. Cette porte-ci ferme ce trou-la : tout job qui reference un chemin
+   * du depot doit d'abord recuperer le depot.
+   */
+  it("le job qui publie recupere le depot avant de lire les notes", () => {
+    const blocs = jobBlocks(raw);
+    const publication = [...blocs.entries()].filter(([, bloc]) =>
+      bloc.includes("body_path:")
+    );
+
+    expect(publication.length).toBeGreaterThan(0);
+
+    for (const [nom, bloc] of publication) {
+      expect(
+        bloc.includes("actions/checkout"),
+        `Le job « ${nom} » lit un fichier du depot via body_path sans faire de checkout : ` +
+          "la release partirait avec un corps vide, sans erreur."
+      ).toBe(true);
+
+      // Le checkout doit preceder le telechargement des artefacts : l'action de
+      // checkout nettoie le repertoire de travail et supprimerait le dossier
+      // qu'elle y trouve.
+      const positionCheckout = bloc.indexOf("actions/checkout");
+      const positionArtefacts = bloc.indexOf("actions/download-artifact");
+      if (positionArtefacts !== -1) {
+        expect(
+          positionCheckout,
+          `Dans « ${nom} », le checkout doit venir avant le telechargement des artefacts.`
+        ).toBeLessThan(positionArtefacts);
+      }
+    }
+  });
+
+  /*
    * UN SECRET NON CONFIGURE N'EST PAS ABSENT, IL EST VIDE.
    *
    * L'etape d'empaquetage macOS passait `CSC_LINK: ${{ secrets.MAC_CSC_LINK }}`
