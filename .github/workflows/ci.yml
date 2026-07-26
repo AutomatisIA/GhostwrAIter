@@ -42,6 +42,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # `npm ci` reports success even when Electron's postinstall failed to
+      # extract, which leaves node_modules/electron without a binary. The
+      # failure then surfaces much later, in the first test file that imports
+      # electron-log, saying "Electron failed to install correctly".
+      - name: Verify the Electron install, repair it if incomplete
+        run: node scripts/ensure-electron.mjs
+
       - name: Rebuild native modules for Electron target
         run: npm run rebuild:native:electron
 
