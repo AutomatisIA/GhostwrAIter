@@ -112,16 +112,20 @@ Execution logs are excluded. They are raw CLI transcripts, reproducible, and Set
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Run in development mode with hot reload |
+| `npm run build` | Compile main, preload and renderer |
 | `npm test` | Run the test suite (Vitest) |
+| `npm run test:watch` | Same suite, re-running on change |
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint check |
 | `npm run audit:contraste` | WCAG AA contrast audit of the palette, both themes |
 | `npm run audit:geometrie` | Layout gates, measured on the running application |
 | `npm run verify-hardening` | Electron hardening checks, including the served CSP |
 | `npm run captures` | Screenshots of every screen in both themes |
-| `npm run package:mac` | Build for macOS (.dmg and .app) |
-| `npm run package:win` | Build for Windows (.exe) |
-| `npm run package:linux` | Build for Linux (.AppImage) |
+| `npm run package:mac` | Build the macOS `.app` only, unsigned. The `dmg` target is skipped on purpose: this is the fast local loop, and installers come from CI |
+| `npm run package:win` | Build the Windows installer (`.exe`) |
+| `npm run package:linux` | Build for Linux (`.AppImage` and `.deb`) |
+
+Released installers are always built and signed by CI, never locally. See `.github/workflows/auto-release.yml`.
 
 ---
 
