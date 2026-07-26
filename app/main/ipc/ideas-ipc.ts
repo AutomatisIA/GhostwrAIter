@@ -5,6 +5,7 @@ import {
   emitPhaseSettled,
   emitPhaseStarted
 } from "../domains/execution/execution-progress-emitter";
+import { SkillRunError } from "../domains/execution/skill-run-error";
 import { createStrategyTables, StrategyRepository } from "../domains/strategy/strategy.repository";
 import { selectIcps } from "../domains/strategy/strategy-context";
 import { createIdeasTables, IdeasRepository } from "../domains/ideas/ideas.repository";
@@ -109,7 +110,11 @@ export class IdeasService {
         phase: "idees",
         engine: announced,
         status: "failed",
-        errorCode: err instanceof Error ? err.name : undefined
+        // Un `errorCode` absent disparait de l evenement (l emetteur omet la
+        // cle) alors que le contrat le veut present sur tout `failed`, et
+        // `err.name` vaut « Error » sur une erreur nue, ce qui n appartient a
+        // aucune taxonomie. Meme repli que `runPhase`.
+        errorCode: err instanceof SkillRunError ? err.code : "SKILL_RUN_FAILED"
       });
       throw err;
     }
